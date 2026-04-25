@@ -126,6 +126,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-user{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.8);font-size:13px;font-weight:600;padding:0 12px;border-right:1px solid rgba(255,255,255,.15)}
 .landing-divider{margin:28px 48px 0;height:1px;background:linear-gradient(to right,rgba(255,255,255,.2),rgba(255,255,255,.05))}
 .landing-main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 32px 64px}
+.landing-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(340px,.95fr);gap:32px;width:100%;max-width:1360px;align-items:start}
+.landing-grid-wrap{display:flex;align-items:center;justify-content:center;min-height:100%}
 .landing-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:32px;width:100%;max-width:1100px}
 .landing-module{display:flex;flex-direction:column;align-items:center;gap:20px;cursor:pointer}
 .landing-module-icon{width:140px;height:140px;display:flex;align-items:center;justify-content:center;transition:transform .3s;border-radius:38px;background:linear-gradient(180deg,rgba(17,29,50,.94) 0%,rgba(8,16,29,.98) 100%);border:1px solid rgba(79,140,255,.16);box-shadow:0 24px 40px rgba(4,10,24,.26)}
@@ -134,6 +136,53 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-module-btn.soon{background:linear-gradient(135deg,#21357c 0%,#192a62 100%)!important}
 .landing-module-desc{font-size:11px;text-align:center;max-width:160px;color:rgba(255,255,255,.42);font-weight:500;line-height:1.5}
 .landing-module-desc.soon{color:rgba(255,255,255,.28)}
+.landing-notices{position:relative;background:linear-gradient(180deg,rgba(11,20,35,.96) 0%,rgba(7,12,23,.98) 100%);border:1px solid rgba(84,124,217,.18);border-radius:28px;padding:24px;box-shadow:0 28px 70px rgba(4,10,24,.32);overflow:hidden}
+.landing-notices::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(79,140,255,.16),transparent 34%),radial-gradient(circle at bottom left,rgba(34,197,94,.08),transparent 26%);pointer-events:none}
+.landing-notices > *{position:relative;z-index:1}
+.landing-notices-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+.landing-notices-kicker{font-size:10px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}
+.landing-notices-title{font-size:24px;font-weight:900;letter-spacing:-.03em;color:#fff;margin-bottom:6px}
+.landing-notices-sub{font-size:13px;line-height:1.55;color:rgba(255,255,255,.6);max-width:40ch}
+.landing-notices-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:250px}
+.landing-notice-stat{padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.14)}
+.landing-notice-stat strong{display:block;font-size:18px;font-weight:800;color:#fff;line-height:1}
+.landing-notice-stat span{display:block;margin-top:4px;font-size:11px;color:rgba(255,255,255,.48);text-transform:uppercase;letter-spacing:.7px}
+.landing-notice-composer{padding:16px;border-radius:20px;background:rgba(255,255,255,.035);border:1px solid rgba(148,163,184,.16);backdrop-filter:blur(10px);margin-bottom:16px}
+.landing-notice-composer textarea{background:rgba(5,10,18,.72)}
+.landing-notice-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:12px}
+.landing-notice-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.landing-notice-select{min-width:140px}
+.landing-notice-pin{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);padding:8px 12px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:rgba(255,255,255,.03)}
+.landing-notice-pin input{accent-color:#3b82f6}
+.landing-notice-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.landing-notice-filter{padding:8px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.03);color:rgba(255,255,255,.62);font-size:12px;font-weight:700;cursor:pointer;transition:all .18s}
+.landing-notice-filter.active{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.32);color:#dbeafe;box-shadow:0 10px 24px rgba(37,99,235,.18)}
+.landing-notice-list{display:flex;flex-direction:column;gap:10px;max-height:560px;overflow:auto;padding-right:4px}
+.landing-notice-item{padding:16px 16px 14px;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);transition:all .2s}
+.landing-notice-item.unread{border-color:rgba(59,130,246,.24);box-shadow:inset 0 0 0 1px rgba(59,130,246,.1)}
+.landing-notice-item.mention{background:linear-gradient(180deg,rgba(37,99,235,.08) 0%,rgba(255,255,255,.03) 100%)}
+.landing-notice-item:hover{transform:translateY(-1px);border-color:rgba(148,163,184,.2)}
+.landing-notice-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.landing-notice-author{display:flex;align-items:center;gap:10px}
+.landing-notice-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#214bba 0%,#163a9a 100%);border:1px solid rgba(96,165,250,.3);font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.landing-notice-author strong{display:block;font-size:13px;color:#fff}
+.landing-notice-author small{display:block;font-size:11px;color:rgba(255,255,255,.42);margin-top:1px}
+.landing-notice-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.landing-notice-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;border:1px solid transparent}
+.landing-notice-badge.priority-alta{background:rgba(239,68,68,.14);color:#fca5a5;border-color:rgba(239,68,68,.24)}
+.landing-notice-badge.priority-media{background:rgba(245,158,11,.14);color:#fcd34d;border-color:rgba(245,158,11,.24)}
+.landing-notice-badge.priority-baixa{background:rgba(34,197,94,.14);color:#86efac;border-color:rgba(34,197,94,.24)}
+.landing-notice-badge.pinned{background:rgba(59,130,246,.16);color:#bfdbfe;border-color:rgba(59,130,246,.28)}
+.landing-notice-badge.mention{background:rgba(125,211,252,.12);color:#bae6fd;border-color:rgba(125,211,252,.22)}
+.landing-notice-text{font-size:14px;line-height:1.65;color:rgba(255,255,255,.86);margin-bottom:12px}
+.landing-notice-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.landing-notice-tags{display:flex;gap:6px;flex-wrap:wrap}
+.landing-notice-tag{padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(148,163,184,.14);font-size:11px;color:rgba(255,255,255,.66)}
+.landing-notice-actions{display:flex;gap:8px;flex-wrap:wrap}
+.landing-notice-actions .btn{padding:6px 10px;font-size:11px}
+.landing-notice-empty{padding:24px 18px;border-radius:20px;border:1px dashed rgba(148,163,184,.22);background:rgba(255,255,255,.02);text-align:center}
+.landing-notice-empty strong{display:block;font-size:15px;color:#fff;margin-bottom:6px}
+.landing-notice-empty span{font-size:12px;color:rgba(255,255,255,.5)}
 .landing-footer{padding:20px 48px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .landing-footer-copy{font-size:11px;color:rgba(255,255,255,.25);font-weight:500}
 .landing-theme-toggle{width:auto;height:42px;padding:0 14px;border-radius:14px;gap:8px;font-size:13px;font-weight:700;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);color:#fff;box-shadow:none}
@@ -368,6 +417,28 @@ html[data-theme="light"] .landing-module-desc{color:var(--text2)}
 html[data-theme="light"] .landing-module-desc.soon{color:var(--text3)}
 html[data-theme="light"] .landing-module-btn{box-shadow:0 10px 24px rgba(39,87,217,.16)}
 html[data-theme="light"] .landing-module-btn.soon{background:linear-gradient(135deg,#dce7ff 0%,#cbd9ff 100%)!important;color:#163a9a}
+html[data-theme="light"] .landing-notices{background:linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(244,248,255,.98) 100%);border-color:rgba(39,87,217,.16);box-shadow:0 26px 60px rgba(38,58,96,.12)}
+html[data-theme="light"] .landing-notices-kicker{color:#2563eb}
+html[data-theme="light"] .landing-notices-title{color:#11203a}
+html[data-theme="light"] .landing-notices-sub{color:#5b6b82}
+html[data-theme="light"] .landing-notice-stat{background:rgba(39,87,217,.04);border-color:rgba(39,87,217,.12)}
+html[data-theme="light"] .landing-notice-stat strong{color:#11203a}
+html[data-theme="light"] .landing-notice-stat span{color:#6b7c95}
+html[data-theme="light"] .landing-notice-composer{background:rgba(39,87,217,.03);border-color:rgba(39,87,217,.12)}
+html[data-theme="light"] .landing-notice-composer textarea{background:#fff}
+html[data-theme="light"] .landing-notice-pin{background:#fff;color:#31425c;border-color:rgba(39,87,217,.14)}
+html[data-theme="light"] .landing-notice-filter{background:#fff;color:#576882;border-color:rgba(39,87,217,.12)}
+html[data-theme="light"] .landing-notice-filter.active{background:rgba(39,87,217,.1);color:#163a9a;border-color:rgba(39,87,217,.2)}
+html[data-theme="light"] .landing-notice-item{background:#fff;border-color:rgba(39,87,217,.08)}
+html[data-theme="light"] .landing-notice-item.unread{border-color:rgba(39,87,217,.22)}
+html[data-theme="light"] .landing-notice-item.mention{background:linear-gradient(180deg,rgba(39,87,217,.06) 0%,#fff 100%)}
+html[data-theme="light"] .landing-notice-author strong{color:#11203a}
+html[data-theme="light"] .landing-notice-author small{color:#6b7c95}
+html[data-theme="light"] .landing-notice-text{color:#25364e}
+html[data-theme="light"] .landing-notice-tag{background:rgba(39,87,217,.04);border-color:rgba(39,87,217,.12);color:#576882}
+html[data-theme="light"] .landing-notice-empty{background:#fff;border-color:rgba(39,87,217,.18)}
+html[data-theme="light"] .landing-notice-empty strong{color:#11203a}
+html[data-theme="light"] .landing-notice-empty span{color:#6b7c95}
 html[data-theme="light"] .func-action-group,
 html[data-theme="light"] .func-toggle-card{background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 12px 28px rgba(38,58,96,.08)}
 html[data-theme="light"] .baixada-summary-card{background:linear-gradient(180deg,#ffffff 0%,#f7faff 100%);border-color:rgba(59,126,248,.14)}
@@ -598,12 +669,21 @@ html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b
   .landing-meta-sep,.landing-user{display:none}
   .landing-divider{margin:20px 20px 0}
   .landing-main{padding:32px 20px 48px}
+  .landing-layout{grid-template-columns:1fr;gap:24px}
+  .landing-grid-wrap{justify-content:stretch}
   .landing-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
   .landing-module{gap:14px}
   .landing-module-icon{width:96px;height:96px;border-radius:28px}
   .landing-module-icon svg{max-width:46px;max-height:46px}
   .landing-module-btn{width:100%;min-width:0;padding:10px 16px}
   .landing-module-desc{max-width:none}
+  .landing-notices{padding:20px}
+  .landing-notices-head{flex-direction:column}
+  .landing-notices-stats{width:100%;min-width:0}
+  .landing-notice-toolbar{align-items:stretch}
+  .landing-notice-controls{width:100%}
+  .landing-notice-select{flex:1;min-width:0}
+  .landing-notice-list{max-height:none}
   .landing-footer{padding:16px 20px;flex-wrap:wrap}
   .landing-footer-copy{max-width:100%}
   .compras-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -615,6 +695,9 @@ html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b
   .page-hero-icon{width:42px;height:42px;font-size:14px}
   .landing-grid{grid-template-columns:1fr}
   .landing-word{font-size:24px}
+  .landing-notices-stats{grid-template-columns:1fr}
+  .landing-notice-actions{width:100%}
+  .landing-notice-actions .btn{flex:1;justify-content:center}
 }
 
 /* ── Skeleton Loaders ── */
@@ -688,6 +771,34 @@ const escJs=s=>String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\x27").replace
 const fmtV=v=>(v!=null&&v!=='')?`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—';
 const fmtD=d=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR'):'—';
 const todayISO=()=>new Date().toISOString().slice(0,10);
+const getCurrentUserHandle=()=>currentUser?String(currentUser.email||'').split('@')[0]:'Anonimo';
+function normalizeMentionToken(raw){
+  return String(raw||'')
+    .trim()
+    .replace(/^@+/,'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9._-]+/g,'.')
+    .replace(/\.{2,}/g,'.')
+    .replace(/^\.+|\.+$/g,'')
+    .toLowerCase();
+}
+function parseMentions(text=''){
+  return [...new Set((String(text||'').match(/@([\w.-]+)/g)||[]).map(item=>normalizeMentionToken(item.slice(1))).filter(Boolean))];
+}
+function fmtRelativeTime(ts){
+  const time=new Date(ts||Date.now()).getTime();
+  if(!Number.isFinite(time))return 'agora';
+  const diff=Math.max(0,Date.now()-time);
+  const mins=Math.floor(diff/60000);
+  if(mins<1)return 'agora';
+  if(mins<60)return `${mins} min`;
+  const hours=Math.floor(mins/60);
+  if(hours<24)return `${hours} h`;
+  const days=Math.floor(hours/24);
+  if(days<7)return `${days} d`;
+  return fmtD(new Date(time).toISOString());
+}
 const addDaysISO=(dateStr,days)=>{if(!dateStr)return'';const dt=new Date(String(dateStr).slice(0,10)+'T12:00:00');if(isNaN(dt))return'';dt.setDate(dt.getDate()+Number(days||0));return dt.toISOString().slice(0,10);};
 const moneyNumber=value=>{if(value==null||value==='')return null;const num=Number(String(value).replace(/[^\d,.-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',','.'));return Number.isFinite(num)?num:null;};
 const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
@@ -705,11 +816,13 @@ const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
 const ALMOX_META_PATH='meta/almox-meta.json';
+const HOME_NOTICES_PATH='meta/home-avisos.json';
 const BAIXADA_DIAS_PADRAO=10;
 const BAIXADA_STATUS=['Solicitado','Programado','Aceito','Em baixada'];
 const ALMOX_TAB_LIST=['inventario','expedicao','movimentacoes'];
 const ALMOX_LOW_STOCK_QTD=5;
 const ALMOX_TRANSFER_STATUS=['Separado','Em transito','Recebido'];
+const HOME_NOTICE_PRIORITIES=['Alta','Media','Baixa'];
 const ALMOX_TRANSFER_MAP={Separado:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em transito':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'}};
 const ALMOX_MOVEMENT_MAP={
   Entrada:{bg:'rgba(16,185,129,.14)',c:'#34d399',d:'#10b981'},
@@ -862,6 +975,35 @@ function cleanBaixada(row={}){
 function cleanBaixadas(list){return(Array.isArray(list)?list:[]).map(cleanBaixada).filter(r=>r.obra&&(r.funcId||r.nome));}
 function getLocalBaixadas(){try{return cleanBaixadas(JSON.parse(localStorage.getItem('jet-baixadas')||'[]'));}catch{return[];}}
 function saveLocalBaixadas(list){localStorage.setItem('jet-baixadas',JSON.stringify(cleanBaixadas(list)));}
+function noticePriorityRank(priority){return priority==='Alta'?3:priority==='Baixa'?1:2;}
+function cleanNotice(row={}){
+  const texto=String(row?.texto||'').trim();
+  const autorRaw=String(row?.autor||'').trim()||'sistema';
+  const autor=normalizeMentionToken(autorRaw)||'sistema';
+  const mentions=[...new Set([...(Array.isArray(row?.mentions)?row.mentions:[]).map(normalizeMentionToken),...parseMentions(texto)]).filter(Boolean)];
+  const readBy=[...new Set((Array.isArray(row?.readBy)?row.readBy:[]).map(normalizeMentionToken).filter(Boolean))];
+  return{
+    id:String(row?.id||('hv-'+uid())),
+    texto,
+    autor,
+    autorLabel:String(row?.autorLabel||autorRaw||autor).trim()||autor,
+    mentions,
+    prioridade:HOME_NOTICE_PRIORITIES.includes(row?.prioridade)?row.prioridade:'Media',
+    pinned:!!row?.pinned,
+    readBy,
+    created_at:row?.created_at||new Date().toISOString(),
+    updated_at:row?.updated_at||new Date().toISOString(),
+  };
+}
+function cleanNotices(list){
+  return(Array.isArray(list)?list:[])
+    .map(cleanNotice)
+    .filter(item=>item.texto)
+    .sort((a,b)=>Number(b.pinned)-Number(a.pinned)||noticePriorityRank(b.prioridade)-noticePriorityRank(a.prioridade)||String(b.created_at||'').localeCompare(String(a.created_at||'')))
+    .slice(0,120);
+}
+function getLocalHomeNotices(){try{return cleanNotices(JSON.parse(localStorage.getItem('jet-home-notices')||'[]'));}catch{return[];}}
+function saveLocalHomeNotices(list){localStorage.setItem('jet-home-notices',JSON.stringify(cleanNotices(list)));}
 function cleanDespesaFile(file={}){return{id:String(file?.id||uid()),name:String(file?.name||file?.nome||'').trim(),size:Number(file?.size||0)||0,path:String(file?.path||'').trim(),url:String(file?.url||'').trim()};}
 function cleanDespesaFileMap(map={}){const out={};Object.entries(map||{}).forEach(([despId,files])=>{const cleaned=(Array.isArray(files)?files:[]).map(cleanDespesaFile).filter(f=>f.name&&f.path&&f.url);if(cleaned.length)out[despId]=cleaned;});return out;}
 function getLocalDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem('jet-despesa-files')||'{}'));}catch{return{};}}
@@ -941,6 +1083,36 @@ async function saveRemoteBaixadas(list,{silent=false}={}){
   }catch(err){
     console.warn('[JET] Planejamento de baixadas não salvo:',err?.message||err);
     if(!silent)toast('Baixadas salvas neste aparelho. A sincronização online falhou.','#f59e0b');
+    return false;
+  }
+}
+async function loadRemoteHomeNotices(){
+  try{
+    const {data,error}=await sb.storage.from(BUCKET).download(HOME_NOTICES_PATH);
+    if(error){
+      const msg=String(error.message||'');
+      if(/not found|404/i.test(msg)){DB.avisos=getLocalHomeNotices();return;}
+      throw error;
+    }
+    DB.avisos=cleanNotices(JSON.parse(await data.text()));
+    saveLocalHomeNotices(DB.avisos);
+  }catch(err){
+    DB.avisos=getLocalHomeNotices();
+    console.warn('[JET] Avisos da home nao carregados:',err?.message||err);
+  }
+}
+async function saveRemoteHomeNotices(list,{silent=false}={}){
+  const cleaned=cleanNotices(list);
+  DB.avisos=[...cleaned];
+  saveLocalHomeNotices(cleaned);
+  try{
+    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    const {error}=await sb.storage.from(BUCKET).upload(HOME_NOTICES_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){
+    console.warn('[JET] Avisos da home nao salvos:',err?.message||err);
+    if(!silent)toast('Avisos salvos apenas neste aparelho. A sincronizacao online falhou.','#f59e0b');
     return false;
   }
 }
@@ -1035,6 +1207,7 @@ async function saveRemoteAlmoxMovimentos(list,{silent=false}={}){
   }
 }
 let _baixadasSyncTimer=null;
+let _homeNoticesSyncTimer=null;
 let _almoxMetaSyncTimer=null;
 let _almoxMovSyncTimer=null;
 function queueBaixadasSync(notify=false){
@@ -1044,6 +1217,14 @@ function queueBaixadasSync(notify=false){
     const ok=await saveRemoteBaixadas(DB.baixadas||[],{silent:!notify});
     if(ok&&notify)toast('Planejamento de baixadas sincronizado.','#22c55e');
   },notify?0:420);
+}
+function queueHomeNoticesSync(notify=false){
+  saveLocalHomeNotices(DB.avisos||[]);
+  clearTimeout(_homeNoticesSyncTimer);
+  _homeNoticesSyncTimer=setTimeout(async()=>{
+    const ok=await saveRemoteHomeNotices(DB.avisos||[],{silent:!notify});
+    if(ok&&notify)toast('Painel de avisos sincronizado.','#22c55e');
+  },notify?0:320);
 }
 function queueAlmoxMetaSync(notify=false){
   saveLocalAlmoxMeta(DB.almoxMeta||{itemMeta:{},transferMeta:{}});
@@ -1336,7 +1517,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],obraRegistry:[],baixadas:[],despesaFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
 async function loadAll(){
   const [a,m,f,r,t,d,e,p,fn,c]=await Promise.all([
@@ -1366,6 +1547,7 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   await loadRemoteObras();
   await syncObraRegistry();
   await loadRemoteBaixadas();
+  await loadRemoteHomeNotices();
   await loadRemoteDespesaFiles();
   await loadRemoteAlmoxMeta();
   await loadRemoteAlmoxMovimentos();
@@ -1412,6 +1594,7 @@ let S={
   funcSection:'equipe',
   funcBaixadaFilter:'Todos',
   funcHideDocs:false,
+  homeNoticeFilter:'all',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -1458,7 +1641,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false};
+await sb.auth.signOut();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all'};
   renderAuth();
 };
 
@@ -1517,11 +1700,175 @@ function renderPageHero(icon,title,subtitle,actionsHtml){
 }
 
 // ─── HOME ─────────────────────────────────────────────────────────────────
+function getMentionDirectory(){
+  const directory=new Map();
+  const add=value=>{
+    const raw=String(value||'').trim().replace(/^@+/,'');
+    const token=normalizeMentionToken(raw);
+    if(!token)return;
+    if(!directory.has(token))directory.set(token,token);
+  };
+  add(getCurrentUserHandle());
+  Object.keys(_onlineUsers||{}).forEach(add);
+  DB.funcionarios.forEach(item=>add(item.nome));
+  DB.aditivos.forEach(item=>(item.comentarios||[]).forEach(comment=>add(comment.autor)));
+  (DB.avisos||[]).forEach(item=>{
+    add(item.autorLabel||item.autor);
+    (item.mentions||[]).forEach(add);
+  });
+  DB.pedidos.forEach(item=>add(item.responsavel));
+  DB.despesas.forEach(item=>add(item.responsavel));
+  return [...directory.entries()].map(([token,label])=>({token,label}));
+}
+function getTeamMembers(){return getMentionDirectory().map(item=>item.label);}
+function isNoticeRead(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.readBy||[]).includes(userToken);}
+function isNoticeMention(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.mentions||[]).includes(userToken);}
+function sortHomeNotices(list=[]){
+  const userToken=normalizeMentionToken(getCurrentUserHandle());
+  return cleanNotices(list).sort((a,b)=>
+    Number(b.pinned)-Number(a.pinned)
+    || Number(isNoticeMention(b,userToken))-Number(isNoticeMention(a,userToken))
+    || Number(!isNoticeRead(a,userToken))-Number(!isNoticeRead(b,userToken))
+    || noticePriorityRank(b.prioridade)-noticePriorityRank(a.prioridade)
+    || String(b.created_at||'').localeCompare(String(a.created_at||''))
+  );
+}
+function renderNoticeText(text=''){
+  return esc(text).replace(/\n/g,'<br>').replace(/@([\w.-]+)/g,'<span class="comment-mention">@$1</span>');
+}
+function getHomeNoticeStats(){
+  const userToken=normalizeMentionToken(getCurrentUserHandle());
+  const list=DB.avisos||[];
+  return{
+    unread:list.filter(item=>!isNoticeRead(item,userToken)).length,
+    mentions:list.filter(item=>isNoticeMention(item,userToken)).length,
+    pinned:list.filter(item=>item.pinned).length
+  };
+}
+function getFilteredHomeNotices(){
+  const userToken=normalizeMentionToken(getCurrentUserHandle());
+  const filter=S.homeNoticeFilter||'all';
+  let list=sortHomeNotices(DB.avisos||[]);
+  if(filter==='unread')list=list.filter(item=>!isNoticeRead(item,userToken));
+  if(filter==='mentions')list=list.filter(item=>isNoticeMention(item,userToken));
+  return list;
+}
+let _homeMentionActive=false,_homeMentionStart=-1,_homeMentionQuery='',_homeMentionIdx=0;
+window._homeNoticeInput=(el)=>{
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,150)+'px';
+  const val=el.value,pos=el.selectionStart,before=val.slice(0,pos),atIdx=before.lastIndexOf('@');
+  if(atIdx>=0&&(atIdx===0||/\s/.test(before[atIdx-1]))){
+    const q=before.slice(atIdx+1);
+    if(!/\s/.test(q)){
+      _homeMentionActive=true;_homeMentionStart=atIdx;_homeMentionQuery=q;_homeMentionIdx=0;
+      _showHomeMentions(getTeamMembers().filter(name=>name.toLowerCase().includes(q.toLowerCase())).slice(0,6));
+      return;
+    }
+  }
+  _homeMentionActive=false;
+  const menu=document.getElementById('home-mention-menu');
+  if(menu)menu.style.display='none';
+};
+window._homeNoticeKey=(e)=>{
+  if(_homeMentionActive){
+    const items=getTeamMembers().filter(name=>name.toLowerCase().includes(_homeMentionQuery.toLowerCase())).slice(0,6);
+    if(e.key==='ArrowDown'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx+1)%Math.max(items.length,1);_showHomeMentions(items);return;}
+    if(e.key==='ArrowUp'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx-1+Math.max(items.length,1))%Math.max(items.length,1);_showHomeMentions(items);return;}
+    if(e.key==='Enter'&&items.length){e.preventDefault();_pickHomeMention(items[_homeMentionIdx]);return;}
+    if(e.key==='Escape'){_homeMentionActive=false;const menu=document.getElementById('home-mention-menu');if(menu)menu.style.display='none';return;}
+  }
+};
+function _showHomeMentions(items){
+  const menu=document.getElementById('home-mention-menu');
+  if(!menu)return;
+  if(!items.length){menu.style.display='none';return;}
+  menu.style.display='block';
+  menu.innerHTML=items.map((name,index)=>`<div class="mention-item${index===_homeMentionIdx?' active':''}" onmousedown="event.preventDefault();_pickHomeMention('${escJs(name)}')"><div class="m-avatar">${esc(name.charAt(0).toUpperCase())}</div>@${esc(name)}</div>`).join('');
+}
+function _pickHomeMention(name){
+  const el=document.getElementById('home-aviso-text');
+  if(!el)return;
+  const val=el.value,after=val.slice(el.selectionStart);
+  el.value=val.slice(0,_homeMentionStart)+'@'+name+' '+after;
+  _homeMentionActive=false;
+  const menu=document.getElementById('home-mention-menu');
+  if(menu)menu.style.display='none';
+  el.focus();
+  window._homeNoticeInput(el);
+}
+window._setHomeNoticeFilter=(filter)=>{S.homeNoticeFilter=filter;renderApp();};
+window._postHomeNotice=async()=>{
+  const textEl=document.getElementById('home-aviso-text');
+  const priorityEl=document.getElementById('home-aviso-priority');
+  const pinEl=document.getElementById('home-aviso-pin');
+  const texto=textEl?.value?.trim();
+  if(!texto)return toast('Escreva um aviso antes de publicar.','#f59e0b');
+  const autorLabel=getCurrentUserHandle();
+  const autor=normalizeMentionToken(autorLabel)||'sistema';
+  const notice=cleanNotice({
+    id:'hv-'+uid(),
+    texto,
+    autor,
+    autorLabel,
+    prioridade:priorityEl?.value||'Media',
+    pinned:!!pinEl?.checked,
+    readBy:[autor],
+    mentions:parseMentions(texto),
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  });
+  DB.avisos=[notice,...(DB.avisos||[])];
+  saveLocalHomeNotices(DB.avisos);
+  queueHomeNoticesSync(true);
+  if(textEl){textEl.value='';textEl.style.height='auto';}
+  if(priorityEl)priorityEl.value='Media';
+  if(pinEl)pinEl.checked=false;
+  renderApp();
+};
+window._toggleNoticeRead=(id)=>{
+  const userToken=normalizeMentionToken(getCurrentUserHandle());
+  DB.avisos=(DB.avisos||[]).map(item=>{
+    if(item.id!==id)return item;
+    const readBy=new Set((item.readBy||[]).map(normalizeMentionToken));
+    if(readBy.has(userToken))readBy.delete(userToken);else readBy.add(userToken);
+    return cleanNotice({...item,readBy:[...readBy],updated_at:new Date().toISOString()});
+  });
+  saveLocalHomeNotices(DB.avisos);
+  queueHomeNoticesSync();
+  renderApp();
+};
+window._toggleNoticePinned=(id)=>{
+  DB.avisos=(DB.avisos||[]).map(item=>item.id===id?cleanNotice({...item,pinned:!item.pinned,updated_at:new Date().toISOString()}):item);
+  saveLocalHomeNotices(DB.avisos);
+  queueHomeNoticesSync();
+  renderApp();
+};
+window._deleteNotice=(id)=>{
+  const item=(DB.avisos||[]).find(entry=>entry.id===id);
+  if(!item)return;
+  if(!confirm(`Remover aviso de @${item.autorLabel||item.autor}?`))return;
+  DB.avisos=(DB.avisos||[]).filter(entry=>entry.id!==id);
+  saveLocalHomeNotices(DB.avisos);
+  queueHomeNoticesSync(true);
+  renderApp();
+};
+window._markAllNoticesRead=()=>{
+  const userToken=normalizeMentionToken(getCurrentUserHandle());
+  DB.avisos=(DB.avisos||[]).map(item=>{
+    const readBy=new Set((item.readBy||[]).map(normalizeMentionToken));
+    readBy.add(userToken);
+    return cleanNotice({...item,readBy:[...readBy]});
+  });
+  saveLocalHomeNotices(DB.avisos);
+  queueHomeNoticesSync(true);
+  renderApp();
+};
 function renderHome(){
   const modules=[
     {
       id:'escritorio',
-      label:'ESCRITÓRIO',
+      label:'ESCRITORIO',
       soon:true,
       color:'#2a3f8a',
       glow:'rgba(42,63,138,0.4)',
@@ -1531,7 +1878,7 @@ function renderHome(){
         <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
         <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
       </svg>`,
-      desc:'Financeiro, RH e administração'
+      desc:'Financeiro, RH e administracao'
     },
     {
       id:'obras',
@@ -1557,7 +1904,7 @@ function renderHome(){
         <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
         <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
       </svg>`,
-      desc:'Pedidos, fornecedores e cotações'
+      desc:'Pedidos, fornecedores e cotacoes'
     },
     {
       id:'almoxarifado',
@@ -1570,29 +1917,69 @@ function renderHome(){
         <path d="M6 18h12"/><path d="M6 14h12"/>
         <rect width="12" height="12" x="6" y="10"/>
       </svg>`,
-      desc:'Estoque, entrada e saída de material'
+      desc:'Estoque, entrada e saida de material'
     },
   ];
+  const currentHandle=getCurrentUserHandle();
+  const stats=getHomeNoticeStats();
+  const notices=getFilteredHomeNotices();
+  const directoryMap=Object.fromEntries(getMentionDirectory().map(item=>[item.token,item.label]));
+  const filters=[
+    {id:'all',label:'Todos',count:(DB.avisos||[]).length},
+    {id:'unread',label:'Nao lidos',count:stats.unread},
+    {id:'mentions',label:'Mencoes',count:stats.mentions},
+  ];
+  const noticeList=notices.length?notices.map(item=>{
+    const isRead=isNoticeRead(item);
+    const isMention=isNoticeMention(item);
+    const mentionTags=(item.mentions||[]).map(token=>`<span class="landing-notice-tag">@${esc(directoryMap[token]||token)}</span>`).join('');
+    const canDelete=normalizeMentionToken(item.autor)===normalizeMentionToken(currentHandle);
+    return `<article class="landing-notice-item${isRead?'':' unread'}${isMention?' mention':''}">
+      <div class="landing-notice-top">
+        <div class="landing-notice-author">
+          <div class="landing-notice-avatar">${esc(getInitials((item.autorLabel||item.autor||'aviso')+'@jet.local'))}</div>
+          <div>
+            <strong>@${esc(item.autorLabel||item.autor)}</strong>
+            <small>${fmtRelativeTime(item.created_at)} &middot; ${fmtD(item.created_at||todayISO())}</small>
+          </div>
+        </div>
+        <div class="landing-notice-badges">
+          <span class="landing-notice-badge priority-${(item.prioridade||'Media').toLowerCase()}">${esc(item.prioridade||'Media')}</span>
+          ${item.pinned?'<span class="landing-notice-badge pinned">Fixado</span>':''}
+          ${isMention?'<span class="landing-notice-badge mention">Menciona voce</span>':''}
+        </div>
+      </div>
+      <div class="landing-notice-text">${renderNoticeText(item.texto)}</div>
+      <div class="landing-notice-meta">
+        <div class="landing-notice-tags">${mentionTags||'<span class="landing-notice-tag">Sem mencoes</span>'}</div>
+        <div class="landing-notice-actions">
+          <button class="btn btn-secondary btn-sm" onclick="window._toggleNoticeRead('${escJs(item.id)}')">${isRead?'Marcar nao lido':'Marcar lido'}</button>
+          <button class="btn btn-secondary btn-sm" onclick="window._toggleNoticePinned('${escJs(item.id)}')">${item.pinned?'Soltar topo':'Fixar'}</button>
+          ${canDelete?`<button class="btn btn-danger btn-sm" onclick="window._deleteNotice('${escJs(item.id)}')">Excluir</button>`:''}
+        </div>
+      </div>
+    </article>`;
+  }).join(''):`<div class="landing-notice-empty"><strong>Nenhum aviso ainda</strong><span>Publique o primeiro recado da operacao e use @nome para direcionar.</span></div>`;
 
   return`<div class="landing-shell">
 <!-- Header -->
 <div class="landing-header">
   <div class="landing-brand">
-    <div class="landing-word">Gestão</div>
+    <div class="landing-word">Gestao</div>
     <div class="landing-pill">
       <span>JET</span>
     </div>
   </div>
   <div class="landing-meta">
     <button class="theme-toggle landing-theme-toggle" onclick="window._toggleTheme()" title="Alternar modo claro/escuro">
-      <span>${document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️'}</span>
+      <span style="font-size:11px;font-weight:800;letter-spacing:.08em">${document.documentElement.getAttribute('data-theme')==='light'?'DK':'LT'}</span>
       <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.05">
         <strong style="font-size:12px;font-weight:800;color:inherit">${document.documentElement.getAttribute('data-theme')==='light'?'Modo Escuro':'Modo Claro'}</strong>
-        <small>aparência</small>
+        <small>aparencia</small>
       </span>
     </button>
     <div class="landing-meta-sep"></div>
-    ${currentUser?`<div class="landing-user"><span>👤 ${esc(currentUser.email.split('@')[0])}</span></div>`:''}
+    ${currentUser?`<div class="landing-user"><span>${esc(currentHandle)}</span></div>`:''}
     <div style="position:relative">
       <div class="user-avatar" style="background:#1e3a8a;border-color:#2a4fa0;font-size:13px" onclick="event.stopPropagation();S.userMenuOpen=!S.userMenuOpen;renderApp()">${currentUser?getInitials(currentUser.email):'?'}</div>
       ${S.userMenuOpen?`<div class="user-dropdown" onclick="event.stopPropagation()">
@@ -1600,41 +1987,78 @@ function renderHome(){
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${currentUser?getInitials(currentUser.email):''}</div>
           <div style="font-size:11px;color:var(--text3)">${currentUser?esc(currentUser.email):''}</div>
         </div>
-        <div class="user-dd-item" onclick="_logout()"><span>→</span>Sair</div>
+        <div class="user-dd-item" onclick="_logout()"><span>?</span>Sair</div>
       </div>`:''}
     </div>
   </div>
 </div>
 
-<!-- Divider -->
 <div class="landing-divider"></div>
 
-<!-- Module grid -->
 <div class="landing-main">
-  <div class="landing-grid">
-    ${modules.map(m=>`<div onclick="${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}"
-      class="landing-module">
-      <!-- Icon area -->
-      <div class="landing-module-icon"
-        onmouseover="this.style.transform='scale(1.08) translateY(-4px)'"
-        onmouseout="this.style.transform='scale(1) translateY(0)'">
-        ${m.icon}
+  <div class="landing-layout">
+    <div class="landing-grid-wrap">
+      <div class="landing-grid">
+        ${modules.map(m=>`<div onclick="${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}"
+          class="landing-module">
+          <div class="landing-module-icon"
+            onmouseover="this.style.transform='scale(1.08) translateY(-4px)'"
+            onmouseout="this.style.transform='scale(1) translateY(0)'">
+            ${m.icon}
+          </div>
+          <button class="landing-module-btn${m.soon?' soon':''}" style="background:${m.soon?'#1e3070':'#1e40af'};box-shadow:0 4px 20px ${m.glow}"
+            onmouseover="this.style.background='${m.soon?'#243888':'#1d4ed8'}';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 28px ${m.glow}'"
+            onmouseout="this.style.background='${m.soon?'#1e3070':'#1e40af'}';this.style.transform='none';this.style.boxShadow='0 4px 20px ${m.glow}'"
+            onclick="event.stopPropagation();${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}">
+            ${m.label}${m.soon?'&nbsp;<span style="font-size:9px;opacity:.6;font-weight:600;letter-spacing:1px">EM BREVE</span>':''}
+          </button>
+          <span class="landing-module-desc${m.soon?' soon':''}">${esc(m.desc)}</span>
+        </div>`).join('')}
       </div>
-      <!-- Label button -->
-      <button class="landing-module-btn${m.soon?' soon':''}" style="background:${m.soon?'#1e3070':'#1e40af'};box-shadow:0 4px 20px ${m.glow}"
-        onmouseover="this.style.background='${m.soon?'#243888':'#1d4ed8'}';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 28px ${m.glow}'"
-        onmouseout="this.style.background='${m.soon?'#1e3070':'#1e40af'}';this.style.transform='none';this.style.boxShadow='0 4px 20px ${m.glow}'"
-        onclick="event.stopPropagation();${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}">
-        ${m.label}${m.soon?'&nbsp;<span style="font-size:9px;opacity:.6;font-weight:600;letter-spacing:1px">EM BREVE</span>':''}
-      </button>
-      <span class="landing-module-desc${m.soon?' soon':''}">${esc(m.desc)}</span>
-    </div>`).join('')}
+    </div>
+
+    <aside class="landing-notices">
+      <div class="landing-notices-head">
+        <div>
+          <div class="landing-notices-kicker">Central operacional</div>
+          <div class="landing-notices-title">Painel de avisos</div>
+          <div class="landing-notices-sub">Inspirado na leitura rapida de inbox modernos: prioridade clara, foco em mencoes e poucos controles por item.</div>
+        </div>
+        <div class="landing-notices-stats">
+          <div class="landing-notice-stat"><strong>${stats.unread}</strong><span>Nao lidos</span></div>
+          <div class="landing-notice-stat"><strong>${stats.mentions}</strong><span>Mencoes</span></div>
+          <div class="landing-notice-stat"><strong>${stats.pinned}</strong><span>Fixados</span></div>
+        </div>
+      </div>
+
+      <div class="landing-notice-composer">
+        <div class="comment-input-wrap">
+          <div id="home-mention-menu" class="mention-menu"></div>
+          <textarea id="home-aviso-text" class="comment-input" rows="2" placeholder="Escreva um aviso rapido... use @nome para mencionar" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
+        </div>
+        <div class="landing-notice-toolbar">
+          <div class="landing-notice-controls">
+            <select id="home-aviso-priority" class="input landing-notice-select">
+              ${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>Prioridade ${esc(priority)}</option>`).join('')}
+            </select>
+            <label class="landing-notice-pin"><input type="checkbox" id="home-aviso-pin"> Fixar no topo</label>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window._postHomeNotice()">Publicar aviso</button>
+        </div>
+      </div>
+
+      <div class="landing-notice-filters">
+        ${filters.map(filter=>`<button class="landing-notice-filter${(S.homeNoticeFilter||'all')===filter.id?' active':''}" onclick="window._setHomeNoticeFilter('${escJs(filter.id)}')">${filter.label} (${filter.count})</button>`).join('')}
+        <button class="landing-notice-filter" onclick="window._markAllNoticesRead()">Marcar tudo</button>
+      </div>
+
+      <div class="landing-notice-list">${noticeList}</div>
+    </aside>
   </div>
 </div>
 
-<!-- Footer -->
 <div class="landing-footer">
-  <span class="landing-footer-copy">JET Serviços de Engenharia · Sistema de Gestão</span>
+  <span class="landing-footer-copy">JET Servicos de Engenharia / Sistema de Gestao</span>
   <span class="rt-dot" title="Tempo real ativo" style="flex-shrink:0"></span>
 </div>
 </div>`;
@@ -2021,12 +2445,6 @@ window._delFile=async(aid,fid)=>{if(!confirm('Remover arquivo?'))return;const a=
 
 // ─── COMENTÁRIOS ──────────────────────────────────────────────────────────
 let _mentionActive=false,_mentionStart=-1,_mentionQuery='',_mentionIdx=0;
-
-function getTeamMembers(){
-  const all=DB.aditivos.flatMap(a=>(a.comentarios||[]).map(c=>c.autor)).filter(Boolean);
-  const cur=currentUser?currentUser.email.split('@')[0]:null;
-  return[...new Set([...(cur?[cur]:[]),...all])];
-}
 
 function renderComentarios(a){
   const cs=a.comentarios||[];
