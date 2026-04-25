@@ -185,6 +185,50 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-notice-empty span{font-size:12px;color:rgba(255,255,255,.5)}
 .landing-footer{padding:20px 48px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .landing-footer-copy{font-size:11px;color:rgba(255,255,255,.25);font-weight:500}
+.landing-main{padding:42px 30px 58px}
+.landing-layout{display:block;max-width:1080px}
+.landing-grid-wrap{display:block}
+.landing-grid{gap:24px;max-width:none}
+.landing-meta{gap:10px;position:relative}
+.landing-notice-shell{position:relative}
+.landing-notice-trigger{position:relative;display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(84,124,217,.18);background:rgba(255,255,255,.04);color:#e2e8f0;border-radius:16px;padding:10px 14px;cursor:pointer;transition:all .18s;font-weight:700;font-size:12px;box-shadow:0 10px 28px rgba(4,10,24,.14)}
+.landing-notice-trigger:hover,.landing-notice-trigger.open{transform:translateY(-1px);border-color:rgba(96,165,250,.34);background:rgba(37,99,235,.12)}
+.landing-notice-trigger-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(37,99,235,.28),rgba(20,38,86,.9));border:1px solid rgba(96,165,250,.25);font-size:13px;flex-shrink:0}
+.landing-notice-trigger-count{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(239,68,68,.3)}
+.landing-notices{position:absolute;top:calc(100% + 12px);right:0;width:min(392px,calc(100vw - 32px));background:linear-gradient(180deg,rgba(11,20,35,.98) 0%,rgba(7,12,23,.99) 100%);border:1px solid rgba(84,124,217,.16);border-radius:22px;padding:16px;box-shadow:0 24px 60px rgba(4,10,24,.34);overflow:hidden;z-index:60}
+.landing-notices-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}
+.landing-notices-kicker{display:none}
+.landing-notices-title{font-size:18px;font-weight:900;letter-spacing:-.03em;color:#fff;margin-bottom:0}
+.landing-notices-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-width:0;max-width:198px}
+.landing-notice-stat{padding:8px 9px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.12)}
+.landing-notice-stat strong{display:block;font-size:14px;font-weight:800;color:#fff;line-height:1}
+.landing-notice-stat span{display:block;margin-top:3px;font-size:10px;color:rgba(255,255,255,.48);text-transform:uppercase;letter-spacing:.55px}
+.landing-notice-composer{padding:12px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(148,163,184,.14);margin-bottom:12px}
+.landing-notice-toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+.landing-notice-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.landing-notice-select{min-width:124px}
+.landing-notice-pin{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--text2);padding:7px 10px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:rgba(255,255,255,.03)}
+.landing-notice-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.landing-notice-filter{padding:7px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.03);color:rgba(255,255,255,.62);font-size:10px;font-weight:700;cursor:pointer;transition:all .18s}
+.landing-notice-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:4px}
+.landing-notice-item{padding:12px 12px 11px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);transition:all .2s}
+.landing-notice-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+.landing-notice-author{display:flex;align-items:center;gap:8px}
+.landing-notice-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#214bba 0%,#163a9a 100%);border:1px solid rgba(96,165,250,.3);font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.landing-notice-author strong{display:block;font-size:12px;color:#f8fafc;font-weight:800}
+.landing-notice-author small{display:block;font-size:10px;color:rgba(255,255,255,.45);margin-top:2px}
+.landing-notice-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.landing-notice-badge{padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.35px;text-transform:uppercase}
+.landing-notice-text{font-size:12px;line-height:1.55;color:rgba(255,255,255,.78);margin-bottom:10px}
+.landing-notice-meta{display:flex;justify-content:space-between;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.landing-notice-tags{display:flex;gap:5px;flex-wrap:wrap}
+.landing-notice-tag{padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.18);font-size:9px;color:#93c5fd}
+.landing-notice-actions{display:flex;gap:6px;flex-wrap:wrap}
+.landing-notice-actions .btn{padding:5px 9px;font-size:10px}
+.landing-notice-empty{padding:22px 14px;border-radius:18px;border:1px dashed rgba(148,163,184,.22);background:rgba(255,255,255,.02);text-align:center}
+.landing-notice-empty strong{display:block;font-size:14px;color:#fff;margin-bottom:5px}
+.landing-notice-empty span{font-size:11px;color:rgba(255,255,255,.5)}
+@media (max-width: 980px){.landing-notices{right:auto;left:0;width:min(420px,calc(100vw - 32px))}}
 .landing-main{padding:40px 28px 56px}
 .landing-layout{grid-template-columns:minmax(0,1.95fr) minmax(300px,360px);gap:24px;max-width:1280px}
 .landing-grid{gap:24px;max-width:980px}
@@ -1516,7 +1560,9 @@ let _cdActive=null,_cdOnSelectFn=null,_cdSeq=0;
 function closeCd(){if(_cdActive){_cdActive.remove();_cdActive=null;}}
 document.addEventListener('click',()=>closeCd());
 document.addEventListener('click',()=>{if(S.userMenuOpen){S.userMenuOpen=false;renderApp();}});
+document.addEventListener('click',()=>{if(S.homeNoticeOpen){S.homeNoticeOpen=false;renderApp();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCd();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.homeNoticeOpen){S.homeNoticeOpen=false;renderApp();}});
 
 function makeCd(options,map,currentVal,onSelect,large=false){
   const id='cd-'+(++_cdSeq);
@@ -1648,6 +1694,7 @@ let S={
   funcBaixadaFilter:'Todos',
   funcHideDocs:false,
   homeNoticeFilter:'all',
+  homeNoticeOpen:false,
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -1694,7 +1741,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all'};
+await sb.auth.signOut();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false};
   renderAuth();
 };
 
@@ -1863,6 +1910,7 @@ window._postHomeNotice=async()=>{
   if(textEl){textEl.value='';textEl.style.height='auto';}
   if(priorityEl)priorityEl.value='Media';
   if(pinEl)pinEl.checked=false;
+  S.homeNoticeOpen=true;
   renderApp();
 };
 window._toggleNoticeRead=(id)=>{
@@ -2010,6 +2058,48 @@ function renderHome(){
     </div>
   </div>
   <div class="landing-meta">
+    <div class="landing-notice-shell" onclick="event.stopPropagation()">
+      <button class="landing-notice-trigger${S.homeNoticeOpen?' open':''}" onclick="event.stopPropagation();S.homeNoticeOpen=!S.homeNoticeOpen;renderApp()" title="Abrir avisos">
+        <span class="landing-notice-trigger-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"/><path d="M9.73 21a2 2 0 0 0 3.54 0"/></svg></span>
+        <span>Avisos</span>
+        ${(stats.unread+stats.mentions)>0?`<span class="landing-notice-trigger-count">${stats.unread+stats.mentions}</span>`:''}
+      </button>
+      ${S.homeNoticeOpen?`<div class="landing-notices" onclick="event.stopPropagation()">
+        <div class="landing-notices-head">
+          <div>
+            <div class="landing-notices-title">Painel de avisos</div>
+          </div>
+          <div class="landing-notices-stats">
+            <div class="landing-notice-stat"><strong>${stats.unread}</strong><span>Nao lidos</span></div>
+            <div class="landing-notice-stat"><strong>${stats.mentions}</strong><span>Mencoes</span></div>
+            <div class="landing-notice-stat"><strong>${stats.pinned}</strong><span>Fixados</span></div>
+          </div>
+        </div>
+
+        <div class="landing-notice-composer">
+          <div class="comment-input-wrap">
+            <div id="home-mention-menu" class="mention-menu"></div>
+            <textarea id="home-aviso-text" class="comment-input" rows="2" placeholder="Novo aviso... use @nome" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
+          </div>
+          <div class="landing-notice-toolbar">
+            <div class="landing-notice-controls">
+              <select id="home-aviso-priority" class="input landing-notice-select">
+                ${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>Prioridade ${esc(priority)}</option>`).join('')}
+              </select>
+              <label class="landing-notice-pin"><input type="checkbox" id="home-aviso-pin"> Fixar</label>
+            </div>
+            <button class="btn btn-primary btn-sm" type="button" onclick="event.stopPropagation();window._postHomeNotice()">Publicar</button>
+          </div>
+        </div>
+
+        <div class="landing-notice-filters">
+          ${filters.map(filter=>`<button class="landing-notice-filter${(S.homeNoticeFilter||'all')===filter.id?' active':''}" onclick="event.stopPropagation();window._setHomeNoticeFilter('${escJs(filter.id)}')">${filter.label} (${filter.count})</button>`).join('')}
+          <button class="landing-notice-filter" onclick="event.stopPropagation();window._markAllNoticesRead()">Marcar tudo</button>
+        </div>
+
+        <div class="landing-notice-list">${noticeList}</div>
+      </div>`:''}
+    </div>
     <button class="theme-toggle landing-theme-toggle" onclick="window._toggleTheme()" title="Alternar modo claro/escuro">
       <span style="font-size:11px;font-weight:800;letter-spacing:.08em">${document.documentElement.getAttribute('data-theme')==='light'?'DK':'LT'}</span>
       <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.05">
@@ -2056,42 +2146,6 @@ function renderHome(){
       </div>
     </div>
 
-    <aside class="landing-notices">
-      <div class="landing-notices-head">
-        <div>
-          <div class="landing-notices-kicker">Central operacional</div>
-          <div class="landing-notices-title">Painel de avisos</div>
-        </div>
-        <div class="landing-notices-stats">
-          <div class="landing-notice-stat"><strong>${stats.unread}</strong><span>Nao lidos</span></div>
-          <div class="landing-notice-stat"><strong>${stats.mentions}</strong><span>Mencoes</span></div>
-          <div class="landing-notice-stat"><strong>${stats.pinned}</strong><span>Fixados</span></div>
-        </div>
-      </div>
-
-      <div class="landing-notice-composer">
-        <div class="comment-input-wrap">
-          <div id="home-mention-menu" class="mention-menu"></div>
-          <textarea id="home-aviso-text" class="comment-input" rows="2" placeholder="Novo aviso... use @nome" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
-        </div>
-        <div class="landing-notice-toolbar">
-          <div class="landing-notice-controls">
-            <select id="home-aviso-priority" class="input landing-notice-select">
-              ${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>Prioridade ${esc(priority)}</option>`).join('')}
-            </select>
-            <label class="landing-notice-pin"><input type="checkbox" id="home-aviso-pin"> Fixar no topo</label>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="window._postHomeNotice()">Publicar aviso</button>
-        </div>
-      </div>
-
-      <div class="landing-notice-filters">
-        ${filters.map(filter=>`<button class="landing-notice-filter${(S.homeNoticeFilter||'all')===filter.id?' active':''}" onclick="window._setHomeNoticeFilter('${escJs(filter.id)}')">${filter.label} (${filter.count})</button>`).join('')}
-        <button class="landing-notice-filter" onclick="window._markAllNoticesRead()">Marcar tudo</button>
-      </div>
-
-      <div class="landing-notice-list">${noticeList}</div>
-    </aside>
   </div>
 </div>
 
