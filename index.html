@@ -185,6 +185,45 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-notice-empty span{font-size:12px;color:rgba(255,255,255,.5)}
 .landing-footer{padding:20px 48px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .landing-footer-copy{font-size:11px;color:rgba(255,255,255,.25);font-weight:500}
+.landing-main{padding:40px 28px 56px}
+.landing-layout{grid-template-columns:minmax(0,1.95fr) minmax(300px,360px);gap:24px;max-width:1280px}
+.landing-grid{gap:24px;max-width:980px}
+.landing-module{gap:16px}
+.landing-module-icon{width:128px;height:128px;border-radius:34px;box-shadow:0 18px 32px rgba(4,10,24,.24)}
+.landing-module-btn{padding:11px 24px;font-size:11px;letter-spacing:1.7px;min-width:132px}
+.landing-module-desc{max-width:150px;line-height:1.45}
+.landing-notices{max-width:360px;padding:18px;border-radius:24px;border-color:rgba(84,124,217,.16);box-shadow:0 20px 48px rgba(4,10,24,.24)}
+.landing-notices-head{gap:12px;margin-bottom:12px}
+.landing-notices-title{font-size:20px;margin-bottom:0}
+.landing-notices-stats{grid-template-columns:repeat(3,minmax(70px,1fr));gap:6px;min-width:0;max-width:226px}
+.landing-notice-stat{padding:8px 10px;border-radius:14px}
+.landing-notice-stat strong{font-size:15px}
+.landing-notice-stat span{margin-top:3px;font-size:10px;letter-spacing:.65px}
+.landing-notice-composer{padding:12px;border-radius:18px;margin-bottom:12px}
+.landing-notice-toolbar{gap:8px;margin-top:10px}
+.landing-notice-controls{gap:8px}
+.landing-notice-select{min-width:124px}
+.landing-notice-pin{gap:7px;font-size:11px;padding:7px 10px}
+.landing-notice-filters{gap:6px;margin-bottom:12px}
+.landing-notice-filter{padding:7px 10px;font-size:10px;transition:all .18s}
+.landing-notice-list{gap:8px;max-height:420px}
+.landing-notice-item{padding:12px 12px 11px;border-radius:18px}
+.landing-notice-top{gap:10px;margin-bottom:8px}
+.landing-notice-author{gap:8px}
+.landing-notice-avatar{width:32px;height:32px;font-size:11px}
+.landing-notice-author strong{font-size:12px}
+.landing-notice-author small{font-size:10px}
+.landing-notice-badges{gap:5px}
+.landing-notice-badge{padding:5px 8px;font-size:9px;letter-spacing:.35px}
+.landing-notice-text{font-size:12px;line-height:1.55;margin-bottom:10px}
+.landing-notice-meta{gap:10px}
+.landing-notice-tags{gap:5px}
+.landing-notice-tag{padding:4px 8px;font-size:9px}
+.landing-notice-actions{gap:6px}
+.landing-notice-actions .btn{padding:5px 9px;font-size:10px}
+.landing-notice-empty{padding:22px 14px;border-radius:18px}
+.landing-notice-empty strong{font-size:14px;margin-bottom:5px}
+.landing-notice-empty span{font-size:11px}
 .landing-theme-toggle{width:auto;height:42px;padding:0 14px;border-radius:14px;gap:8px;font-size:13px;font-weight:700;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);color:#fff;box-shadow:none}
 .landing-theme-toggle:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24);transform:translateY(-1px)}
 .landing-theme-toggle small{display:block;font-size:10px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.58);text-transform:uppercase}
@@ -823,6 +862,20 @@ const ALMOX_TAB_LIST=['inventario','expedicao','movimentacoes'];
 const ALMOX_LOW_STOCK_QTD=5;
 const ALMOX_TRANSFER_STATUS=['Separado','Em transito','Recebido'];
 const HOME_NOTICE_PRIORITIES=['Alta','Media','Baixa'];
+const SUPABASE_MENTION_EMAILS=[
+  'caio@jetmanutencoes.com',
+  'cesar@jetmanutencoes.com',
+  'claraadm@jetmanutencoes.com',
+  'douglas.assis@jetmanutencoes.com',
+  'eduardo.freitas@jetmanutencoes.com',
+  'emille@jetmanutencoes.com',
+  'fabio@jetmanutencoes.com',
+  'felippe@jetmanutencoes.com',
+  'gustavo@jetmanutencoes.com',
+  'jp.gasparini@jetmanutencoes.com',
+  'mariaclara@jetmanutencoes.com',
+  'vanuza@jetmanutencoes.com'
+];
 const ALMOX_TRANSFER_MAP={Separado:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em transito':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'}};
 const ALMOX_MOVEMENT_MAP={
   Entrada:{bg:'rgba(16,185,129,.14)',c:'#34d399',d:'#10b981'},
@@ -1701,24 +1754,10 @@ function renderPageHero(icon,title,subtitle,actionsHtml){
 
 // ─── HOME ─────────────────────────────────────────────────────────────────
 function getMentionDirectory(){
-  const directory=new Map();
-  const add=value=>{
-    const raw=String(value||'').trim().replace(/^@+/,'');
-    const token=normalizeMentionToken(raw);
-    if(!token)return;
-    if(!directory.has(token))directory.set(token,token);
-  };
-  add(getCurrentUserHandle());
-  Object.keys(_onlineUsers||{}).forEach(add);
-  DB.funcionarios.forEach(item=>add(item.nome));
-  DB.aditivos.forEach(item=>(item.comentarios||[]).forEach(comment=>add(comment.autor)));
-  (DB.avisos||[]).forEach(item=>{
-    add(item.autorLabel||item.autor);
-    (item.mentions||[]).forEach(add);
-  });
-  DB.pedidos.forEach(item=>add(item.responsavel));
-  DB.despesas.forEach(item=>add(item.responsavel));
-  return [...directory.entries()].map(([token,label])=>({token,label}));
+  return SUPABASE_MENTION_EMAILS.map(email=>{
+    const label=String(email).split('@')[0].trim();
+    return {token:normalizeMentionToken(label),label,email};
+  }).filter(item=>item.token);
 }
 function getTeamMembers(){return getMentionDirectory().map(item=>item.label);}
 function isNoticeRead(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.readBy||[]).includes(userToken);}
@@ -2022,7 +2061,6 @@ function renderHome(){
         <div>
           <div class="landing-notices-kicker">Central operacional</div>
           <div class="landing-notices-title">Painel de avisos</div>
-          <div class="landing-notices-sub">Inspirado na leitura rapida de inbox modernos: prioridade clara, foco em mencoes e poucos controles por item.</div>
         </div>
         <div class="landing-notices-stats">
           <div class="landing-notice-stat"><strong>${stats.unread}</strong><span>Nao lidos</span></div>
@@ -2034,7 +2072,7 @@ function renderHome(){
       <div class="landing-notice-composer">
         <div class="comment-input-wrap">
           <div id="home-mention-menu" class="mention-menu"></div>
-          <textarea id="home-aviso-text" class="comment-input" rows="2" placeholder="Escreva um aviso rapido... use @nome para mencionar" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
+          <textarea id="home-aviso-text" class="comment-input" rows="2" placeholder="Novo aviso... use @nome" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
         </div>
         <div class="landing-notice-toolbar">
           <div class="landing-notice-controls">
