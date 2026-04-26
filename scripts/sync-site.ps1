@@ -14,8 +14,14 @@ if (-not (Test-Path $SourceFile)) {
 
 Copy-Item $SourceFile $TargetFile -Force
 
+$buildStamp = Get-Date -Format 'yyyyMMddHHmmss'
+$content = Get-Content -Path $TargetFile -Raw
+$content = $content -replace '__APP_BUILD__', $buildStamp
+Set-Content -Path $TargetFile -Value $content -Encoding UTF8
+
 if (-not $Quiet) {
   Write-Host "Sincronizado:" -ForegroundColor Green
   Write-Host "  origem : $SourceFile"
   Write-Host "  destino: $TargetFile"
+  Write-Host "  build  : $buildStamp"
 }
