@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426180622">
+<meta name="jet-build" content="20260426185654">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -5679,6 +5679,8 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     body=`<div class="form-grid-2">
 <div class="form-group" style="margin-bottom:0"><label>Obra</label><input id="m-rdo-foto-import-obra" value="${esc(S.obra||'APL - AV. Paulista')}" oninput="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
 <div class="form-group" style="margin-bottom:0"><label>Importar a partir de</label><input id="m-rdo-foto-import-start" type="date" value="2026-04-09" onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-foto-import-atividades" checked onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"> Sugerir/preencher atividades a partir das legendas da planilha</label></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-foto-import-proteger" checked onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"> Não sobrescrever atividades já preenchidas</label></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de índice de fotos</label><input id="m-rdo-foto-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOFotoImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Índice de Fotos”. A prévia cruza por data com os RDOs da obra, preserva fotos já anexadas e ignora links duplicados.</div></div>
 <div id="m-rdo-foto-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:340px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
 </div>`;
@@ -7723,7 +7725,9 @@ window._rdoFotoImportGroups=[];
 function rdoFotoImportOptions(){
   return{
     obra:document.getElementById('m-rdo-foto-import-obra')?.value?.trim()||S.obra||'APL - AV. Paulista',
-    start:document.getElementById('m-rdo-foto-import-start')?.value||'2026-04-09'
+    start:document.getElementById('m-rdo-foto-import-start')?.value||'2026-04-09',
+    atividades:!!document.getElementById('m-rdo-foto-import-atividades')?.checked,
+    protegerAtividades:!!document.getElementById('m-rdo-foto-import-proteger')?.checked
   };
 }
 function rdoFotoCell(sheet,row,col){
@@ -7773,6 +7777,33 @@ function rdoFotoKey(f){
   const name=String(f?.name||'').trim().toLowerCase();
   if(name)return`name:${name}`;
   return`url:${String(raw).trim().toLowerCase()}`;
+}
+function rdoFotoCleanComment(value=''){
+  return String(value||'')
+    .replace(/[\u200e-\u200f\u202a-\u202e\u2066-\u2069]/g,'')
+    .replace(/@\s*/g,'@')
+    .replace(/@[\wÀ-ÿ ._-]+/g,'')
+    .replace(/\s+/g,' ')
+    .replace(/\s+([,.;:!?])/g,'$1')
+    .trim();
+}
+function rdoFotoActivitySuggestion(photos=[]){
+  const seen=new Set();
+  const lines=[];
+  photos
+    .map(photo=>({hora:photo.hora||'',desc:rdoFotoCleanComment(photo.desc)}))
+    .filter(item=>item.desc&&item.desc.length>3)
+    .forEach(item=>{
+      const key=stripAccents(item.desc).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+      if(!key||seen.has(key))return;
+      seen.add(key);
+      const text=item.desc.charAt(0).toUpperCase()+item.desc.slice(1);
+      lines.push(item.hora?`${item.hora} - ${text}`:text);
+    });
+  if(!lines.length)return'';
+  const limited=lines.slice(0,10);
+  const more=lines.length>10?'\n- Demais registros fotográficos complementares do dia.':'';
+  return`Atividades executadas conforme registros fotográficos:\n${limited.map(line=>`- ${line}`).join('\n')}${more}`;
 }
 function rdoFotoParseSheet(sheet){
   const ref=sheet?.['!ref'];
@@ -7825,7 +7856,7 @@ function rdoFotoBuildGroups(raw=[]){
   raw.filter(p=>p.data&&p.data>=opts.start).forEach(photo=>{
     if(!grouped.has(photo.data)){
       const rdo=rdoByDate.get(photo.data)||null;
-      grouped.set(photo.data,{data:photo.data,rdo,rdoId:rdo?.id||'',rdoNumero:rdo?.rdo_numero||'',fotos:[],novas:[],duplicadas:[],semRdo:[]});
+      grouped.set(photo.data,{data:photo.data,rdo,rdoId:rdo?.id||'',rdoNumero:rdo?.rdo_numero||'',fotos:[],novas:[],duplicadas:[],semRdo:[],atividadeSugestao:'',atividadeStatus:''});
     }
     grouped.get(photo.data).fotos.push(photo);
   });
@@ -7839,6 +7870,11 @@ function rdoFotoBuildGroups(raw=[]){
       if(existing.has(key)||sheetSeen.has(scoped))group.duplicadas.push(photo);
       else{group.novas.push(photo);sheetSeen.add(scoped);}
     });
+    group.atividadeSugestao=rdoFotoActivitySuggestion(group.fotos);
+    if(!opts.atividades)group.atividadeStatus='desativado';
+    else if(!group.atividadeSugestao)group.atividadeStatus='sem-legendas';
+    else if(String(group.rdo?.atividades||'').trim()&&opts.protegerAtividades)group.atividadeStatus='protegida';
+    else group.atividadeStatus='atualizar';
   });
   return [...grouped.values()].sort((a,b)=>a.data.localeCompare(b.data));
 }
@@ -7848,10 +7884,12 @@ function rdoFotoPreviewHtml(groups=[]){
   const novas=groups.reduce((s,g)=>s+g.novas.length,0);
   const duplicadas=groups.reduce((s,g)=>s+g.duplicadas.length,0);
   const semRdo=groups.reduce((s,g)=>s+g.semRdo.length,0);
-  return`<table><thead><tr><th>Data</th><th>RDO</th><th>Fotos na planilha</th><th>Novas</th><th>Duplicadas</th><th>Sem RDO</th><th>Status</th></tr></thead><tbody>${groups.map(g=>{
+  const atividades=groups.filter(g=>g.atividadeStatus==='atualizar').length;
+  return`<table><thead><tr><th>Data</th><th>RDO</th><th>Fotos na planilha</th><th>Novas</th><th>Duplicadas</th><th>Sem RDO</th><th>Atividades</th><th>Status</th></tr></thead><tbody>${groups.map(g=>{
     const status=!g.rdo?'<span class="tag" style="color:#f87171">Sem RDO nesta data</span>':g.novas.length?'<span class="tag" style="color:#34d399">Pronto para anexar</span>':'<span class="tag">Nada novo</span>';
-    return`<tr><td>${fmtD(g.data)}</td><td>${g.rdo?`RDO Nº ${esc(g.rdoNumero||'—')}`:'—'}</td><td><strong>${g.fotos.length}</strong></td><td style="color:#34d399;font-weight:800">${g.novas.length}</td><td style="color:#fbbf24;font-weight:800">${g.duplicadas.length}</td><td style="color:#f87171;font-weight:800">${g.semRdo.length}</td><td>${status}</td></tr>`;
-  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${total} foto(s) · ${novas} nova(s) para anexar · ${duplicadas} duplicada(s) ignorada(s) · ${semRdo} sem RDO correspondente. Nada será excluído.</div>`;
+    const atividadeTag=g.atividadeStatus==='atualizar'?'<span class="tag" style="color:#60a5fa">Gerar rascunho</span>':g.atividadeStatus==='protegida'?'<span class="tag">Já preenchida</span>':g.atividadeStatus==='sem-legendas'?'<span class="tag">Sem legenda</span>':g.atividadeStatus==='desativado'?'<span class="tag">Desativado</span>':'<span class="tag">—</span>';
+    return`<tr><td>${fmtD(g.data)}</td><td>${g.rdo?`RDO Nº ${esc(g.rdoNumero||'—')}`:'—'}</td><td><strong>${g.fotos.length}</strong></td><td style="color:#34d399;font-weight:800">${g.novas.length}</td><td style="color:#fbbf24;font-weight:800">${g.duplicadas.length}</td><td style="color:#f87171;font-weight:800">${g.semRdo.length}</td><td>${atividadeTag}</td><td>${status}</td></tr>`;
+  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${total} foto(s) · ${novas} nova(s) para anexar · ${duplicadas} duplicada(s) ignorada(s) · ${semRdo} sem RDO correspondente · ${atividades} RDO(s) com rascunho de atividades. Nada será excluído.</div>`;
 }
 window._refreshRDOFotoImportPreview=()=>{
   const target=document.getElementById('m-rdo-foto-import-preview');
@@ -7885,6 +7923,7 @@ window._importRDOFotosPlanilha=async(event)=>{
   if(!file){toast('Selecione a planilha antes de importar.','#ef4444');return;}
   if(!window._rdoFotoImportRaw?.length)await window._previewRDOFotoImport(file);
   const groups=rdoFotoBuildGroups(window._rdoFotoImportRaw||[]);
+  const opts=rdoFotoImportOptions();
   const updates=groups.map(group=>{
     const current=(DB.rdo||[]).find(r=>r.id===group.rdoId);
     if(!current)return null;
@@ -7897,16 +7936,26 @@ window._importRDOFotosPlanilha=async(event)=>{
         existing.add(key);
       }
     });
-    return nextFotos.length?{rdo:current,nextFotos}:null;
+    let atividades=null;
+    const suggestion=rdoFotoActivitySuggestion(group.fotos);
+    const currentAtiv=String(current.atividades||'').trim();
+    if(opts.atividades&&suggestion){
+      if(!currentAtiv)atividades=suggestion;
+      else if(!opts.protegerAtividades&&!currentAtiv.includes(suggestion.slice(0,40)))atividades=`${currentAtiv}\n\n${suggestion}`;
+    }
+    return(nextFotos.length||atividades!=null)?{rdo:current,nextFotos,atividades}:null;
   }).filter(Boolean);
   const count=updates.reduce((s,u)=>s+u.nextFotos.length,0);
-  if(!count){toast('Nenhuma foto nova para anexar.','#f59e0b');return;}
-  if(!confirm(`Anexar ${count} foto(s) nova(s) aos RDOs encontrados? Links duplicados serão ignorados.`))return;
+  const ativCount=updates.filter(u=>u.atividades!=null).length;
+  if(!count&&!ativCount){toast('Nenhuma foto nova ou atividade para atualizar.','#f59e0b');return;}
+  if(!confirm(`Anexar ${count} foto(s) nova(s) e atualizar atividades de ${ativCount} RDO(s)? Links duplicados serão ignorados.`))return;
   const btn=document.querySelector('.modal .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Anexando...';}
   const results=await Promise.all(updates.map(u=>{
     const fotos=[...(u.rdo.fotos||[]),...u.nextFotos];
-    return sb.from('rdo').update({fotos}).eq('id',u.rdo.id).then(res=>({res,u,fotos}));
+    const patch={fotos};
+    if(u.atividades!=null)patch.atividades=u.atividades;
+    return sb.from('rdo').update(patch).eq('id',u.rdo.id).then(res=>({res,u,patch}));
   }));
   const failed=results.find(item=>item.res.error);
   if(failed){
@@ -7916,9 +7965,9 @@ window._importRDOFotosPlanilha=async(event)=>{
   }
   DB.rdo=(DB.rdo||[]).map(r=>{
     const saved=results.find(item=>item.u.rdo.id===r.id);
-    return saved?{...r,fotos:saved.fotos}:r;
+    return saved?{...r,...saved.patch}:r;
   });
-  toast(`${count} foto(s) anexada(s) aos RDOs!`,'#22c55e');
+  toast(`${count} foto(s) anexada(s) e ${ativCount} atividade(s) atualizada(s)!`,'#22c55e');
   _closeModal();
   renderApp();
 };
@@ -8085,8 +8134,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426180622",
-  id: "/?build=20260426180622",
+  start_url: "/?build=20260426185654",
+  id: "/?build=20260426185654",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
