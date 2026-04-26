@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260425224216">
+<meta name="jet-build" content="20260426003538">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -900,8 +900,25 @@ const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFix
 const getExt=n=>(n.split('.').pop()||'').toLowerCase();
 const IMGS=['jpg','jpeg','png','gif','webp','bmp','svg'];
 const isImg=n=>IMGS.includes(getExt(n));
+const UPLOAD_ACCEPT='.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.csv,.txt,.dwg,.dxf,.zip';
+const ALLOWED_UPLOAD_EXTS=UPLOAD_ACCEPT.split(',').map(x=>x.replace('.',''));
+const ALLOWED_IMAGE_EXTS=['png','jpg','jpeg','webp','gif'];
+const MAX_UPLOAD_SIZE=20*1024*1024;
+const MAX_IMAGE_UPLOAD_SIZE=10*1024*1024;
+function validateUploadFile(file,{imagesOnly=false}={}){
+  if(!file)return false;
+  const name=String(file.name||'arquivo');
+  const ext=getExt(name);
+  const max=imagesOnly?MAX_IMAGE_UPLOAD_SIZE:MAX_UPLOAD_SIZE;
+  const allowed=imagesOnly?ALLOWED_IMAGE_EXTS:ALLOWED_UPLOAD_EXTS;
+  if(file.size>max){toast(`Arquivo muito grande: ${name}. Limite ${fmtSz(max)}.`,'#ef4444');return false;}
+  if(!allowed.includes(ext)){toast(`Tipo de arquivo não permitido: .${ext||'sem extensão'}`,'#ef4444');return false;}
+  if(imagesOnly&&file.type&&!file.type.startsWith('image/')){toast(`Arquivo inválido: ${name}`,'#ef4444');return false;}
+  return true;
+}
 const nextNum=(list,prefix)=>{const y=new Date().getFullYear();const ns=list.map(a=>{const m=(a.numero||'').match(/(\d+)$/);return m?parseInt(m[1]):0;});return`${prefix}-${y}-${String((ns.length?Math.max(...ns):0)+1).padStart(3,'0')}`;};
-const toast=(msg,color='#22c55e')=>{document.querySelectorAll('.toast').forEach(e=>e.remove());const el=document.createElement('div');el.className='toast';el.innerHTML=`<span style="color:${color}">●</span>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),3000);};
+const safeToastColor=color=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(color||''))?String(color):'#22c55e';
+const toast=(msg,color='#22c55e')=>{document.querySelectorAll('.toast').forEach(e=>e.remove());const el=document.createElement('div');el.className='toast';const dot=document.createElement('span');dot.style.color=safeToastColor(color);dot.textContent='●';el.appendChild(dot);el.appendChild(document.createTextNode(String(msg??'')));document.body.appendChild(el);setTimeout(()=>el.remove(),3000);};
 function getInitials(email){if(!email)return'?';const n=email.split('@')[0];const p=n.split(/[._-]/);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n.slice(0,2).toUpperCase();}
 function themeIconSvg(theme=document.documentElement.getAttribute('data-theme')||'dark'){
   return theme==='light'
@@ -1573,7 +1590,10 @@ async function savePedidoPatch(id,patch,{silent=false}={}){
 
 const SESSION_TIMEOUT=20*60*1000;
 let sessionTimer=null;
-function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{await sb.auth.signOut();currentUser=null;toast('⏱️ Sessão expirada. Faça login novamente.','#ef4444');renderAuth();},SESSION_TIMEOUT);}
+function clearSensitiveLocalCache(){
+  ['jet-baixadas','jet-despesa-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+}
+function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;toast('Sessão expirada. Faça login novamente.','#ef4444');renderAuth();},SESSION_TIMEOUT);}
 document.addEventListener('click',resetSessionTimeout);document.addEventListener('keydown',resetSessionTimeout);
 
 // ─── UNDO DELETION (10 segundos) ──────────────────────────────────────────
@@ -1680,12 +1700,29 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   await loadRemoteAlmoxMovimentos();
 }
 
+const UPDATE_FIELD_ALLOWLIST={
+  aditivos:new Set(['nome','numero','status','valor','solicitacao','proposta','responsavel','data']),
+  materiais:new Set(['item','quantidade','unidade','disciplina','urgencia','status','observacao_item']),
+  funcionarios:new Set(['status']),
+  todos:new Set(['responsavel','status','prioridade']),
+  despesas:new Set(['descricao','nfe','loja','valor_conta']),
+  estoque:new Set(['item','qtd','unidade']),
+  pedidos:new Set(['numero','data','observacao','fornecedor','obra','responsavel','status','total']),
+  fornecedores:new Set(['nome','telefone','email','cnpj','ativo'])
+};
+function canUpdateField(table,field){return UPDATE_FIELD_ALLOWLIST[table]?.has(field)===true;}
 async function updateField(table,id,field,value){
+  if(!canUpdateField(table,field)){
+    console.warn('[JET] updateField bloqueado:',{table,field,id});
+    toast('Campo não permitido para edição rápida.','#ef4444');
+    return false;
+  }
   const row=DB[table]?.find(r=>r.id===id);
   const oldVal=row?row[field]:undefined;
   if(row)row[field]=value;
   const{error}=await sb.from(table).update({[field]:value}).eq('id',id);
-  if(error){toast('Erro ao salvar: '+error.message,'#ef4444');if(row)row[field]=oldVal;}
+  if(error){toast('Erro ao salvar: '+error.message,'#ef4444');if(row)row[field]=oldVal;return false;}
+  return true;
 }
 
 function setupRT(){
@@ -1769,7 +1806,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false};
+await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false};
   renderAuth();
 };
 
@@ -2556,9 +2593,9 @@ function renderArquivos(a){
   const docs=files.filter(f=>!isImg(f.name));
   return`<div>
 <div class="upload-zone-outer" id="uz-${a.id}" style="border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:all .15s" onclick="document.getElementById('fi-${a.id}').click()" onmouseover="this.style.borderColor='var(--blue)';this.style.background='#0e1a30'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='transparent'">
-<input type="file" id="fi-${a.id}" multiple style="display:none" onchange="window._upload(event,'${a.id}')">
+<input type="file" id="fi-${a.id}" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._upload(event,'${a.id}')">
 <div style="font-size:13px;color:var(--text3)">📎 Clique ou arraste arquivos aqui</div>
-<div style="font-size:11px;color:var(--text3);margin-top:4px">PDF, DWG, DXF, imagens, planilhas — qualquer formato</div>
+<div style="font-size:11px;color:var(--text3);margin-top:4px">PDF, DWG, DXF, imagens, planilhas e ZIP até 20 MB</div>
 </div>
 ${imgs.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">${imgs.map(f=>`<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--bg2);border:1px solid var(--border)" class="img-th">
 <a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" style="width:100%;height:100%;object-fit:cover;display:block"></a>
@@ -2578,9 +2615,10 @@ ${docs.map(f=>{const st=fstyle(f.name);return`<div style="display:flex;align-ite
 
 window._upload=async(e,aid)=>{for(const f of e.target.files)await _doUpload(aid,f);e.target.value='';};
 async function _doUpload(aid,file){
+  if(!validateUploadFile(file))return;
   const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;
   toast(`Enviando ${file.name}...`,'#60a5fa');
-  const path=`${aid}/${uid()}_${file.name}`;
+  const path=`${aid}/${uid()}_${sanitizeStorageName(file.name)}`;
   const{error:ue}=await sb.storage.from(BUCKET).upload(path,file);if(ue){toast('Erro: '+ue.message,'#ef4444');return;}
   const{data:ud}=sb.storage.from(BUCKET).getPublicUrl(path);
   const fo={id:uid(),name:file.name,size:file.size,path,url:ud.publicUrl};
@@ -4614,7 +4652,7 @@ ${mats.map(mt=>`<div class="req-item-row" data-id="${mt.id}">
 <div class="form-group"><label>Valor do Adiantamento (R$) *</label><input id="m-dadiant" type="number" step="0.01" placeholder="0,00"></div>
 <div class="form-group" style="grid-column:1/-1"><label>Descricao</label><input id="m-ddesc" value="Adiantamento de despesas (Pix)" placeholder="Ex: Adiantamento de despesas (Pix)..."></div>
 <div class="form-group"><label>Responsavel</label><input id="m-dresp" value="${esc(currentUser?.email?.split('@')[0]||'')}" list="m-dresp-list"><datalist id="m-dresp-list">${DB.funcionarios.filter(f=>f.obra===S.obra).map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div>
-<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
+<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
 </div>`;
     onSave=`_saveAdiantamento()`;
   }
@@ -4627,7 +4665,7 @@ ${mats.map(mt=>`<div class="req-item-row" data-id="${mt.id}">
 <div class="form-group"><label>NFe No</label><input id="m-dnfe" placeholder="000000000"></div>
 <div class="form-group"><label>Loja / Fornecedor</label><input id="m-dloja" placeholder="Ex: Leroy Merlin, PIX..."></div>
 <div class="form-group"><label>Responsavel</label><input id="m-dresp" value="${esc(currentUser?.email?.split('@')[0]||'')}" list="m-dresp-list2"><datalist id="m-dresp-list2">${DB.funcionarios.filter(f=>f.obra===S.obra).map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div>
-<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
+<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
 </div>`;
     onSave=`_saveDespesa()`;
   }
@@ -5941,7 +5979,8 @@ window._rdoFotos=[];
 window._rdoAddFotos=async(input)=>{
   const files=Array.from(input.files);
   for(const file of files){
-    const path=`rdo/${uid()}_${file.name}`;
+    if(!validateUploadFile(file,{imagesOnly:true}))continue;
+    const path=`rdo/${uid()}_${sanitizeStorageName(file.name)}`;
     toast(`Enviando ${file.name}...`,'#60a5fa');
     const{error:ue}=await sb.storage.from(BUCKET).upload(path,file);
     if(ue){toast('Erro: '+ue.message,'#ef4444');continue;}
@@ -5949,7 +5988,7 @@ window._rdoAddFotos=async(input)=>{
     window._rdoFotos.push({url:ud.publicUrl,path,name:file.name});
     // Update preview
     const prev=document.getElementById('rdo-fotos-preview');
-    if(prev){const div=document.createElement('div');div.style.cssText='position:relative;border-radius:6px;overflow:hidden;aspect-ratio:1;background:var(--bg2)';div.innerHTML=`<img src="${ud.publicUrl}" style="width:100%;height:100%;object-fit:cover"><button onclick="window._rdoFotos.splice(${window._rdoFotos.length-1},1);this.closest('div').remove()" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);border:none;color:#f87171;cursor:pointer;font-size:10px">×</button>`;prev.appendChild(div);}
+    if(prev){const div=document.createElement('div');div.style.cssText='position:relative;border-radius:6px;overflow:hidden;aspect-ratio:1;background:var(--bg2)';div.innerHTML=`<img src="${esc(ud.publicUrl)}" style="width:100%;height:100%;object-fit:cover"><button onclick="window._rdoFotos.splice(${window._rdoFotos.length-1},1);this.closest('div').remove()" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);border:none;color:#f87171;cursor:pointer;font-size:10px">×</button>`;prev.appendChild(div);}
     toast(`${file.name} adicionada!`);
   }
   input.value='';
@@ -5960,7 +5999,7 @@ window._rdoRemoveFoto=(idx)=>{window._rdoFotos.splice(idx,1);renderApp();};
 function sanitizeStorageName(name){return String(name||'arquivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_');}
 function renderDespesaFilesPanel(item){
   const files=getDespesaFiles(item?.id||'');
-  return `<div><div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple style="display:none" onchange="window._uploadDespesaFiles(event,'${item.id}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${item.id}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
+  return `<div><div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${item.id}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${item.id}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
 }
 window._previewDespFiles=(input,targetId='m-dfiles-list')=>{
   const box=document.getElementById(targetId);if(!box)return;
@@ -5969,8 +6008,10 @@ window._previewDespFiles=(input,targetId='m-dfiles-list')=>{
   box.innerHTML=files.map(file=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px"><span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</span><span style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</span></div>`).join('');
 };
 async function saveDespesaFilesForId(despId,files){
-  const queue=Array.from(files||[]).filter(Boolean);
-  if(!queue.length)return true;
+  const selected=Array.from(files||[]).filter(Boolean);
+  if(!selected.length)return true;
+  const queue=selected.filter(file=>validateUploadFile(file));
+  if(!queue.length)return false;
   const next=[...getDespesaFiles(despId)];
   let uploaded=0;
   for(const file of queue){
@@ -6110,7 +6151,7 @@ function setupPresence(){
     })
     .subscribe(async status=>{
       if(status === 'SUBSCRIBED'){
-        await channel.track({name: userName, email: currentUser.email, at: Date.now()});
+        await channel.track({name: userName, at: Date.now()});
       }
     });
 }
@@ -6246,8 +6287,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260425224216",
-  id: "/?build=20260425224216",
+  start_url: "/?build=20260426003538",
+  id: "/?build=20260426003538",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
