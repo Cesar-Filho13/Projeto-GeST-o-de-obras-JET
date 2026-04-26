@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426031719">
+<meta name="jet-build" content="20260426040210">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -132,7 +132,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 32px 64px}
 .landing-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(340px,.95fr);gap:32px;width:100%;max-width:1360px;align-items:start}
 .landing-grid-wrap{display:flex;align-items:center;justify-content:center;min-height:100%}
-.landing-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:32px;width:100%;max-width:1100px}
+.landing-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:28px;width:100%;max-width:1280px}
 .landing-module{display:flex;flex-direction:column;align-items:center;gap:20px;cursor:pointer}
 .landing-module-icon{width:140px;height:140px;display:flex;align-items:center;justify-content:center;transition:transform .3s;border-radius:38px;background:linear-gradient(180deg,rgba(17,29,50,.94) 0%,rgba(8,16,29,.98) 100%);border:1px solid rgba(79,140,255,.16);box-shadow:0 24px 40px rgba(4,10,24,.26)}
 .landing-module-icon svg{max-width:64px;max-height:64px}
@@ -675,6 +675,31 @@ html[data-theme="light"] .baixada-days-input{background:rgba(20,149,107,.08);col
 .quote-empty{padding:18px;border:1px dashed var(--border);border-radius:14px;text-align:center;color:var(--text3)}
 html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b}
 
+.commercial-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.proposal-card{border:1px solid var(--border);border-radius:20px;background:linear-gradient(180deg,rgba(19,37,72,.95),rgba(9,18,36,.96));padding:18px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.proposal-card::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#2f6fff,#22c55e,#f59e0b)}
+.proposal-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.proposal-number{font-family:'DM Mono',monospace;font-size:11px;color:#93c5fd;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.proposal-card h3{margin:0;color:var(--text);font-size:18px;line-height:1.25}
+.proposal-card p{margin:4px 0 0;color:var(--text3);font-size:12px}
+.proposal-meta,.proposal-values{display:flex;gap:8px;flex-wrap:wrap}
+.proposal-meta span,.proposal-values span{padding:7px 10px;border-radius:999px;background:rgba(79,140,255,.08);border:1px solid rgba(79,140,255,.14);font-size:11px;color:var(--text2);font-weight:700}
+.proposal-values strong{color:var(--text);margin-left:4px}
+.proposal-total{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:12px;color:var(--text2);font-weight:700}
+.proposal-total strong{font-size:20px;color:#34d399}
+.proposal-actions{display:flex;gap:8px;flex-wrap:wrap}
+.commercial-subnav{margin-bottom:18px}
+.commercial-form-note{border:1px solid rgba(59,130,246,.16);background:rgba(59,130,246,.08);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.5;margin-bottom:14px}
+.commercial-item-head,.commercial-item-row{display:grid;grid-template-columns:105px 1.05fr 1.25fr 74px 78px 110px 34px;gap:6px;align-items:center;margin-bottom:6px}
+.commercial-item-head span{font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:0 2px}
+.commercial-item-row input,.commercial-item-row select{min-width:0}
+.commercial-total-preview{display:flex;justify-content:flex-end;gap:12px;align-items:center;border-top:1px solid var(--border);padding-top:12px;margin-top:8px;color:var(--text2);font-weight:700}
+.commercial-total-preview strong{font-size:20px;color:#34d399}
+.commercial-quote-expanded{margin-top:14px;display:grid;gap:12px}
+html[data-theme="light"] .proposal-card{background:linear-gradient(180deg,#ffffff 0%,#f7faff 100%);box-shadow:0 18px 42px rgba(29,78,216,.12)}
+html[data-theme="light"] .proposal-number{color:#2563eb}
+html[data-theme="light"] .proposal-meta span,html[data-theme="light"] .proposal-values span{background:#eef5ff;border-color:#d7e5ff;color:#405574}
+
 /* ── Stats row ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
@@ -874,6 +899,12 @@ html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b
   .landing-footer{padding:16px 20px;flex-wrap:wrap}
   .landing-footer-copy{max-width:100%}
   .compras-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  .commercial-card-grid{grid-template-columns:1fr}
+  .commercial-item-head{display:none}
+  .commercial-item-row{grid-template-columns:1fr 1fr;gap:8px;border:1px solid var(--border);border-radius:14px;padding:10px;background:var(--surface2)}
+  .commercial-item-row .commercial-item-wide{grid-column:1/-1}
+  .proposal-actions .btn{flex:1;justify-content:center}
   .office-grid{grid-template-columns:1fr}
   .office-nav{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
   .office-nav::-webkit-scrollbar{display:none}
@@ -1047,12 +1078,15 @@ const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
 const ALMOX_META_PATH='meta/almox-meta.json';
 const HOME_NOTICES_PATH='meta/home-avisos.json';
+const PROPOSTAS_PATH='meta/propostas-comerciais.json';
 const BAIXADA_DIAS_PADRAO=10;
 const BAIXADA_STATUS=['Solicitado','Programado','Aceito','Em baixada'];
 const ALMOX_TAB_LIST=['inventario','expedicao','movimentacoes'];
 const ALMOX_LOW_STOCK_QTD=5;
 const ALMOX_TRANSFER_STATUS=['Separado','Em transito','Recebido'];
 const HOME_NOTICE_PRIORITIES=['Alta','Media','Baixa'];
+const PROPOSTA_STATUS_LIST=['Rascunho','Enviada','Aprovada','Recusada','Vencida'];
+const PROPOSTA_STATUS_MAP={Rascunho:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Enviada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Recusada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'},Vencida:{bg:'#27150a',c:'#fb923c',d:'#f97316'}};
 const SUPABASE_MENTION_EMAILS=[
   'caio@jetmanutencoes.com',
   'cesar@jetmanutencoes.com',
@@ -1246,6 +1280,56 @@ function cleanNotices(list){
     .sort((a,b)=>Number(b.pinned)-Number(a.pinned)||noticePriorityRank(b.prioridade)-noticePriorityRank(a.prioridade)||String(b.created_at||'').localeCompare(String(a.created_at||'')))
     .slice(0,120);
 }
+
+function normalizeCommercialItem(row={}){
+  const raw=typeof row==='string'?{nome:row}:row||{};
+  const quantidade=raw.quantidade===''?'':(Number(raw.quantidade??raw.qtd??1)||0);
+  const valor=raw.valor_unitario===''?'':moneyNumber(raw.valor_unitario??raw.valor??raw.preco??0);
+  return{
+    id:String(raw.id||uid()),
+    tipo:String(raw.tipo||'Serviço').trim()||'Serviço',
+    nome:String(raw.nome||raw.item||'').trim(),
+    descricao:String(raw.descricao||raw.desc||raw.observacao||'').trim(),
+    quantidade,
+    unidade:String(raw.unidade||raw.unid||'un').trim()||'un',
+    valor_unitario:valor==null?'':valor,
+    observacao:String(raw.obs||raw.observacao_item||'').trim()
+  };
+}
+function normalizeCommercialItems(list=[]){return(Array.isArray(list)?list:[]).map(normalizeCommercialItem).filter(item=>item.nome||item.descricao||item.quantidade||item.valor_unitario||item.observacao);}
+function calcCommercialItemsTotal(items=[],tipoFilter=null){return normalizeCommercialItems(items).filter(item=>!tipoFilter||item.tipo===tipoFilter).reduce((sum,item)=>sum+(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0),0);}
+function cleanProposta(row={}){
+  const itens=normalizeCommercialItems(row?.itens||row?.items||[]);
+  const emissao=String(row?.data_emissao||row?.data||todayISO()).slice(0,10)||todayISO();
+  const venc=String(row?.data_vencimento||row?.vencimento||addDaysISO(emissao,7)).slice(0,10)||addDaysISO(emissao,7);
+  const desconto=moneyNumber(row?.desconto)||0;
+  const subtotal=calcCommercialItemsTotal(itens);
+  return{
+    id:String(row?.id||('prop-'+uid())),
+    numero:String(row?.numero||'').trim(),
+    cliente:String(row?.cliente||'').trim(),
+    cnpj:String(row?.cnpj||row?.cpf_cnpj||'').trim(),
+    endereco:String(row?.endereco||'').trim(),
+    contato:String(row?.contato||'').trim(),
+    email:String(row?.email||'').trim(),
+    telefone:String(row?.telefone||'').trim(),
+    nome:String(row?.nome||row?.titulo||row?.nome_orcamento||'').trim(),
+    responsavel:String(row?.responsavel||getCurrentUserHandle()).trim(),
+    status:PROPOSTA_STATUS_LIST.includes(row?.status)?row.status:'Rascunho',
+    data_emissao:emissao,
+    data_vencimento:venc,
+    itens,
+    desconto,
+    observacoes:String(row?.observacoes||row?.obs||'').trim(),
+    subtotal,
+    total:Math.max(0,subtotal-desconto),
+    created_at:row?.created_at||new Date().toISOString(),
+    updated_at:row?.updated_at||new Date().toISOString()
+  };
+}
+function cleanPropostas(list){return(Array.isArray(list)?list:[]).map(cleanProposta).filter(p=>p.cliente||p.nome||p.itens.length).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,300);}
+function getLocalPropostas(){try{return cleanPropostas(JSON.parse(localStorage.getItem('jet-propostas')||'[]'));}catch{return[];}}
+function saveLocalPropostas(list){localStorage.setItem('jet-propostas',JSON.stringify(cleanPropostas(list)));}
 function getLocalHomeNotices(){try{return cleanNotices(JSON.parse(localStorage.getItem('jet-home-notices')||'[]'));}catch{return[];}}
 function saveLocalHomeNotices(list){
   try{
@@ -1368,6 +1452,36 @@ async function saveRemoteHomeNotices(list,{silent=false}={}){
     return false;
   }
 }
+async function loadRemotePropostas(){
+  try{
+    const {data,error}=await sb.storage.from(BUCKET).download(PROPOSTAS_PATH);
+    if(error){
+      const msg=String(error.message||'');
+      if(/not found|404/i.test(msg)){DB.propostas=getLocalPropostas();return;}
+      throw error;
+    }
+    DB.propostas=cleanPropostas(JSON.parse(await data.text()));
+    saveLocalPropostas(DB.propostas);
+  }catch(err){
+    DB.propostas=getLocalPropostas();
+    console.warn('[JET] Propostas comerciais nao carregadas:',err?.message||err);
+  }
+}
+async function saveRemotePropostas(list,{silent=false}={}){
+  const cleaned=cleanPropostas(list);
+  DB.propostas=[...cleaned];
+  saveLocalPropostas(cleaned);
+  try{
+    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    const {error}=await sb.storage.from(BUCKET).upload(PROPOSTAS_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){
+    console.warn('[JET] Propostas comerciais nao salvas:',err?.message||err);
+    if(!silent)toast('Propostas salvas apenas neste aparelho. A sincronizacao online falhou.','#f59e0b');
+    return false;
+  }
+}
 async function loadRemoteDespesaFiles(){
   try{
     const {data,error}=await sb.storage.from(BUCKET).download(DESPESA_FILES_PATH);
@@ -1460,6 +1574,7 @@ async function saveRemoteAlmoxMovimentos(list,{silent=false}={}){
 }
 let _baixadasSyncTimer=null;
 let _homeNoticesSyncTimer=null;
+let _propostasSyncTimer=null;
 let _almoxMetaSyncTimer=null;
 let _almoxMovSyncTimer=null;
 function queueBaixadasSync(notify=false){
@@ -1477,6 +1592,14 @@ function queueHomeNoticesSync(notify=false){
     const ok=await saveRemoteHomeNotices(DB.avisos||[],{silent:!notify});
     if(ok&&notify)toast('Painel de avisos sincronizado.','#22c55e');
   },notify?0:320);
+}
+function queuePropostasSync(notify=false){
+  saveLocalPropostas(DB.propostas||[]);
+  clearTimeout(_propostasSyncTimer);
+  _propostasSyncTimer=setTimeout(async()=>{
+    const ok=await saveRemotePropostas(DB.propostas||[],{silent:!notify});
+    if(ok&&notify)toast('Propostas sincronizadas.','#22c55e');
+  },notify?0:420);
 }
 function queueAlmoxMetaSync(notify=false){
   saveLocalAlmoxMeta(DB.almoxMeta||{itemMeta:{},transferMeta:{}});
@@ -1636,11 +1759,14 @@ function calcPedidoTotal(items=[]){
 }
 function normalizeCotacaoItem(entry={}){
   const raw=typeof entry==='string'?{fornecedor:entry}:entry||{};
+  const itens=normalizeCommercialItems(raw.itens||raw.items||[]);
+  const preco=moneyNumber(raw.preco??raw.valor_total??raw.total);
   return{
     fornecedor:String(raw.fornecedor||raw.nome||'').trim(),
-    preco:moneyNumber(raw.preco),
+    preco,
     prazo:String(raw.prazo||raw.prazo_dias||'').trim(),
     observacao:String(raw.observacao||raw.obs||'').trim(),
+    itens,
     escolhido:!!raw.escolhido
   };
 }
@@ -1701,7 +1827,7 @@ async function savePedidoPatch(id,patch,{silent=false}={}){
 const SESSION_TIMEOUT=20*60*1000;
 let sessionTimer=null;
 function clearSensitiveLocalCache(){
-  ['jet-baixadas','jet-despesa-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+  ['jet-baixadas','jet-despesa-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices','jet-propostas'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 }
 function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;toast('Sessão expirada. Faça login novamente.','#ef4444');renderAuth();},SESSION_TIMEOUT);}
 document.addEventListener('click',resetSessionTimeout);document.addEventListener('keydown',resetSessionTimeout);
@@ -1774,7 +1900,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
 async function loadAll(){
   const [a,m,f,r,t,d,e,p,fn,c]=await Promise.all([
@@ -1805,6 +1931,7 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   await syncObraRegistry();
   await loadRemoteBaixadas();
   await loadRemoteHomeNotices();
+  await loadRemotePropostas();
   await loadRemoteDespesaFiles();
   await loadRemoteAlmoxMeta();
   await loadRemoteAlmoxMovimentos();
@@ -1853,6 +1980,7 @@ let S={
   modulo:'obras',     // obras | escritorio | compras | almoxarifado
   escritorioTab:'financeiro',
   comprasTab:'pedidos',
+  comercialTab:'propostas',
   obra:null,          // nome da obra atual
   obraTab:'aditivos', // aditivos | materiais | funcionarios | rdo | estoque | pedidos | fornecedores | cotacoes
   modal:null,         // null | new-aditivo | new-material | new-func | new-rdo | edit-rdo | edit-obra | new-estoque | new-pedido
@@ -2227,6 +2355,20 @@ function renderHome(){
       </svg>`,
       desc:'Estoque, entrada e saida de material'
     },
+    {
+      id:'comercial',
+      label:'PROPOSTAS',
+      soon:false,
+      color:'#1a2e6b',
+      glow:'rgba(37,99,235,0.5)',
+      icon:`<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 3h7l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/>
+        <path d="M14 3v5h5"/>
+        <path d="M8 13h8"/><path d="M8 17h5"/>
+        <path d="M9 9h2"/>
+      </svg>`,
+      desc:'Propostas e cotacoes'
+    },
   ];
   const currentHandle=getCurrentUserHandle();
   const stats=getHomeNoticeStats();
@@ -2331,7 +2473,7 @@ function renderHome(){
   <div class="landing-layout">
     <div class="landing-grid-wrap">
       <div class="landing-grid">
-        ${modules.map(m=>`<div onclick="${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='escritorio'?`S.page='dashboard';S.modulo='escritorio';S.obra=null;renderApp()`:m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}"
+        ${modules.map(m=>`<div onclick="${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='escritorio'?`S.page='dashboard';S.modulo='escritorio';S.obra=null;renderApp()`:m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='comercial'?`S.page='dashboard';S.modulo='comercial';S.comercialTab='propostas';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}"
           class="landing-module">
           <div class="landing-module-icon"
             onmouseover="this.style.transform='scale(1.08) translateY(-4px)'"
@@ -2341,7 +2483,7 @@ function renderHome(){
           <button class="landing-module-btn${m.soon?' soon':''}" style="background:${m.soon?'#1e3070':'#1e40af'};box-shadow:0 4px 20px ${m.glow}"
             onmouseover="this.style.background='${m.soon?'#243888':'#1d4ed8'}';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 28px ${m.glow}'"
             onmouseout="this.style.background='${m.soon?'#1e3070':'#1e40af'}';this.style.transform='none';this.style.boxShadow='0 4px 20px ${m.glow}'"
-            onclick="event.stopPropagation();${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='escritorio'?`S.page='dashboard';S.modulo='escritorio';S.obra=null;renderApp()`:m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}">
+            onclick="event.stopPropagation();${m.soon?`toast('${m.label} em breve!','#60a5fa')`:`${m.id==='escritorio'?`S.page='dashboard';S.modulo='escritorio';S.obra=null;renderApp()`:m.id==='compras'?`S.page='dashboard';S.modulo='compras';S.obra=null;renderApp()`:m.id==='almoxarifado'?`S.page='dashboard';S.modulo='almoxarifado';S.obra=null;renderApp()`:m.id==='comercial'?`S.page='dashboard';S.modulo='comercial';S.comercialTab='propostas';S.obra=null;renderApp()`:m.id==='obras'?`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`:''}`}">
             ${m.label}${m.soon?'&nbsp;<span style="font-size:9px;opacity:.6;font-weight:600;letter-spacing:1px">EM BREVE</span>':''}
           </button>
           <span class="landing-module-desc${m.soon?' soon':''}">${esc(m.desc)}</span>
@@ -2388,6 +2530,57 @@ function renderComprasModule(pedidos,fornecedores,cotacoes){
 }
 function renderPedidosDashboard(pedidos){
   return `<div class="tbl-wrap"><table><thead><tr><th style="width:40px"></th><th style="width:40px"></th><th>Número<th>Fornecedor<th>Obra<th>Resp.<th>Status<th>Data<th>Total<th>Obs<th>Ações</thead><tbody>${pedidos.map(p=>{const exp=window._pedExpanded&&window._pedExpanded[p.id];const itens=normalizePedidoItems(p.itens||[]);const pedidoId=escJs(p.id);const total=(p.total!=null&&p.total!=='')?Number(p.total):calcPedidoTotal(itens);return`<tr><td style="text-align:center"><button style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text3);padding:4px" onclick="window._togglePedExpand('${pedidoId}')" title="Ver itens"><svg style="transition:transform .2s;transform:rotate(${exp?'90':'0'}deg)" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="2,2 7,5 2,8"/></svg></button></td><td style="text-align:center"><button class="btn btn-sm btn-secondary" onclick="S.modal='edit-pedido';S.modalData={id:'${pedidoId}'};renderApp()" title="Abrir pedido">↗</button></td><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${esc(p.numero||'—')}<td><input class="ci field-strong" style="width:100%" value="${esc(p.fornecedor||'')}" onblur="if(this.value.trim())updateField('pedidos','${pedidoId}','fornecedor',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"><td><input class="ci field-muted" style="width:100%" value="${esc(p.obra||'')}" placeholder="—" onblur="updateField('pedidos','${pedidoId}','obra',this.value)" onkeydown="if(event.key==='Enter')this.blur()"><td><input class="ci field-muted" style="width:100%;font-size:12px" value="${esc(p.responsavel||'')}" placeholder="—" onblur="updateField('pedidos','${pedidoId}','responsavel',this.value)" onkeydown="if(event.key==='Enter')this.blur()"><td>${makeCd(PEDIDO_STATUS_LIST,PEDIDO_STATUS_MAP,p.status||'Pendente',`updateField('pedidos','${pedidoId}','status',VAL)`)}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(p.data)}</td><td><input class="ci ci-num" data-pedido-total-input="${pedidoId}" type="number" step="0.01" style="width:90px" value="${total||total===0?total:''}" placeholder="0,00" onblur="updateField('pedidos','${pedidoId}','total',this.value===''?null:parseFloat(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td><td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.observacao||'')}</td><td style="text-align:center;display:flex;gap:6px;justify-content:center"><button onclick="window.pedidoXLSX('${pedidoId}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-size:14px;padding:0" title="Excel deste pedido">📊</button><button onclick="window._printPedidoPDF('${pedidoId}')" style="background:none;border:none;color:#10b981;cursor:pointer;font-size:14px;padding:0" title="PDF deste pedido">🖨️</button><button onclick="if(confirm('Deletar ${escJs(p.numero||'pedido')}?')){window._deletePedido('${pedidoId}')}" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:0" title="Deletar">🗑️</button></td></tr>${exp?renderPedidoExpanded(p):''}`}).join('')}</tbody></table></div>`;
+}
+
+function renderComercialModule(){
+  const tab=S.comercialTab||'propostas';
+  const propostas=cleanPropostas(DB.propostas||[]);
+  const cotacoes=DB.cotacoes||[];
+  const totalPropostas=propostas.reduce((sum,p)=>sum+(Number(p.total)||0),0);
+  const abertas=propostas.filter(p=>['Rascunho','Enviada'].includes(p.status)).length;
+  const cotAbertas=cotacoes.filter(c=>!['Fechada','Cancelada'].includes(normalizeCotacaoStatus(c.status))).length;
+  const tabCounts={propostas:propostas.length,cotacoes:cotacoes.length};
+  const subnav=['propostas','cotacoes'].map(id=>{
+    const defs={propostas:{icon:'PR',label:'Propostas'},cotacoes:{icon:'CT',label:'Cotações'}}[id];
+    return `<button class="obra-nav-btn${tab===id?' active':''}" onclick="S.comercialTab='${id}';renderApp()"><span class="nav-icon">${defs.icon}</span>${defs.label}<span class="nav-count">${tabCounts[id]||0}</span></button>`;
+  }).join('');
+  const section=tab==='cotacoes'?renderCotacoesComerciais(cotacoes):renderPropostasComerciais(propostas);
+  return `<div class="compras-subnav commercial-subnav">${subnav}</div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Propostas</div><div class="stat-value" style="color:#60a5fa">${propostas.length}</div><div class="stat-sub">${fmtV(totalPropostas)} em propostas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Aprovadas</div><div class="stat-value" style="color:#34d399">${propostas.filter(p=>p.status==='Aprovada').length}</div><div class="stat-sub">${abertas} em rascunho/envio</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Cotações</div><div class="stat-value" style="color:#fbbf24">${cotacoes.length}</div><div class="stat-sub">${cotAbertas} processo(s) aberto(s)</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Modelo</div><div class="stat-value" style="color:#c084fc">JET</div><div class="stat-sub">PDF no padrão da proposta enviada</div></div></div>${section}`;
+}
+function renderPropostasComerciais(propostas=[]){
+  return `<div><div class="section-header"><div><div class="section-title">Propostas Comerciais</div><div class="section-sub">Geração de proposta em PDF no padrão JET, com itens, valores, vencimento e resposta do cliente.</div></div><button class="btn btn-primary" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Nova Proposta</button></div>${!propostas.length?`<div class="empty-state"><p>Nenhuma proposta cadastrada ainda.</p><button class="btn btn-primary" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Criar primeira proposta</button></div>`:`<div class="commercial-card-grid">${propostas.map(p=>renderPropostaCard(p)).join('')}</div>`}</div>`;
+}
+function renderPropostaCard(p){
+  const id=escJs(p.id);
+  const itens=normalizeCommercialItems(p.itens||[]);
+  const serv=calcCommercialItemsTotal(itens,'Serviço');
+  const prod=calcCommercialItemsTotal(itens,'Produto');
+  const desp=calcCommercialItemsTotal(itens,'Despesa');
+  return `<article class="proposal-card"><div class="proposal-card-head"><div><div class="proposal-number">${esc(p.numero||'Sem número')}</div><h3>${esc(p.nome||'Proposta sem título')}</h3><p>${esc(p.cliente||'Cliente não informado')}</p></div>${makeCd(PROPOSTA_STATUS_LIST,PROPOSTA_STATUS_MAP,p.status||'Rascunho',`window._updatePropostaStatus('${id}',VAL)`)}</div><div class="proposal-meta"><span>Emissão ${fmtD(p.data_emissao)}</span><span>Venc. ${fmtD(p.data_vencimento)}</span><span>${itens.length} item(ns)</span></div><div class="proposal-values"><span>Produtos <strong>${fmtV(prod)}</strong></span><span>Serviços <strong>${fmtV(serv)}</strong></span><span>Despesas <strong>${fmtV(desp)}</strong></span></div><div class="proposal-total"><span>Total</span><strong>${fmtV(p.total)}</strong></div><div class="proposal-actions"><button class="btn btn-secondary btn-sm" onclick="S.modal='edit-proposta';S.modalData={id:'${id}'};renderApp()">Editar</button><button class="btn btn-secondary btn-sm" onclick="window.propostaPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.propostaXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.propostaTXT('${id}')">TXT</button><button class="btn btn-danger btn-sm" onclick="window._deleteProposta('${id}')">Excluir</button></div></article>`;
+}
+function renderCotacoesComerciais(cotacoes=[]){
+  return `<div><div class="section-header"><div><div class="section-title">Cotações Comerciais</div><div class="section-sub">Cadastre a cotação com dados gerais, fornecedores e itens detalhados em popup.</div></div><button class="btn btn-primary" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Nova Cotação</button></div>${!cotacoes.length?`<div class="empty-state"><p>Nenhuma cotação cadastrada.</p><button class="btn btn-primary" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Criar primeira cotação</button></div>`:`<div class="quote-board">${cotacoes.map(c=>renderCotacaoComercialCard(c)).join('')}</div>`}</div>`;
+}
+function renderCotacaoComercialCard(c){
+  const id=escJs(c.id);
+  const fornecedores=normalizeCotacaoItems(c.cotacoes||[]);
+  const baseItems=getCotacaoBaseItems(c);
+  const melhor=cotacaoMelhorPreco(fornecedores);
+  const vencedor=cotacaoVencedor(fornecedores);
+  const expanded=window._cotExpanded&&window._cotExpanded[c.id];
+  return `<div class="quote-card"><div class="quote-card-head"><div><div class="quote-card-title">${esc(c.item||'Cotação sem título')}</div><div class="quote-card-sub">${esc(c.obra||'Sem obra')} · ${fmtD(c.data)}${vencedor?` · vencedor: ${esc(vencedor.fornecedor)}`:''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${makeCd(COTACAO_STATUS_LIST,COTACAO_STATUS_MAP,normalizeCotacaoStatus(c.status),`window._updateCotacaoStatus('${id}',VAL)`)}<button class="btn btn-secondary btn-sm" onclick="window._toggleCotacaoExpand('${id}')">${expanded?'Ocultar':'Expandir'}</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoTXT('${id}')">TXT</button></div></div><div class="quote-metrics"><span class="quote-metric">${baseItems.length} item(ns)</span><span class="quote-metric">${fornecedores.length} fornecedor(es)</span><span class="quote-metric">${melhor!=null?`Melhor ${fmtV(melhor)}`:'Aguardando preço'}</span></div>${expanded?renderCotacaoComercialExpanded(c,fornecedores,baseItems):''}</div>`;
+}
+function renderCotacaoComercialExpanded(c,fornecedores=[],baseItems=[]){
+  const id=escJs(c.id);
+  const itemRows=baseItems.length?baseItems.map(item=>`<tr><td>${esc(item.nome)}</td><td>${esc(item.descricao||'')}</td><td style="text-align:center">${esc(item.quantidade)}</td><td style="text-align:center">${esc(item.unidade)}</td></tr>`).join(''):`<tr><td colspan="4" class="quote-empty">Sem itens detalhados nesta cotação.</td></tr>`;
+  const vendorRows=fornecedores.length?fornecedores.map((item,index)=>`<tr class="${item.escolhido?'quote-winner':''}"><td style="font-weight:700;color:var(--text)">${esc(item.fornecedor)}</td><td><input class="ci ci-num" type="number" step="0.01" value="${item.preco!=null?item.preco:''}" placeholder="0,00" onblur="window._updateCotacaoFornecedorField('${id}',${index},'preco',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.prazo||'')}" placeholder="Ex: 3 dias" onblur="window._updateCotacaoFornecedorField('${id}',${index},'prazo',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.observacao||'')}" placeholder="Condições, frete, garantia..." onblur="window._updateCotacaoFornecedorField('${id}',${index},'observacao',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><button class="btn ${item.escolhido?'btn-success':'btn-secondary'} btn-sm" onclick="window._setCotacaoVencedor('${id}',${index})">${item.escolhido?'Selecionado':'Marcar vencedor'}</button></td></tr>`).join(''):`<tr><td colspan="5" class="quote-empty">Nenhum fornecedor selecionado.</td></tr>`;
+  return `<div class="commercial-quote-expanded"><div class="quote-vendor-table"><table><thead><tr><th>Item</th><th>Descrição</th><th style="width:80px">Qtd</th><th style="width:80px">Unid</th></tr></thead><tbody>${itemRows}</tbody></table></div><div class="quote-vendor-table" style="margin-top:12px"><table><thead><tr><th>Fornecedor</th><th style="width:130px">Valor total</th><th style="width:130px">Prazo</th><th>Observação</th><th style="width:140px">Vencedor</th></tr></thead><tbody>${vendorRows}</tbody></table></div></div>`;
+}
+function getCotacaoBaseItems(c){
+  const fornecedores=normalizeCotacaoItems(c?.cotacoes||[]);
+  const first=fornecedores.find(f=>f.itens&&f.itens.length);
+  if(first)return normalizeCommercialItems(first.itens);
+  return normalizeCommercialItems(c?.itens||[]);
 }
 
 function renderEscritorioModule(){
@@ -2571,6 +2764,15 @@ function renderDashboard(){
   if(S.modulo==='escritorio'){
     const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button>`;
     return `<div class="page">${renderPageHero('JET','Escritório','FINANCEIRO · RH · ADMINISTRAÇÃO',heroActions)}${renderEscritorioModule()}</div>`;
+  }
+  if(S.modulo==='comercial'){
+    const tab=S.comercialTab||'propostas';
+    const exportByTab={
+      propostas:`<button class="btn btn-secondary btn-sm" onclick="window.propostasTXT()">TXT</button><button class="btn btn-secondary btn-sm" onclick="window.propostasXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.propostasPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Nova Proposta</button>`,
+      cotacoes:`<button class="btn btn-secondary btn-sm" onclick="window.cotacoesTXT()">TXT</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Nova Cotação</button>`
+    };
+    const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group">${exportByTab[tab]||exportByTab.propostas}</div>`;
+    return `<div class="page">${renderPageHero('PC','Propostas e Cotações','COMERCIAL · Propostas, orçamentos e mapa de cotações',heroActions)}${renderComercialModule()}</div>`;
   }
   // PAINEL COMPRAS
   if(S.modulo==='compras'){
@@ -4675,6 +4877,53 @@ window.cotacoesXLSX=()=>{
   });
 };
 
+
+function propostaExportRows(propostas=DB.propostas||[]){
+  return cleanPropostas(propostas).map((p,index)=>({idx:index+1,numero:p.numero||'',cliente:p.cliente||'',nome:p.nome||'',status:p.status||'Rascunho',emissao:fmtD(p.data_emissao),vencimento:fmtD(p.data_vencimento),responsavel:p.responsavel||'',itens:(p.itens||[]).length,subtotal:p.subtotal||0,desconto:p.desconto||0,total:p.total||0}));
+}
+function cotacaoExportRows(cotacoes=DB.cotacoes||[]){
+  return (cotacoes||[]).map((c,index)=>{const itens=normalizeCotacaoItems(c.cotacoes||[]);const vencedor=cotacaoVencedor(itens);const melhor=cotacaoMelhorPreco(itens);return{idx:index+1,item:c.item||'',obra:c.obra||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),itens:getCotacaoBaseItems(c).length,melhor,melhorTexto:melhor!=null?fmtV(melhor):'',vencedor:vencedor?.fornecedor||''};});
+}
+function getPropostaOrToast(id){const p=cleanPropostas(DB.propostas||[]).find(item=>item.id===id);if(!p)toast('Proposta não encontrada.','#ef4444');return p;}
+function getCotacaoOrToast(id){const c=(DB.cotacoes||[]).find(item=>item.id===id);if(!c)toast('Cotação não encontrada.','#ef4444');return c;}
+window.propostasTXT=()=>{const rows=propostaExportRows();exportTXT(rows.map(r=>[r.numero,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),['Numero','Cliente','Proposta','Status','Emissao','Vencimento','Responsavel','Itens','Total'],'Propostas_Comerciais');};
+window.propostaTXT=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const itens=normalizeCommercialItems(p.itens||[]);const rows=[['Numero',p.numero],['Cliente',p.cliente],['Proposta',p.nome],['Status',p.status],['Emissao',fmtD(p.data_emissao)],['Vencimento',fmtD(p.data_vencimento)],['Responsavel',p.responsavel],['Subtotal',fmtV(p.subtotal)],['Desconto',fmtV(p.desconto)],['Total',fmtV(p.total)],[],['Tipo','Nome','Descricao','Qtd','Unid','Valor Unitario','Total'],...itens.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario),(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)]).map(r=>{r[6]=fmtV(r[6]);return r;})];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(p.numero||'Proposta')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
+window.propostasXLSX=()=>exportStyledXLSX({sheetName:'Propostas',filename:'Propostas_Comerciais_'+todayISO(),title:'Propostas Comerciais JET',meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${(DB.propostas||[]).length} proposta(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Cliente',key:'cliente',width:28},{header:'Proposta',key:'nome',width:36},{header:'Status',key:'status',width:16,badgeMap:PROPOSTA_STATUS_MAP},{header:'Emissão',key:'emissao',width:14},{header:'Vencimento',key:'vencimento',width:14},{header:'Responsável',key:'responsavel',width:18},{header:'Itens',key:'itens',width:10,align:'center'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:propostaExportRows()});
+window.propostaXLSX=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const itens=normalizeCommercialItems(p.itens||[]);return exportStyledXLSX({sheetName:'Proposta',filename:p.numero||'Proposta_JET',title:`Proposta Comercial - ${p.numero||''}`,meta:[`Cliente: ${p.cliente||'-'}`,`Proposta: ${p.nome||'-'}`,`Emissão: ${fmtD(p.data_emissao)} · Vencimento: ${fmtD(p.data_vencimento)}`,`Total: ${fmtV(p.total)}`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Tipo',key:'tipo',width:14},{header:'Nome',key:'nome',width:30},{header:'Descrição',key:'descricao',width:42},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor Unit.',key:'valor',width:16,align:'right',type:'currency'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:itens.map((item,index)=>({idx:index+1,tipo:item.tipo,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,total:(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)}))});};
+function drawPropostaPDF(p){
+  if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=14,blue=[26,46,107],muted=[96,108,130];
+  const itens=normalizeCommercialItems(p.itens||[]);const rowTotal=item=>(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0);
+  doc.setFillColor(...blue);doc.circle(24,24,14,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('JET',24,27,{align:'center'});
+  doc.setTextColor(...blue);doc.setFontSize(19);doc.text('Proposta Comercial',44,17);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(...muted);doc.text('JET Serviços de Engenharia',44,24);doc.text('Documento gerado pelo sistema JET Gestão de Obras',44,30);
+  doc.setDrawColor(...blue);doc.setLineWidth(.5);doc.roundedRect(145,12,51,22,2,2);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...blue);doc.text('ORÇAMENTO',170.5,20,{align:'center'});doc.setFontSize(11);doc.text(p.numero||'-',170.5,27,{align:'center'});
+  doc.setDrawColor(...blue);doc.line(M,42,W-M,42);
+  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Dados do orçamento',M,52);
+  const box=(x,y,w,h,label,value)=>{doc.setDrawColor(218,224,235);doc.setLineWidth(.35);doc.roundedRect(x,y,w,h,2,2);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(45,58,86);doc.text(label,x+4,y+6);doc.setFontSize(10);doc.setTextColor(15,23,42);doc.text(String(value||'-'),x+4,y+13,{maxWidth:w-8});};
+  box(M,57,54,18,'EMISSÃO',fmtD(p.data_emissao));box(M+60,57,54,18,'VENCIMENTO',fmtD(p.data_vencimento));box(M+120,57,62,18,'RESPONSÁVEL',p.responsavel||'-');
+  box(M,81,88,28,'CLIENTE',`${p.cliente||'-'}${p.cnpj?'\n'+p.cnpj:''}`);box(M+94,81,88,28,'CONTATO',`${p.contato||'-'}${p.email?' · '+p.email:''}${p.telefone?'\n'+p.telefone:''}`);
+  box(M,115,182,24,'ENDEREÇO',p.endereco||'-');
+  box(M,145,182,18,'NOME DO ORÇAMENTO',p.nome||'-');
+  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Serviços / Produtos',M,173);
+  doc.autoTable({startY:178,margin:{left:M,right:M},head:[['#','Tipo','Nome','Descrição','Qtd','Unid','Valor unit.','Total']],body:itens.map((item,index)=>[index+1,item.tipo,item.nome,item.descricao||'',item.quantidade,item.unidade,fmtV(item.valor_unitario),fmtV(rowTotal(item))]),styles:{fontSize:8,cellPadding:2.4,textColor:[20,32,60],lineColor:[218,224,235],lineWidth:.2},headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,250,255]},columnStyles:{0:{cellWidth:8,halign:'center'},4:{cellWidth:12,halign:'center'},5:{cellWidth:12,halign:'center'},6:{cellWidth:24,halign:'right'},7:{cellWidth:24,halign:'right'}}});
+  let y=(doc.lastAutoTable?.finalY||178)+12;if(y>230){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...blue);doc.text('Resumo do orçamento',M,y);y+=6;
+  const serv=calcCommercialItemsTotal(itens,'Serviço'),prod=calcCommercialItemsTotal(itens,'Produto'),desp=calcCommercialItemsTotal(itens,'Despesa');
+  doc.autoTable({startY:y,margin:{left:M,right:M},head:[['Produtos','Serviços','Despesas','Subtotal','Desconto','Total']],body:[[fmtV(prod),fmtV(serv),fmtV(desp),fmtV(p.subtotal),fmtV(p.desconto),fmtV(p.total)]],styles:{fontSize:9,cellPadding:3,textColor:[20,32,60],halign:'right'},headStyles:{fillColor:[238,243,255],textColor:blue,fontStyle:'bold'},bodyStyles:{fontStyle:'bold'}});
+  y=(doc.lastAutoTable?.finalY||y)+12;if(y>244){doc.addPage();y=20;}
+  if(p.observacoes){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...blue);doc.text('Observações / condições',M,y);y+=5;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(45,58,86);doc.text(doc.splitTextToSize(p.observacoes,182),M,y);y+=Math.min(28,doc.splitTextToSize(p.observacoes,182).length*5)+6;}
+  if(y>236){doc.addPage();y=28;}
+  doc.setDrawColor(210,218,232);doc.roundedRect(M,y,182,34,2,2);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...blue);doc.text('Responder proposta',M+5,y+7);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...muted);doc.text('Assinatura / nome / comentários do cliente',M+5,y+14);doc.line(M+5,y+25,M+88,y+25);doc.line(M+98,y+25,M+177,y+25);
+  const pages=doc.getNumberOfPages();for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`JET Gestão de Obras · Página ${i}/${pages}`,W/2,291,{align:'center'});}return doc;
+}
+window.propostaPDF=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const doc=drawPropostaPDF(p);if(doc){doc.save(`${xlsxFileName(p.numero||'Proposta_JET')}.pdf`);toast('PDF exportado!');}};
+window.propostasPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=propostaExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Propostas Comerciais JET',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Número','Cliente','Proposta','Status','Emissão','Venc.','Resp.','Itens','Total']],body:rows.map(r=>[r.idx,r.numero,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Propostas_Comerciais_JET.pdf');toast('PDF exportado!');};
+window.cotacoesTXT=()=>{const rows=cotacaoExportRows();exportTXT(rows.map(r=>[r.item,r.obra,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),['Cotacao','Obra','Status','Data','Itens','Fornecedores','Melhor preco','Vencedor'],'Cotacoes_Comerciais');};
+window.cotacaoTXT=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[['Cotacao',c.item||''],['Obra',c.obra||''],['Status',normalizeCotacaoStatus(c.status)],['Data',fmtD(c.data)],[],['Itens'],['Tipo','Nome','Descricao','Qtd','Unid','Valor referencia'],...base.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),[],['Fornecedores'],['Fornecedor','Preco total','Prazo','Observacao','Vencedor'],...forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':''])];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(c.item||'Cotacao')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
+window.cotacaoXLSX=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[...base.map((item,index)=>({grupo:'Item',idx:index+1,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,observacao:item.tipo,vencedor:''})),...forn.map((item,index)=>({grupo:'Fornecedor',idx:index+1,nome:item.fornecedor,descricao:item.prazo,quantidade:'',unidade:'',valor:item.preco,observacao:item.observacao,vencedor:item.escolhido?'Sim':''}))];return exportStyledXLSX({sheetName:'Cotação',filename:c.item||'Cotacao_JET',title:`Cotação Comercial - ${c.item||''}`,meta:[`Obra: ${c.obra||'-'}`,`Status: ${normalizeCotacaoStatus(c.status)} · Data: ${fmtD(c.data)}`],columns:[{header:'Grupo',key:'grupo',width:14},{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:32},{header:'Descrição/Prazo',key:'descricao',width:36},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Obs/Tipo',key:'observacao',width:34},{header:'Vencedor',key:'vencedor',width:12,align:'center'}],rows});};
+window.cotacoesPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=cotacaoExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Mapa de Cotações Comerciais',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Cotação','Obra','Status','Data','Itens','Fornecedores','Melhor preço','Vencedor']],body:rows.map(r=>[r.idx,r.item,r.obra,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Cotacoes_Comerciais_JET.pdf');toast('PDF exportado!');};
+window.cotacaoPDF=(id)=>{const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);doc.autoTable({startY:34,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.autoTable({startY:(doc.lastAutoTable?.finalY||34)+10,head:[['Fornecedor','Preço total','Prazo','Observação','Vencedor']],body:forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':'']),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save(`${xlsxFileName(c.item||'Cotacao_JET')}.pdf`);toast('PDF exportado!');};
+
 // ALMOXARIFADO EXPORTERS
 window.estoqueCSV=()=>{const e=DB.estoque||[];exportCSV(e.map(x=>[x.item,x.obra,x.qtd,x.unidade,x.tipo||'',x.numero_controle||'',x.responsavel||'',x.entrada,x.saida,x.observacao||'']),['Item','Obra','Qtd','Unidade','Tipo','Nº Controle','Responsável','Entrada','Saída','Observação'],`Estoque`);};
 window.estoqueXLSX=()=>{
@@ -4796,6 +5045,53 @@ function applyMobileTableCards(){
 }
 
 // ─── MODALS ───────────────────────────────────────────────────────────────
+
+const COMMERCIAL_ITEM_TYPES=['Serviço','Produto','Despesa'];
+function commercialItemRowHtml(item={},prefix='prop'){
+  const it=normalizeCommercialItem(item);
+  const typeOptions=COMMERCIAL_ITEM_TYPES.map(t=>`<option value="${esc(t)}"${it.tipo===t?' selected':''}>${esc(t)}</option>`).join('');
+  return `<div class="commercial-item-row" data-prefix="${esc(prefix)}">
+    <select class="commercial-item-type"><option value="Serviço"${it.tipo==='Serviço'?' selected':''}>Serviço</option><option value="Produto"${it.tipo==='Produto'?' selected':''}>Produto</option><option value="Despesa"${it.tipo==='Despesa'?' selected':''}>Despesa</option></select>
+    <input class="commercial-item-name commercial-item-wide" value="${esc(it.nome||'')}" placeholder="Nome do item/serviço" oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
+    <input class="commercial-item-desc commercial-item-wide" value="${esc(it.descricao||'')}" placeholder="Descrição detalhada">
+    <input class="commercial-item-qtd" type="number" step="0.01" value="${it.quantidade!==''?esc(String(it.quantidade)):''}" placeholder="Qtd" oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
+    <input class="commercial-item-unit" value="${esc(it.unidade||'un')}" placeholder="Unid">
+    <input class="commercial-item-value" type="number" step="0.01" value="${it.valor_unitario!==''?esc(String(it.valor_unitario)):''}" placeholder="R$ unit." oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
+    <button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.closest('.commercial-item-row')?.remove();window._recalcCommercialTotal('${escJs(prefix)}')">×</button>
+  </div>`;
+}
+function commercialItemRowsHtml(items=[],prefix='prop'){
+  const rows=normalizeCommercialItems(items);
+  const fallback={tipo:prefix==='cot'?'Produto':'Serviço',nome:'',descricao:'',quantidade:1,unidade:'un',valor_unitario:''};
+  return (rows.length?rows:[fallback]).map(item=>commercialItemRowHtml(item,prefix)).join('');
+}
+function commercialItemsHeaderHtml(){
+  return `<div class="commercial-item-head"><span>Tipo</span><span>Nome</span><span>Descrição</span><span>Qtd</span><span>Unid</span><span>Valor un.</span><span></span></div>`;
+}
+window._addCommercialItemRow=(prefix='prop')=>{
+  const list=document.getElementById(`${prefix}-items-list`);
+  if(!list)return;
+  list.insertAdjacentHTML('beforeend',commercialItemRowHtml({tipo:prefix==='cot'?'Produto':'Serviço',quantidade:1,unidade:'un'},prefix));
+  window._recalcCommercialTotal(prefix);
+};
+window._getCommercialModalItems=(prefix='prop')=>{
+  return Array.from(document.querySelectorAll(`.commercial-item-row[data-prefix="${prefix}"]`)).map(row=>({
+    tipo:row.querySelector('.commercial-item-type')?.value||'Serviço',
+    nome:row.querySelector('.commercial-item-name')?.value?.trim()||'',
+    descricao:row.querySelector('.commercial-item-desc')?.value?.trim()||'',
+    quantidade:row.querySelector('.commercial-item-qtd')?.value||'',
+    unidade:row.querySelector('.commercial-item-unit')?.value?.trim()||'un',
+    valor_unitario:row.querySelector('.commercial-item-value')?.value||''
+  })).map(normalizeCommercialItem).filter(item=>item.nome||item.descricao);
+};
+window._recalcCommercialTotal=(prefix='prop')=>{
+  const total=calcCommercialItemsTotal(window._getCommercialModalItems(prefix));
+  const target=document.getElementById(`${prefix}-items-total`);
+  if(target)target.textContent=fmtV(total);
+  const hidden=document.getElementById(`${prefix}-items-total-value`);
+  if(hidden)hidden.value=String(total||0);
+};
+
 function renderModal(){
   if(!S.modal)return'';
   const m=S.modal,d=S.modalData||{};
@@ -5219,22 +5515,73 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 </div>`;
     onSave=`_saveFornecedor()`;
   }
+  else if(m==='new-proposta'||m==='edit-proposta'){
+    const isEdit=m==='edit-proposta';
+    const prop=isEdit?(DB.propostas.find(x=>x.id===d.id)||{}):{};
+    const base=cleanProposta({
+      ...prop,
+      numero:prop.numero||nextNum(DB.propostas||[],'PROP'),
+      data_emissao:prop.data_emissao||todayISO(),
+      data_vencimento:prop.data_vencimento||addDaysISO(todayISO(),10),
+      responsavel:prop.responsavel||getCurrentUserHandle(),
+      itens:prop.itens&&prop.itens.length?prop.itens:[{tipo:'Serviço',nome:'',descricao:'',quantidade:1,unidade:'un',valor_unitario:''}]
+    });
+    title=isEdit?'Editar Proposta':'Nova Proposta';
+    body=`<div>
+<div class="commercial-form-note">Modelo inspirado na proposta enviada: dados do orçamento, cliente, tabela de serviços/produtos e resumo final para aceite.</div>
+<div class="form-grid-2" style="margin-bottom:14px">
+  <div class="form-group"><label>Nº da Proposta</label><input id="m-prop-numero" value="${esc(base.numero)}" placeholder="PROP-2026-001"></div>
+  <div class="form-group"><label>Status</label><select id="m-prop-status">${PROPOSTA_STATUS_LIST.map(st=>`<option value="${esc(st)}"${base.status===st?' selected':''}>${esc(st)}</option>`).join('')}</select></div>
+  <div class="form-group"><label>Emissão</label><input id="m-prop-emissao" type="date" value="${esc(base.data_emissao)}"></div>
+  <div class="form-group"><label>Vencimento</label><input id="m-prop-venc" type="date" value="${esc(base.data_vencimento)}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Nome do orçamento *</label><input id="m-prop-nome" value="${esc(base.nome)}" placeholder="Ex: Proposta Projeto SPDA - NASP"></div>
+  <div class="form-group"><label>Cliente *</label><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Nome/Razão social"></div>
+  <div class="form-group"><label>CNPJ / CPF</label><input id="m-prop-cnpj" value="${esc(base.cnpj)}" placeholder="00.000.000/0000-00"></div>
+  <div class="form-group"><label>Contato</label><input id="m-prop-contato" value="${esc(base.contato)}" placeholder="Pessoa de contato"></div>
+  <div class="form-group"><label>E-mail</label><input id="m-prop-email" type="email" value="${esc(base.email)}" placeholder="contato@cliente.com"></div>
+  <div class="form-group"><label>Telefone</label><input id="m-prop-telefone" value="${esc(base.telefone)}" placeholder="(00) 00000-0000"></div>
+  <div class="form-group"><label>Responsável</label><input id="m-prop-resp" value="${esc(base.responsavel)}" placeholder="Responsável JET"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Endereço</label><textarea id="m-prop-endereco" placeholder="Endereço do cliente/obra">${esc(base.endereco)}</textarea></div>
+</div>
+<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens da proposta</div>
+${commercialItemsHeaderHtml()}
+<div id="prop-items-list">${commercialItemRowsHtml(base.itens,'prop')}</div>
+<button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin:4px 0 12px" onclick="window._addCommercialItemRow('prop')">+ Adicionar item</button>
+<div class="form-grid-2">
+  <div class="form-group"><label>Desconto (R$)</label><input id="m-prop-desconto" type="number" step="0.01" value="${base.desconto||''}" placeholder="0,00" oninput="window._recalcCommercialTotal('prop')"></div>
+  <div class="commercial-total-preview"><span>Total dos itens</span><strong id="prop-items-total">${fmtV(base.subtotal)}</strong><input type="hidden" id="prop-items-total-value" value="${base.subtotal||0}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Observações / Condições</label><textarea id="m-prop-obs" placeholder="Condições de pagamento, prazo, validade, escopo...">${esc(base.observacoes)}</textarea></div>
+</div>
+</div>`;
+    onSave=isEdit?`_saveProposta('${d.id}')`:`_saveProposta()`;
+    footer=isEdit?`<button class="btn btn-secondary" onclick="window.propostaPDF('${escJs(d.id)}')">PDF</button><button class="btn btn-secondary" onclick="window.propostaXLSX('${escJs(d.id)}')">Excel</button><button class="btn btn-secondary" onclick="window.propostaTXT('${escJs(d.id)}')">TXT</button>`:'';
+  }
   else if(m==='new-cotacao'){
     const obras=getAllObras();
     const obraAtual=d.obra||S.obra||obras[0]||'';
     const fornecedoresAtivos=DB.fornecedores.filter(f=>f.ativo!==false);
+    const baseItems=d.itens&&d.itens.length?d.itens:[{tipo:'Produto',nome:d.item||'',descricao:'',quantidade:1,unidade:'un',valor_unitario:''}];
     title='Nova Cotação / RFQ';
-    body=`<div class="form-grid-2">
-<div class="form-group"><label>Obra</label><select id="m-cobra">${obras.map(obra=>`<option value="${esc(obra)}"${obra===obraAtual?' selected':''}>${esc(obra)}</option>`).join('')}</select></div>
-<div class="form-group"><label>Data da Solicitação</label><input id="m-cdata" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
-<div class="form-group" style="grid-column:1/-1"><label>Item / Escopo *</label><input id="m-citem" placeholder="Ex: Tubulação PVC 50mm..." value="${esc(d.item||'')}"></div>
-<div class="form-group" style="grid-column:1/-1"><label>Fornecedores para Cotação</label><div style="display:flex;gap:8px;flex-wrap:wrap">${fornecedoresAtivos.length?fornecedoresAtivos.map(f=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)"><input type="checkbox" class="m-cforn" value="${esc(f.nome)}"${d.fornecedor===f.nome?' checked':''}> ${esc(f.nome)}</label>`).join(''):'<span style="font-size:12px;color:var(--text3)">Cadastre pelo menos um fornecedor ativo para abrir a cotação.</span>'}</div></div>
+    body=`<div>
+<div class="commercial-form-note">Use esta tela para abrir uma cotação com dados gerais, fornecedores e itens. Os preços finais entram depois, na comparação expandida.</div>
+<div class="form-grid-2" style="margin-bottom:14px">
+  <div class="form-group"><label>Obra</label><select id="m-cobra">${obras.map(obra=>`<option value="${esc(obra)}"${obra===obraAtual?' selected':''}>${esc(obra)}</option>`).join('')}</select></div>
+  <div class="form-group"><label>Data da Solicitação</label><input id="m-cdata" type="date" value="${todayISO()}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Nome / Escopo da Cotação *</label><input id="m-citem" placeholder="Ex: Materiais SPDA - NASP" value="${esc(d.item||'')}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Fornecedores cadastrados</label><div style="display:flex;gap:8px;flex-wrap:wrap">${fornecedoresAtivos.length?fornecedoresAtivos.map(f=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)"><input type="checkbox" class="m-cforn" value="${esc(f.nome)}"${d.fornecedor===f.nome?' checked':''}> ${esc(f.nome)}</label>`).join(''):'<span style="font-size:12px;color:var(--text3)">Cadastre fornecedores em Compras ou informe avulsos abaixo.</span>'}</div></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Fornecedores avulsos</label><input id="m-cforn-manual" placeholder="Separe por vírgula ou ponto e vírgula. Ex: Fornecedor A; Fornecedor B"></div>
+</div>
+<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens da cotação</div>
+${commercialItemsHeaderHtml()}
+<div id="cot-items-list">${commercialItemRowsHtml(baseItems,'cot')}</div>
+<button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin:4px 0 12px" onclick="window._addCommercialItemRow('cot')">+ Adicionar item</button>
+<div class="commercial-total-preview"><span>Valor de referência</span><strong id="cot-items-total">${fmtV(calcCommercialItemsTotal(baseItems))}</strong><input type="hidden" id="cot-items-total-value" value="${calcCommercialItemsTotal(baseItems)||0}"></div>
 </div>`;
     onSave=`_saveCotacao()`;
   }
 
   return`<div class="modal-overlay" onclick="if(event.target===this)_closeModal()">
-<div class="modal${m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
+<div class="modal${m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -6176,13 +6523,65 @@ window._saveFornecedor=async()=>{
   _closeModal();renderApp();
 };
 
+
+// ─── PROPOSTAS COMERCIAIS ─────────────────────────────────────────────────
+window._saveProposta=async(id=null)=>{
+  const itens=window._getCommercialModalItems('prop');
+  const cliente=document.getElementById('m-prop-cliente')?.value?.trim()||'';
+  const nome=document.getElementById('m-prop-nome')?.value?.trim()||'';
+  if(!cliente||!nome||itens.length===0){toast('Informe cliente, nome da proposta e pelo menos um item.','#ef4444');return;}
+  const old=id?DB.propostas.find(p=>p.id===id):null;
+  const desconto=moneyNumber(document.getElementById('m-prop-desconto')?.value)||0;
+  const obj=cleanProposta({
+    ...(old||{}),
+    id:id||('prop-'+uid()),
+    numero:document.getElementById('m-prop-numero')?.value?.trim()||nextNum(DB.propostas||[],'PROP'),
+    cliente,
+    cnpj:document.getElementById('m-prop-cnpj')?.value?.trim()||'',
+    contato:document.getElementById('m-prop-contato')?.value?.trim()||'',
+    email:document.getElementById('m-prop-email')?.value?.trim()||'',
+    telefone:document.getElementById('m-prop-telefone')?.value?.trim()||'',
+    endereco:document.getElementById('m-prop-endereco')?.value?.trim()||'',
+    nome,
+    responsavel:document.getElementById('m-prop-resp')?.value?.trim()||getCurrentUserHandle(),
+    status:document.getElementById('m-prop-status')?.value||'Rascunho',
+    data_emissao:document.getElementById('m-prop-emissao')?.value||todayISO(),
+    data_vencimento:document.getElementById('m-prop-venc')?.value||addDaysISO(todayISO(),10),
+    itens,
+    desconto,
+    observacoes:document.getElementById('m-prop-obs')?.value?.trim()||'',
+    created_at:old?.created_at||new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  });
+  DB.propostas=id?DB.propostas.map(p=>p.id===id?obj:p):[obj,...(DB.propostas||[])];
+  queuePropostasSync(true);
+  toast(id?'Proposta atualizada.':'Proposta criada.','#22c55e');
+  _closeModal();
+};
+window._updatePropostaStatus=(id,status)=>{
+  const p=DB.propostas.find(item=>item.id===id);if(!p)return;
+  p.status=PROPOSTA_STATUS_LIST.includes(status)?status:'Rascunho';p.updated_at=new Date().toISOString();
+  DB.propostas=cleanPropostas(DB.propostas);queuePropostasSync(false);renderApp();
+};
+window._deleteProposta=(id)=>{
+  const p=DB.propostas.find(item=>item.id===id);if(!p)return;
+  if(!confirm(`Excluir proposta ${p.numero||p.nome}?`))return;
+  DB.propostas=DB.propostas.filter(item=>item.id!==id);
+  queuePropostasSync(true);
+  toast('Proposta removida.','#f59e0b');
+  renderApp();
+};
+
 // ─── NOVA COTAÇÃO ─────────────────────────────────────────────────────────
 window._saveCotacao=async()=>{
   const obra=document.getElementById('m-cobra')?.value||S.obra||'';
   const item=document.getElementById('m-citem')?.value?.trim();
+  const itensBase=window._getCommercialModalItems('cot');
   const fornSelecionados=Array.from(document.querySelectorAll('.m-cforn:checked')).map(el=>el.value);
-  if(!obra||!item||fornSelecionados.length===0){toast('Selecione obra, item e fornecedores.','#ef4444');return;}
-  const obj={id:uid(),obra,item,cotacoes:fornSelecionados.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||null,created_at:new Date().toISOString()};
+  const avulsos=String(document.getElementById('m-cforn-manual')?.value||'').split(/[;,]/).map(v=>v.trim()).filter(Boolean);
+  const fornecedores=[...new Set([...fornSelecionados,...avulsos])];
+  if(!obra||!item||fornecedores.length===0||itensBase.length===0){toast('Selecione obra, escopo, fornecedores e pelo menos um item.','#ef4444');return;}
+  const obj={id:uid(),obra,item,cotacoes:fornecedores.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',itens:itensBase,escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||todayISO(),created_at:new Date().toISOString()};
   const{error}=await sb.from('cotacoes').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   if(!DB.cotacoes.find(c=>c.id===obj.id))DB.cotacoes.unshift(obj);
@@ -6234,7 +6633,7 @@ window._addCotacaoFornecedor=async(id,fornecedor)=>{
   if(!cot||!fornecedor)return;
   const itens=normalizeCotacaoItems(cot.cotacoes||[]);
   if(itens.some(item=>item.fornecedor===fornecedor)){toast('Fornecedor já está nesta cotação.','#f59e0b');return;}
-  itens.push({fornecedor,preco:null,prazo:'',observacao:'',escolhido:false});
+  itens.push({fornecedor,preco:null,prazo:'',observacao:'',itens:getCotacaoBaseItems(cot),escolhido:false});
   const ok=await saveCotacaoPatch(id,{cotacoes:itens});
   if(ok)renderApp();
 };
@@ -6263,8 +6662,10 @@ window._cotacaoToPedido=id=>{
   const itens=normalizeCotacaoItems(cot.cotacoes||[]);
   const vencedor=cotacaoVencedor(itens)||[...itens].filter(item=>item.preco!=null).sort((a,b)=>(a.preco??Infinity)-(b.preco??Infinity))[0];
   if(!vencedor){toast('Informe pelo menos um preço antes de gerar o pedido.','#f59e0b');return;}
+  const base=getCotacaoBaseItems(cot);
+  const pedidoItens=base.length?base.map((item,index)=>({nome:item.nome||item.descricao||cot.item||'Item de cotação',qtd:item.quantidade||1,unidade:item.unidade||'un',valor:item.valor_unitario||((base.length===1||index===0)?(vencedor.preco??''):''),obs:item.descricao||vencedor.observacao||''})):[{nome:cot.item||'Item de cotação',qtd:1,unidade:'un',valor:vencedor.preco??'',obs:vencedor.observacao||''}];
   S.modal='new-pedido';
-  S.modalData={prefill:{fornecedor:vencedor.fornecedor,obra:cot.obra||'',responsavel:currentUser?.email?.split('@')[0]||'',status:'Pendente',data:todayISO(),observacao:`Originado da cotação ${cot.item||''}`.trim(),itens:[{nome:cot.item||'Item de cotação',qtd:1,unidade:'un',valor:vencedor.preco??'',obs:vencedor.observacao||''}]}};
+  S.modalData={prefill:{fornecedor:vencedor.fornecedor,obra:cot.obra||'',responsavel:currentUser?.email?.split('@')[0]||'',status:'Pendente',data:todayISO(),observacao:`Originado da cotação ${cot.item||''}`.trim(),itens:pedidoItens}};
   renderApp();
 };
 
@@ -6584,8 +6985,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426031719",
-  id: "/?build=20260426031719",
+  start_url: "/?build=20260426040210",
+  id: "/?build=20260426040210",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
