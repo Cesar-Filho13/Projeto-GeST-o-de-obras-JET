@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426071147">
+<meta name="jet-build" content="20260426072050">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1976,10 +1976,13 @@ let _cdActive=null,_cdOnSelectFn=null,_cdSeq=0;
 
 function closeCd(){if(_cdActive){_cdActive.remove();_cdActive=null;}}
 document.addEventListener('click',()=>closeCd());
+document.addEventListener('click',e=>{if(e.target?.closest?.('.mention-menu,.comment-input'))return;hideMentionMenus();});
 document.addEventListener('click',()=>{if(S.userMenuOpen){S.userMenuOpen=false;renderApp();}});
 document.addEventListener('click',()=>{if(S.homeNoticeOpen){S.homeNoticeOpen=false;renderApp();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCd();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideMentionMenus();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.homeNoticeOpen){S.homeNoticeOpen=false;renderApp();}});
+window._hideMentionMenus=hideMentionMenus;
 
 function makeCd(options,map,currentVal,onSelect,large=false){
   const id='cd-'+(++_cdSeq);
@@ -2258,6 +2261,14 @@ function getHomeNoticeFieldRefs(){
     menuEl:document.getElementById(inModal?'home-modal-mention-menu':'home-mention-menu')
   };
 }
+function hideMentionMenus(){
+  _homeMentionActive=false;_homeMentionQuery='';_homeMentionIdx=0;
+  _mentionActive=false;_mentionQuery='';_mentionIdx=0;
+  ['home-mention-menu','home-modal-mention-menu','mention-menu'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display='none';
+  });
+}
 function isNoticeRead(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.readBy||[]).includes(userToken);}
 function isNoticeMention(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.mentions||[]).includes(userToken);}
 function sortHomeNotices(list=[]){
@@ -2313,7 +2324,7 @@ window._homeNoticeKey=(e)=>{
     if(e.key==='ArrowDown'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx+1)%Math.max(items.length,1);_showHomeMentions(items);return;}
     if(e.key==='ArrowUp'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx-1+Math.max(items.length,1))%Math.max(items.length,1);_showHomeMentions(items);return;}
     if(e.key==='Enter'&&items.length){e.preventDefault();_pickHomeMention(items[_homeMentionIdx]);return;}
-    if(e.key==='Escape'){_homeMentionActive=false;const {menuEl}=getHomeNoticeFieldRefs();if(menuEl)menuEl.style.display='none';return;}
+    if(e.key==='Escape'){e.preventDefault();hideMentionMenus();return;}
   }
 };
 function _showHomeMentions(items){
@@ -5542,7 +5553,7 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
   <label>Aviso *</label>
   <div class="comment-input-wrap">
     <div id="home-modal-mention-menu" class="mention-menu"></div>
-    <textarea id="m-home-aviso-text" class="comment-input" rows="4" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)"></textarea>
+    <textarea id="m-home-aviso-text" class="comment-input" rows="4" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)" onblur="setTimeout(()=>window._hideMentionMenus&&window._hideMentionMenus(),120)"></textarea>
   </div>
 </div>
 <div class="form-group" style="margin-bottom:0"><label>Prioridade</label><select id="m-home-aviso-priority">${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>${esc(priority)}</option>`).join('')}</select></div>
@@ -7381,8 +7392,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426071147",
-  id: "/?build=20260426071147",
+  start_url: "/?build=20260426072050",
+  id: "/?build=20260426072050",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
