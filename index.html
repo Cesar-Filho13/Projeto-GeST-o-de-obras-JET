@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260425213725">
+<meta name="jet-build" content="20260425223101">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1913,34 +1913,69 @@ function _pickHomeMention(name){
   el.focus();
   window._homeNoticeInput(el);
 }
-window._setHomeNoticeFilter=(filter)=>{S.homeNoticeFilter=filter;renderApp();};
-window._postHomeNotice=async()=>{
-  const{textEl,priorityEl,pinEl,inModal}=getHomeNoticeFieldRefs();
-  const texto=textEl?.value?.trim();
-  if(!texto)return toast('Escreva um aviso antes de publicar.','#f59e0b');
-  const autorLabel=getCurrentUserHandle();
-  const autor=normalizeMentionToken(autorLabel)||'sistema';
-  const notice=cleanNotice({
-    id:'hv-'+uid(),
-    texto,
-    autor,
-    autorLabel,
-    prioridade:priorityEl?.value||'Media',
-    pinned:!!pinEl?.checked,
-    readBy:[autor],
-    mentions:parseMentions(texto),
-    created_at:new Date().toISOString(),
-    updated_at:new Date().toISOString()
-  });
-  DB.avisos=[notice,...(DB.avisos||[])];
-  saveLocalHomeNotices(DB.avisos);
-  queueHomeNoticesSync(true);
-  if(textEl){textEl.value='';textEl.style.height='auto';}
-  if(priorityEl)priorityEl.value='Media';
-  if(pinEl)pinEl.checked=false;
-  if(inModal)S.modal=null;
-  S.homeNoticeOpen=true;
+window._toggleHomeNotices=(event)=>{
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  S.homeNoticeOpen=!S.homeNoticeOpen;
   renderApp();
+};
+window._openHomeNoticeModal=(event)=>{
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  S.homeNoticeOpen=false;
+  S.modal='home-notice';
+  S.modalData={};
+  renderApp();
+  setTimeout(()=>document.getElementById('m-home-aviso-text')?.focus(),0);
+};
+window._setHomeNoticeFilter=(filter)=>{S.homeNoticeFilter=filter;renderApp();};
+window._postHomeNotice=async(event)=>{
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const btn=event?.currentTarget||null;
+  if(btn){btn.disabled=true;btn.dataset.originalText=btn.textContent;btn.textContent='Publicando...';}
+  try{
+    const{textEl,priorityEl,pinEl,inModal}=getHomeNoticeFieldRefs();
+    if(!textEl){
+      window._openHomeNoticeModal();
+      toast('Formulario de aviso reaberto. Tente publicar novamente.','#f59e0b');
+      return;
+    }
+    const texto=textEl.value.trim();
+    if(!texto){toast('Escreva um aviso antes de publicar.','#f59e0b');textEl.focus();return;}
+    const autorLabel=getCurrentUserHandle();
+    const autor=normalizeMentionToken(autorLabel)||'sistema';
+    const notice=cleanNotice({
+      id:'hv-'+uid(),
+      texto,
+      autor,
+      autorLabel,
+      prioridade:priorityEl?.value||'Media',
+      pinned:!!pinEl?.checked,
+      readBy:[autor],
+      mentions:parseMentions(texto),
+      created_at:new Date().toISOString(),
+      updated_at:new Date().toISOString()
+    });
+    DB.avisos=cleanNotices([notice,...(DB.avisos||[])]);
+    saveLocalHomeNotices(DB.avisos);
+    queueHomeNoticesSync(true);
+    if(textEl){textEl.value='';textEl.style.height='auto';}
+    if(priorityEl)priorityEl.value='Media';
+    if(pinEl)pinEl.checked=false;
+    if(inModal)S.modal=null;
+    S.homeNoticeOpen=true;
+    toast('Aviso publicado.','#22c55e');
+    renderApp();
+  }catch(err){
+    console.error('[JET] Erro ao publicar aviso:',err);
+    toast('Nao consegui publicar o aviso. Veja o console para detalhes.','#ef4444');
+  }finally{
+    if(btn&&document.body.contains(btn)){
+      btn.disabled=false;
+      btn.textContent=btn.dataset.originalText||'Publicar aviso';
+    }
+  }
 };
 window._toggleNoticeRead=(id)=>{
   const userToken=normalizeMentionToken(getCurrentUserHandle());
@@ -2088,7 +2123,7 @@ function renderHome(){
   </div>
   <div class="landing-meta">
     <div class="landing-notice-shell" onclick="event.stopPropagation()">
-      <button class="theme-toggle notice-toggle landing-notice-trigger${S.homeNoticeOpen?' open':''}" onclick="event.stopPropagation();S.homeNoticeOpen=!S.homeNoticeOpen;renderApp()" title="Abrir avisos">
+      <button type="button" class="theme-toggle notice-toggle landing-notice-trigger${S.homeNoticeOpen?' open':''}" onclick="window._toggleHomeNotices(event)" title="Abrir avisos">
         <span class="landing-notice-trigger-icon">${bellIconSvg()}</span>
         ${(stats.unread+stats.mentions)>0?`<span class="landing-notice-trigger-count">${stats.unread+stats.mentions}</span>`:''}
       </button>
@@ -2103,7 +2138,7 @@ function renderHome(){
             </div>
           </div>
           <div class="landing-notice-head-actions">
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();S.homeNoticeOpen=false;S.modal='home-notice';S.modalData={};renderApp()">+ Novo aviso</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window._openHomeNoticeModal(event)">+ Novo aviso</button>
           </div>
         </div>
 
@@ -4561,7 +4596,7 @@ ${mats.map(mt=>`<div class="req-item-row" data-id="${mt.id}">
 <div class="form-group" style="margin-bottom:0"><label>Prioridade</label><select id="m-home-aviso-priority">${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>${esc(priority)}</option>`).join('')}</select></div>
 <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end"><label class="landing-notice-pin" style="width:100%;justify-content:center"><input type="checkbox" id="m-home-aviso-pin"> Fixar no topo</label></div>
 </div>`;
-    onSave=`window._postHomeNotice()`;
+    onSave=`window._postHomeNotice(event)`;
   }
   else if(m==='new-adiantamento'){
     title='Novo Adiantamento';
@@ -4863,10 +4898,10 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
-<button class="btn btn-secondary" onclick="_closeModal()">Cancelar</button>
+<button type="button" class="btn btn-secondary" onclick="event.stopPropagation();_closeModal()">Cancelar</button>
 ${footer}
 ${m==='new-material'?`<button class="btn btn-secondary btn-sm" onclick="_previewMatXLSX()">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="_previewMatPDF()">📑 PDF</button>`:''}
-<button class="btn btn-primary" onclick="${onSave}">${saveLabel}</button>
+<button type="button" class="btn btn-primary" onclick="${onSave}">${saveLabel}</button>
 </div>
 </div></div>`;
 }
@@ -6202,8 +6237,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260425213725",
-  id: "/?build=20260425213725",
+  start_url: "/?build=20260425223101",
+  id: "/?build=20260425223101",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
