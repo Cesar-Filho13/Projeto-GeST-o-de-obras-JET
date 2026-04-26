@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426072050">
+<meta name="jet-build" content="20260426133900">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -2251,6 +2251,12 @@ function getMentionSuggestions(query=''){
   const q=String(query||'').toLowerCase();
   return getTeamMembers().filter(name=>name.toLowerCase().includes(q));
 }
+function addISODate(iso,days=1){
+  if(!iso)return'';
+  const d=new Date(String(iso).slice(0,10)+'T12:00:00');
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
 function getHomeNoticeFieldRefs(){
   const inModal=S.modal==='home-notice';
   return{
@@ -3512,6 +3518,7 @@ function renderRDO(rdos,obra){
   <div><div class="section-title">RDO — Relatório Diário de Obra</div><div class="section-sub">${rdos.length} relatórios registrados</div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('rdo',obra)}
+    <button class="btn btn-secondary" onclick="_openModal('import-rdo')">Importar planilha</button>
     <button class="btn btn-primary" onclick="_openModal('new-rdo')">+ Novo RDO</button>
   </div>
 </div>
@@ -5591,6 +5598,25 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     body=desp?renderDespesaFilesPanel(desp):`<div class="empty-state"><p>Lancamento nao encontrado.</p></div>`;
     onSave=`_closeModal()`;
   }
+  else if(m==='import-rdo'){
+    const latest=(DB.rdo||[]).filter(r=>r.obra===S.obra&&r.data).map(r=>String(r.data).slice(0,10)).sort().pop();
+    const startDefault=latest?addISODate(latest,1):'2026-04-09';
+    title='Importar RDOs por planilha';
+    saveLabel='Importar RDOs';
+    body=`<div class="form-grid-2">
+<div class="form-group" style="margin-bottom:0"><label>Obra</label><input id="m-rdo-import-obra" value="${esc(S.obra||'APL - AV. Paulista')}"></div>
+<div class="form-group" style="margin-bottom:0"><label>Importar a partir de</label><input id="m-rdo-import-start" type="date" value="${esc(startDefault)}"></div>
+<div class="form-group" style="margin-bottom:0"><label>Turno padrão</label><select id="m-rdo-import-turno"><option selected>Noite</option><option>Manhã</option><option>Tarde</option></select></div>
+<div class="form-group" style="margin-bottom:0"><label>Condição do tempo</label><select id="m-rdo-import-tempo">${TEMPO.map(t=>`<option value="${esc(t)}"${t==='Bom'?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
+<div class="form-group" style="margin-bottom:0"><label>Responsável</label><input id="m-rdo-import-autor" value="Eng. Cesar"></div>
+<div class="form-group" style="margin-bottom:0"><label>Cliente</label><input id="m-rdo-import-cliente" value="C&A"></div>
+<div class="form-group" style="margin-bottom:0"><label>Prazo contratual</label><input id="m-rdo-import-prazo" value="144 Dias"></div>
+<div class="form-group" style="margin-bottom:0"><label>Contrato</label><input id="m-rdo-import-contrato" value=""></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de equipes</label><input id="m-rdo-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Equipes por Data”. O importador pula datas que já existem nesta obra.</div></div>
+<div id="m-rdo-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:260px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
+</div>`;
+    onSave=`window._importRDOPlanilha(event)`;
+  }
   else if(m==='new-rdo'||m==='edit-rdo'){
     const r=m==='edit-rdo'?DB.rdo.find(x=>x.id===d.id):null;
     const gv=(k,def='')=>r?(r[k]??def):def;
@@ -5917,7 +5943,7 @@ ${commercialItemsHeaderHtml()}
   }
 
   return`<div class="modal-overlay" onclick="if(event.target===this)_closeModal()">
-<div class="modal${m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
+<div class="modal${m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -7230,6 +7256,129 @@ window._saveRDO=async(mode,eid)=>{
   toast('RDO salvo!');_closeModal();
 };
 
+window._rdoImportDrafts=[];
+function stripAccents(value=''){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function rdoImportCell(row,...keys){
+  for(const key of keys){
+    if(row&&row[key]!=null&&String(row[key]).trim()!=='')return row[key];
+  }
+  const wanted=keys.map(k=>stripAccents(k).toLowerCase());
+  const found=Object.keys(row||{}).find(k=>wanted.includes(stripAccents(k).toLowerCase()));
+  return found?row[found]:'';
+}
+function rdoImportISO(value){
+  if(!value&&value!==0)return'';
+  if(value instanceof Date&&!isNaN(value))return value.toISOString().slice(0,10);
+  if(typeof value==='number'){
+    const ms=Math.round((value-25569)*86400*1000);
+    return new Date(ms).toISOString().slice(0,10);
+  }
+  const text=String(value).trim();
+  let m=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m)return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return'';
+}
+function rdoImportOptions(){
+  return{
+    obra:document.getElementById('m-rdo-import-obra')?.value?.trim()||S.obra||'APL - AV. Paulista',
+    start:document.getElementById('m-rdo-import-start')?.value||'2026-04-09',
+    turno:document.getElementById('m-rdo-import-turno')?.value||'Noite',
+    tempo:document.getElementById('m-rdo-import-tempo')?.value||'Bom',
+    autor:document.getElementById('m-rdo-import-autor')?.value?.trim()||'Eng. Cesar',
+    cliente:document.getElementById('m-rdo-import-cliente')?.value?.trim()||'C&A',
+    contrato:document.getElementById('m-rdo-import-contrato')?.value?.trim()||'',
+    prazo:document.getElementById('m-rdo-import-prazo')?.value?.trim()||'144 Dias'
+  };
+}
+function rdoDefaultEfetivoJet(jet=0,terceiros=0){
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  return FUNCOES.map(funcao=>({funcao,jet:funcao==='Eletricista'&&jet?String(jet):'',terceiros:funcao==='Eletricista'&&terceiros?String(terceiros):''}));
+}
+function rdoDefaultEfetivoAdmin(qtde=0,autor='Eng. Cesar'){
+  const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
+  return ADMIN.map(cargo=>({cargo,qtde:cargo==='Engº Civil'&&qtde?String(qtde):'',obs:cargo==='Engº Civil'&&qtde?autor:''}));
+}
+function rdoImportBuildRows(rawRows=[]){
+  const opts=rdoImportOptions();
+  const existing=new Set((DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>String(r.data||'').slice(0,10)));
+  const seen=new Set();
+  return rawRows.map(row=>{
+    const data=rdoImportISO(rdoImportCell(row,'Data do turno','Data'));
+    if(!data||data<opts.start)return null;
+    const equipe=String(rdoImportCell(row,'Equipe (nomes normalizados)','Equipe','Funcionários','Funcionarios')||'');
+    const nomes=equipe.split(/\r?\n|;/).map(n=>n.trim()).filter(Boolean);
+    const qtdPlan=parseInt(rdoImportCell(row,'Qtd','Quantidade'))||nomes.length;
+    const obs=String(rdoImportCell(row,'Observações','Observacoes')||'');
+    const tercPorNome=nomes.filter(n=>/terc|terceir/i.test(stripAccents(n))).length;
+    const tercPorObs=parseInt((obs.match(/(\d+)\s*terceir/i)||[])[1]||'0')||0;
+    const terceiros=Math.max(tercPorNome,tercPorObs);
+    const temCesar=nomes.some(n=>/^cesar\b/i.test(stripAccents(n).replace(/[()]/g,'')));
+    const admin=temCesar?1:0;
+    const efetivo=qtdPlan||nomes.length;
+    const jet=Math.max(efetivo-terceiros-admin,0);
+    const duplicated=existing.has(data)||seen.has(data);
+    seen.add(data);
+    return{
+      data,obra:opts.obra,tempo:opts.tempo,turno:opts.turno,autor:opts.autor,cliente:opts.cliente,contrato:opts.contrato,prazo:opts.prazo,
+      efetivo,jet,terceiros,admin,nomes,skipped:duplicated,
+      dia_semana:['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(data+'T12:00:00').getDay()],
+      efetivo_jet:rdoDefaultEfetivoJet(jet,terceiros),
+      efetivo_admin:rdoDefaultEfetivoAdmin(admin,opts.autor)
+    };
+  }).filter(Boolean).sort((a,b)=>a.data.localeCompare(b.data));
+}
+function rdoImportPreviewHtml(rows=[]){
+  if(!rows.length)return'<div style="padding:14px;color:var(--text3);font-size:13px">Nenhum RDO encontrado para os filtros informados.</div>';
+  const ok=rows.filter(r=>!r.skipped).length;
+  return`<table><thead><tr><th>Data</th><th>Dia</th><th>Efetivo</th><th>JET</th><th>Terceiros</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtD(r.data)}</td><td>${esc(r.dia_semana)}</td><td><strong>${r.efetivo}</strong></td><td>${r.jet}</td><td>${r.terceiros}</td><td>${r.skipped?'<span class="tag">Já existe / duplicado</span>':'<span class="tag" style="color:#34d399">Pronto</span>'}</td></tr>`).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} linha(s), ${ok} nova(s). Atividades, observações e fotos ficam em branco para preencher manualmente.</div>`;
+}
+window._previewRDOImport=async(file)=>{
+  const target=document.getElementById('m-rdo-import-preview');
+  if(!target)return;
+  if(!file){target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div>';return;}
+  if(!window.XLSX){toast('Leitor de planilha não carregado. Atualize a página.','#ef4444');return;}
+  try{
+    target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Lendo planilha...</div>';
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array',cellDates:true});
+    const sheetName=wb.SheetNames.includes('Equipes por Data')?'Equipes por Data':wb.SheetNames[0];
+    const rows=window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:''});
+    window._rdoImportDrafts=rdoImportBuildRows(rows);
+    target.innerHTML=rdoImportPreviewHtml(window._rdoImportDrafts);
+  }catch(err){
+    console.error(err);
+    window._rdoImportDrafts=[];
+    target.innerHTML=`<div style="padding:14px;color:#f87171;font-size:13px">Não consegui ler a planilha: ${esc(err.message||err)}</div>`;
+  }
+};
+window._importRDOPlanilha=async(event)=>{
+  event?.stopPropagation?.();
+  const file=document.getElementById('m-rdo-import-file')?.files?.[0];
+  if(!file){toast('Selecione a planilha antes de importar.','#ef4444');return;}
+  if(!window._rdoImportDrafts.length)await window._previewRDOImport(file);
+  const opts=rdoImportOptions();
+  const existing=new Set((DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>String(r.data||'').slice(0,10)));
+  const seen=new Set();
+  const drafts=(window._rdoImportDrafts||[]).filter(r=>!r.skipped&&!existing.has(r.data)&&!seen.has(r.data)&&(seen.add(r.data)||true));
+  if(!drafts.length){toast('Nenhum RDO novo para importar.','#f59e0b');return;}
+  if(!confirm(`Importar ${drafts.length} RDO(s) para ${opts.obra}?`))return;
+  const currentNums=(DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>parseInt(r.rdo_numero)||0);
+  let nextNum=Math.max(0,...currentNums)+1;
+  const rows=drafts.map(d=>({
+    id:uid(),obra:opts.obra,data:d.data,tempo:opts.tempo,efetivo:d.efetivo,
+    rdo_numero:nextNum++,cliente:opts.cliente,contrato:opts.contrato,turno:opts.turno,dia_semana:d.dia_semana,
+    paralisacao:false,prazo_contratual:opts.prazo,efetivo_jet:d.efetivo_jet,efetivo_admin:d.efetivo_admin,
+    atividades:'',ocorrencias:'',fotos:[],autor:opts.autor
+  }));
+  const{error}=await sb.from('rdo').insert(rows);
+  if(error){toast('Erro ao importar RDOs: '+error.message,'#ef4444');return;}
+  DB.rdo=[...rows,...DB.rdo];
+  toast(`${rows.length} RDO(s) importado(s)!`,'#22c55e');
+  _closeModal();
+};
+
 // ─── RENDER APP ───────────────────────────────────────────────────────────
 // ─── ONLINE PRESENCE ──────────────────────────────────────────────────────
 let _onlineUsers = {};
@@ -7392,8 +7541,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426072050",
-  id: "/?build=20260426072050",
+  start_url: "/?build=20260426133900",
+  id: "/?build=20260426133900",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
