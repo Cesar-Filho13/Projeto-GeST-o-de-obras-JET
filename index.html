@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426143141">
+<meta name="jet-build" content="20260426150418">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -484,6 +484,7 @@ textarea{resize:vertical;min-height:80px}
 .office-master-filters{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
 .office-master-filter{min-width:220px}
 .office-master-filter label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:5px}
+.office-master-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .office-master-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .office-master-table{overflow:auto;border:1px solid rgba(115,132,158,.16);border-radius:14px;background:rgba(255,255,255,.018)}
 .office-master-table table{min-width:980px}
@@ -951,6 +952,7 @@ html[data-theme="light"] .proposal-meta span,html[data-theme="light"] .proposal-
 .office-team-person-actions{justify-content:flex-start}
 .office-master-toolbar{align-items:stretch}
 .office-master-filter,.office-master-toolbar .office-mini-btn{width:100%}
+.office-master-actions{width:100%}
 }
 @media(max-width:400px){
   .stats-row{grid-template-columns:1fr}
@@ -2833,7 +2835,7 @@ function renderOfficeEmployeeMaster(){
   const statusOptions=['Todos',...FUNC_STATUS].map(st=>`<option value="${esc(st)}" ${selectedStatus===st?'selected':''}>${esc(st)}</option>`).join('');
   const addObra=selectedObra!=='Todas'?selectedObra:(S.obra||obras[0]||'');
   const table=rows.length?`<div class="office-master-table"><table><thead><tr><th>Funcionário</th><th>Obra</th><th>Função</th><th>Empresa</th><th>Contato</th><th>Documento</th><th>Entrada</th><th>Tempo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${rows.map(f=>{const status=f.status||'Ativo';const docOk=!!String(f.documento||'').trim();return`<tr><td><div style="font-weight:800;color:var(--text)">${esc(f.nome||'Sem nome')}</div><div style="font-size:11px;color:var(--text3)">ID ${esc(String(f.id||'').slice(0,8)||'local')}</div></td><td style="color:var(--text3)">${esc(f.obra||'Sem obra')}</td><td><span class="tag">${esc(f.funcao||'Sem função')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'JET')}</td><td style="color:var(--text3)">${esc(f.telefone||'Pendente')}</td><td><span class="office-doc-chip ${docOk?'ok':'pending'}">${docOk?'OK':'Pendente'}</span><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:4px">${esc(f.documento||'Sem documento')}</div></td><td style="white-space:nowrap;color:var(--text3)">${fmtD(f.data_entrada)}</td><td style="color:var(--text2);font-weight:800">${formatOfficeTenure(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,status,`updateField('funcionarios','${escJs(f.id)}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="office-mini-btn" onclick="_openModal('edit-func',{id:'${escJs(f.id)}'})">Editar</button>${f.obra?`<button class="office-mini-btn" onclick="window._openOfficeObra('${escJs(f.obra)}')">Obra</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="office-empty">Nenhum funcionário encontrado para os filtros atuais.</div>`;
-  return `<div class="office-master-toolbar"><div class="office-master-filters"><div class="office-master-filter"><label>Filtrar por obra</label><select onchange="window._setOfficeRhFilter('obra',this.value)">${obraOptions}</select></div><div class="office-master-filter"><label>Status</label><select onchange="window._setOfficeRhFilter('status',this.value)">${statusOptions}</select></div></div><button type="button" class="office-mini-btn primary" onclick="window._officeNewFunc('${escJs(addObra)}')">+ Adicionar funcionário</button></div><div class="office-master-summary"><span class="office-pill">${rows.length} no filtro</span><span class="office-pill">${ativos} ativos</span><span class="office-pill">${docsPendentes} doc. pendente(s)</span><span class="office-pill">${contatosPendentes} contato(s) pendente(s)</span></div>${table}`;
+  return `<div class="office-master-toolbar"><div class="office-master-filters"><div class="office-master-filter"><label>Filtrar por obra</label><select onchange="window._setOfficeRhFilter('obra',this.value)">${obraOptions}</select></div><div class="office-master-filter"><label>Status</label><select onchange="window._setOfficeRhFilter('status',this.value)">${statusOptions}</select></div></div><div class="office-master-actions"><button type="button" class="office-mini-btn" onclick="window.officeEquipeCSV('funcionarios')">CSV geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios')">Excel geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipePDF('funcionarios')">PDF geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios-filtrado')">Excel filtro</button><button type="button" class="office-mini-btn primary" onclick="window._officeNewFunc('${escJs(addObra)}')">+ Adicionar funcionário</button></div></div><div class="office-master-summary"><span class="office-pill">${rows.length} no filtro</span><span class="office-pill">${ativos} ativos</span><span class="office-pill">${docsPendentes} doc. pendente(s)</span><span class="office-pill">${contatosPendentes} contato(s) pendente(s)</span></div>${table}`;
 }
 function renderOfficeTeamByObra(){
   const rows=getOfficeTeamSummary();
@@ -2869,6 +2871,28 @@ function renderOfficeNoticeIntegration(){
   const list=recent.length?recent.map(n=>`<div class="office-notice-item"><div><strong>@${esc(n.autorLabel||n.autor)}</strong><span>${renderNoticeText(n.texto).replace(/<br>/g,' ')}</span></div><span class="office-pill">${esc(n.prioridade||'Media')}</span></div>`).join(''):`<div class="office-empty">Nenhum aviso publicado ainda. Você pode criar o primeiro por aqui.</div>`;
   return `<div class="office-notice-box"><div class="office-notice-top"><div><strong>Painel de avisos conectado</strong><span>${stats.unread} não lido(s) · ${stats.mentions} menção(ões) para você</span></div><div class="office-inline-actions"><button type="button" class="office-mini-btn primary" onclick="window._openHomeNoticeModal(event)">+ Novo aviso</button><button type="button" class="office-mini-btn" onclick="window._officeGo('avisos')">Abrir painel</button></div></div><div class="office-notice-list">${list}</div></div>`;
 }
+function getOfficeFuncionarioRows(filtered=false){
+  const selectedObra=S.officeRhObraFilter||'Todas';
+  const selectedStatus=S.officeRhStatusFilter||'Todos';
+  return [...(DB.funcionarios||[])].filter(f=>{
+    if(!filtered)return true;
+    const okObra=selectedObra==='Todas'||(f.obra||'')===selectedObra;
+    const okStatus=selectedStatus==='Todos'||(f.status||'Ativo')===selectedStatus;
+    return okObra&&okStatus;
+  }).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')).map(f=>({
+    obra:f.obra||'Sem obra',
+    nome:f.nome||'',
+    funcao:f.funcao||'',
+    empresa:f.empresa||'JET',
+    telefone:f.telefone||'',
+    documento:f.documento||'',
+    entrada:fmtD(f.data_entrada),
+    tempo:formatOfficeTenure(f.data_entrada),
+    status:f.status||'Ativo',
+    documentacao:f.documento?'OK':'Pendente',
+    contato:f.telefone?'OK':'Pendente'
+  }));
+}
 function getOfficeExportConfig(scope='funcionarios'){
   const today=new Date().toLocaleDateString('pt-BR');
   if(scope==='avisos'){
@@ -2892,9 +2916,18 @@ function getOfficeExportConfig(scope='funcionarios'){
     });
     return{title:'Distribuição das Equipes por Obra',filename:'Distribuicao_Equipes_Obras',meta:[`Exportado em ${today}`,`${rows.length} linha(s)`],columns:[{header:'Obra',key:'obra',width:24},{header:'Função',key:'funcao',width:28},{header:'Total',key:'total',width:10,align:'center'},{header:'Ativos',key:'ativos',width:10,align:'center'},{header:'Atenção',key:'atencao',width:10,align:'center'},{header:'Desligados',key:'desligados',width:12,align:'center'}],rows};
   }
-  const rows=[...(DB.funcionarios||[])].sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')).map(f=>({obra:f.obra||'',nome:f.nome||'',funcao:f.funcao||'',empresa:f.empresa||'JET',telefone:f.telefone||'',documento:f.documento||'',entrada:fmtD(f.data_entrada),tempo:formatOfficeTenure(f.data_entrada),status:f.status||'Ativo',documentacao:f.documento?'OK':'Pendente',contato:f.telefone?'OK':'Pendente'}));
-  return{title:'Lista Mestra de Funcionários - Escritório',filename:'Lista_Mestra_Funcionarios',meta:[`Exportado em ${today}`,`${DB.funcionarios.length} funcionário(s)`],columns:[{header:'Obra',key:'obra',width:24},{header:'Nome',key:'nome',width:30},{header:'Função',key:'funcao',width:24},{header:'Empresa',key:'empresa',width:18},{header:'Telefone',key:'telefone',width:18},{header:'Documento',key:'documento',width:20},{header:'Entrada',key:'entrada',width:14},{header:'Tempo',key:'tempo',width:14},{header:'Status',key:'status',width:14,badgeMap:FS},{header:'Documentação',key:'documentacao',width:16},{header:'Contato',key:'contato',width:12}],rows};
+  const filtered=scope==='funcionarios-filtrado';
+  const rows=getOfficeFuncionarioRows(filtered);
+  const selectedObra=S.officeRhObraFilter||'Todas';
+  const selectedStatus=S.officeRhStatusFilter||'Todos';
+  const meta=filtered?[`Exportado em ${today}`,`${rows.length} funcionário(s) no filtro`,`Obra: ${selectedObra}`,`Status: ${selectedStatus}`]:[`Exportado em ${today}`,`${DB.funcionarios.length} funcionário(s) gerais da empresa`];
+  return{title:filtered?'Funcionários Filtrados - RH':'Funcionários Gerais da Empresa - RH',filename:filtered?'Funcionarios_RH_Filtro':'Funcionarios_Gerais_Empresa',meta,columns:[{header:'Obra',key:'obra',width:24},{header:'Nome',key:'nome',width:32},{header:'Função',key:'funcao',width:26},{header:'Empresa',key:'empresa',width:18},{header:'Telefone',key:'telefone',width:18},{header:'CPF / Documento',key:'documento',width:20},{header:'Entrada',key:'entrada',width:14},{header:'Tempo',key:'tempo',width:14},{header:'Status',key:'status',width:14,badgeMap:FS},{header:'Documentação',key:'documentacao',width:16},{header:'Contato',key:'contato',width:12}],rows};
 }
+window.officeEquipeCSV=(scope='funcionarios')=>{
+  const cfg=getOfficeExportConfig(scope);
+  if(!cfg.rows.length){toast('Sem dados para exportar.','#f59e0b');return;}
+  exportCSV(cfg.rows.map(r=>cfg.columns.map(c=>r[c.key]??'')),cfg.columns.map(c=>c.header),cfg.filename);
+};
 window.officeEquipeXLSX=(scope='funcionarios')=>{
   const cfg=getOfficeExportConfig(scope);
   if(!cfg.rows.length){toast('Sem dados para exportar.','#f59e0b');return;}
@@ -7659,8 +7692,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426143141",
-  id: "/?build=20260426143141",
+  start_url: "/?build=20260426150418",
+  id: "/?build=20260426150418",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
