@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426064614">
+<meta name="jet-build" content="20260426070559">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1213,7 +1213,8 @@ function commercialCompanyMetaLines(company){
 function proposalLogoPreviewHtml(data=''){
   return data?`<img src="${esc(data)}" alt="Logo do cliente">`:'<span>Sem<br>logo</span>';
 }
-const SUPABASE_MENTION_EMAILS=[
+// Lista espelho dos usuarios ativos cadastrados no Supabase para mencoes/notificacoes.
+const SUPABASE_MENTION_EMAILS=Object.freeze([
   'caio@jetmanutencoes.com',
   'cesar@jetmanutencoes.com',
   'claraadm@jetmanutencoes.com',
@@ -1226,7 +1227,7 @@ const SUPABASE_MENTION_EMAILS=[
   'jp.gasparini@jetmanutencoes.com',
   'mariaclara@jetmanutencoes.com',
   'vanuza@jetmanutencoes.com'
-];
+].map(email=>email.trim().toLowerCase()));
 const ALMOX_TRANSFER_MAP={Separado:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em transito':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'}};
 const ALMOX_MOVEMENT_MAP={
   Entrada:{bg:'rgba(16,185,129,.14)',c:'#34d399',d:'#10b981'},
@@ -7376,8 +7377,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426064614",
-  id: "/?build=20260426064614",
+  start_url: "/?build=20260426070559",
+  id: "/?build=20260426070559",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
