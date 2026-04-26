@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426150418">
+<meta name="jet-build" content="20260426152443">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1051,6 +1051,14 @@ function formatCNPJ(value=''){
   if(d.length<=8)return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
   if(d.length<=12)return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
   return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12,14)}`;
+}
+function formatCPF(value=''){
+  const d=onlyDigits(value,11);
+  if(!d)return '';
+  if(d.length<=3)return d;
+  if(d.length<=6)return `${d.slice(0,3)}.${d.slice(3)}`;
+  if(d.length<=9)return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6)}`;
+  return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9,11)}`;
 }
 function validateCNPJLength(value=''){const d=onlyDigits(value,14);return !d||d.length===14;}
 const todayISO=()=>new Date().toISOString().slice(0,10);
@@ -2835,7 +2843,7 @@ function renderOfficeEmployeeMaster(){
   const statusOptions=['Todos',...FUNC_STATUS].map(st=>`<option value="${esc(st)}" ${selectedStatus===st?'selected':''}>${esc(st)}</option>`).join('');
   const addObra=selectedObra!=='Todas'?selectedObra:(S.obra||obras[0]||'');
   const table=rows.length?`<div class="office-master-table"><table><thead><tr><th>Funcionário</th><th>Obra</th><th>Função</th><th>Empresa</th><th>Contato</th><th>Documento</th><th>Entrada</th><th>Tempo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${rows.map(f=>{const status=f.status||'Ativo';const docOk=!!String(f.documento||'').trim();return`<tr><td><div style="font-weight:800;color:var(--text)">${esc(f.nome||'Sem nome')}</div><div style="font-size:11px;color:var(--text3)">ID ${esc(String(f.id||'').slice(0,8)||'local')}</div></td><td style="color:var(--text3)">${esc(f.obra||'Sem obra')}</td><td><span class="tag">${esc(f.funcao||'Sem função')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'JET')}</td><td style="color:var(--text3)">${esc(f.telefone||'Pendente')}</td><td><span class="office-doc-chip ${docOk?'ok':'pending'}">${docOk?'OK':'Pendente'}</span><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:4px">${esc(f.documento||'Sem documento')}</div></td><td style="white-space:nowrap;color:var(--text3)">${fmtD(f.data_entrada)}</td><td style="color:var(--text2);font-weight:800">${formatOfficeTenure(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,status,`updateField('funcionarios','${escJs(f.id)}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="office-mini-btn" onclick="_openModal('edit-func',{id:'${escJs(f.id)}'})">Editar</button>${f.obra?`<button class="office-mini-btn" onclick="window._openOfficeObra('${escJs(f.obra)}')">Obra</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="office-empty">Nenhum funcionário encontrado para os filtros atuais.</div>`;
-  return `<div class="office-master-toolbar"><div class="office-master-filters"><div class="office-master-filter"><label>Filtrar por obra</label><select onchange="window._setOfficeRhFilter('obra',this.value)">${obraOptions}</select></div><div class="office-master-filter"><label>Status</label><select onchange="window._setOfficeRhFilter('status',this.value)">${statusOptions}</select></div></div><div class="office-master-actions"><button type="button" class="office-mini-btn" onclick="window.officeEquipeCSV('funcionarios')">CSV geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios')">Excel geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipePDF('funcionarios')">PDF geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios-filtrado')">Excel filtro</button><button type="button" class="office-mini-btn primary" onclick="window._officeNewFunc('${escJs(addObra)}')">+ Adicionar funcionário</button></div></div><div class="office-master-summary"><span class="office-pill">${rows.length} no filtro</span><span class="office-pill">${ativos} ativos</span><span class="office-pill">${docsPendentes} doc. pendente(s)</span><span class="office-pill">${contatosPendentes} contato(s) pendente(s)</span></div>${table}`;
+  return `<div class="office-master-toolbar"><div class="office-master-filters"><div class="office-master-filter"><label>Filtrar por obra</label><select onchange="window._setOfficeRhFilter('obra',this.value)">${obraOptions}</select></div><div class="office-master-filter"><label>Status</label><select onchange="window._setOfficeRhFilter('status',this.value)">${statusOptions}</select></div></div><div class="office-master-actions"><button type="button" class="office-mini-btn" onclick="window.officeEquipeCSV('funcionarios')">CSV geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios')">Excel geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipePDF('funcionarios')">PDF geral</button><button type="button" class="office-mini-btn" onclick="window.officeEquipeXLSX('funcionarios-filtrado')">Excel filtro</button><button type="button" class="office-mini-btn" onclick="S.modal='import-funcionarios';S.modalData={};renderApp()">Importar planilha</button><button type="button" class="office-mini-btn primary" onclick="window._officeNewFunc('${escJs(addObra)}')">+ Adicionar funcionário</button></div></div><div class="office-master-summary"><span class="office-pill">${rows.length} no filtro</span><span class="office-pill">${ativos} ativos</span><span class="office-pill">${docsPendentes} doc. pendente(s)</span><span class="office-pill">${contatosPendentes} contato(s) pendente(s)</span></div>${table}`;
 }
 function renderOfficeTeamByObra(){
   const rows=getOfficeTeamSummary();
@@ -5585,6 +5593,18 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     </div>`;
     onSave=m==='edit-func'?`_editFuncionario('${d.id||''}')`:`_saveFuncionario()`;
   }
+  else if(m==='import-funcionarios'){
+    title='Importar colaboradores';
+    saveLabel='Importar colaboradores';
+    body=`<div class="form-grid-2">
+<div class="form-group" style="margin-bottom:0"><label>Empresa padrão</label><input id="m-func-import-empresa" value="JET"></div>
+<div class="form-group" style="margin-bottom:0"><label>Vínculo / obra padrão</label><input id="m-func-import-obra" value="GERAL" placeholder="Ex: GERAL, APL - Paulista..."></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-func-import-update-existing" checked onchange="window._refreshFuncionariosImportPreview&&window._refreshFuncionariosImportPreview()"> Atualizar cadastros já existentes pela planilha sem apagar vínculo de obra atual</label></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de colaboradores</label><input id="m-func-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewFuncionariosImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Formato esperado: NOME, FUNÇÃO, DATA DE NASCIMENTO, RG e CPF. CPF/RG serão salvos no campo Documento; a importação não exclui ninguém.</div></div>
+<div id="m-func-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:320px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
+</div>`;
+    onSave=`window._importFuncionariosPlanilha(event)`;
+  }
   else if(m==='home-notice'){
     title='Novo Aviso';
     saveLabel='Publicar aviso';
@@ -6406,6 +6426,162 @@ window._editFuncionario=async(id)=>{
   toast('Funcionário atualizado!');_closeModal();
 };
 window._deleteFuncionario=async(id)=>{if(!confirm('Excluir funcionário?'))return;const func=DB.funcionarios.find(f=>f.id===id);await sb.from('funcionarios').delete().eq('id',id);DB.funcionarios=DB.funcionarios.filter(f=>f.id!==id);toast('Excluído.','#f59e0b');scheduleUndo('funcionario',func);renderApp();};
+
+function funcionarioImportKey(value=''){
+  return stripAccents(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function funcionarioImportCpf(value=''){
+  const digits=String(value||'').replace(/\D/g,'');
+  if(!digits)return '';
+  return digits.length<=11?digits.padStart(11,'0').slice(-11):digits.slice(-11);
+}
+function funcionarioExtractCpf(documento=''){
+  const text=String(documento||'');
+  const labeled=text.match(/CPF\s*:\s*([0-9.\-]+)/i);
+  if(labeled)return funcionarioImportCpf(labeled[1]);
+  const digits=text.replace(/\D/g,'');
+  return digits.length>=11?digits.slice(-11):'';
+}
+function funcionarioImportDate(value=''){
+  if(!value)return '';
+  if(value instanceof Date&&!Number.isNaN(value.getTime()))return value.toLocaleDateString('pt-BR');
+  const text=String(value||'').trim();
+  const iso=text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(iso)return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const br=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(br){
+    let a=parseInt(br[1],10),b=parseInt(br[2],10),y=br[3];
+    if(y.length===2)y=`20${y}`;
+    if(b>12)return `${String(b).padStart(2,'0')}/${String(a).padStart(2,'0')}/${y}`;
+    return `${String(a).padStart(2,'0')}/${String(b).padStart(2,'0')}/${y}`;
+  }
+  return text;
+}
+function funcionarioImportDoc(row){
+  const parts=[];
+  if(row.cpf)parts.push(`CPF: ${formatCPF(row.cpf)}`);
+  if(row.rg)parts.push(`RG: ${row.rg}`);
+  if(row.nascimento)parts.push(`Nasc.: ${row.nascimento}`);
+  return parts.join(' | ');
+}
+function funcionarioImportOptions(){
+  return{
+    empresa:(document.getElementById('m-func-import-empresa')?.value||'JET').trim()||'JET',
+    obra:(document.getElementById('m-func-import-obra')?.value||'GERAL').trim(),
+    updateExisting:!!document.getElementById('m-func-import-update-existing')?.checked
+  };
+}
+function funcionarioImportHeader(value=''){
+  return funcionarioImportKey(value);
+}
+function buildFuncionariosImportRows(matrix=[]){
+  const headerIndex=matrix.findIndex(row=>{
+    const cols=(row||[]).map(funcionarioImportHeader);
+    return cols.includes('nome')&&cols.some(v=>v==='funcao'||v.startsWith('funcao '));
+  });
+  if(headerIndex<0)throw new Error('Não encontrei o cabeçalho NOME / FUNÇÃO na planilha.');
+  const headers=(matrix[headerIndex]||[]).map(funcionarioImportHeader);
+  const findCol=(needles)=>headers.findIndex(h=>needles.some(n=>h===n||h.includes(n)));
+  const colNome=findCol(['nome']);
+  const colFuncao=findCol(['funcao']);
+  const colNascimento=findCol(['data de nascimento','nascimento']);
+  const colRg=findCol(['rg']);
+  const colCpf=findCol(['cpf']);
+  if(colNome<0||colFuncao<0)throw new Error('A planilha precisa ter as colunas NOME e FUNÇÃO.');
+  const existingByCpf=new Map();
+  const existingByName=new Map();
+  (DB.funcionarios||[]).forEach(f=>{
+    const cpf=funcionarioExtractCpf(f.documento);
+    if(cpf&&!existingByCpf.has(cpf))existingByCpf.set(cpf,f);
+    const nameKey=funcionarioImportKey(f.nome);
+    if(nameKey&&!existingByName.has(nameKey))existingByName.set(nameKey,f);
+  });
+  const seen=new Set();
+  return matrix.slice(headerIndex+1).map(row=>{
+    const nome=String(row[colNome]||'').replace(/\s+/g,' ').trim();
+    if(!nome)return null;
+    const funcao=String(row[colFuncao]||'').replace(/\*+/g,'').replace(/\s+/g,' ').trim();
+    const cpf=colCpf>=0?funcionarioImportCpf(row[colCpf]):'';
+    const rg=colRg>=0?String(row[colRg]||'').replace(/\s+/g,' ').trim():'';
+    const nascimento=colNascimento>=0?funcionarioImportDate(row[colNascimento]):'';
+    const sheetKey=cpf||`nome:${funcionarioImportKey(nome)}`;
+    const duplicate=seen.has(sheetKey);
+    seen.add(sheetKey);
+    const existing=(cpf&&existingByCpf.get(cpf))||existingByName.get(funcionarioImportKey(nome))||null;
+    const draft={nome,funcao,cpf,rg,nascimento,duplicate,existingId:existing?.id||'',existingName:existing?.nome||''};
+    draft.documento=funcionarioImportDoc(draft);
+    return draft;
+  }).filter(Boolean);
+}
+function funcionariosImportPreviewHtml(rows=[]){
+  if(!rows.length)return'<div style="padding:14px;color:var(--text3);font-size:13px">Nenhum colaborador válido encontrado.</div>';
+  const opts=funcionarioImportOptions();
+  const novos=rows.filter(r=>!r.duplicate&&!r.existingId).length;
+  const atualizaveis=opts.updateExisting?rows.filter(r=>!r.duplicate&&r.existingId).length:0;
+  const ignorados=rows.length-novos-atualizaveis;
+  return`<table><thead><tr><th>Nome</th><th>Função</th><th>CPF</th><th>RG</th><th>Nascimento</th><th>Status</th></tr></thead><tbody>${rows.map(r=>{
+    const status=r.duplicate?'<span class="tag" style="color:#f87171">Duplicado na planilha</span>':r.existingId?(opts.updateExisting?'<span class="tag">Atualizar existente</span>':'<span class="tag">Já existe</span>'):'<span class="tag" style="color:#34d399">Novo</span>';
+    return`<tr><td><strong>${esc(r.nome)}</strong>${r.existingName&&r.existingName!==r.nome?`<div style="font-size:10px;color:var(--text3)">Atual: ${esc(r.existingName)}</div>`:''}</td><td>${esc(r.funcao||'Sem função')}</td><td style="white-space:nowrap">${esc(formatCPF(r.cpf)||'—')}</td><td>${esc(r.rg||'—')}</td><td style="white-space:nowrap">${esc(r.nascimento||'—')}</td><td>${status}</td></tr>`;
+  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} colaborador(es) · ${novos} novo(s) · ${atualizaveis} atualização(ões) · ${ignorados} ignorado(s). Empresa padrão: ${esc(opts.empresa)} · vínculo padrão: ${esc(opts.obra||'Sem obra')}.</div>`;
+}
+window._refreshFuncionariosImportPreview=()=>{const target=document.getElementById('m-func-import-preview');if(target&&window._funcImportDrafts)target.innerHTML=funcionariosImportPreviewHtml(window._funcImportDrafts);};
+window._previewFuncionariosImport=async(file)=>{
+  const target=document.getElementById('m-func-import-preview');
+  if(!target)return;
+  if(!file){target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div>';return;}
+  if(!window.XLSX){toast('Leitor de planilha não carregado. Atualize a página.','#ef4444');return;}
+  try{
+    target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Lendo planilha...</div>';
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array',cellDates:true});
+    const sheetName=wb.SheetNames[0];
+    const matrix=window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy'});
+    window._funcImportDrafts=buildFuncionariosImportRows(matrix);
+    target.innerHTML=funcionariosImportPreviewHtml(window._funcImportDrafts);
+  }catch(err){
+    console.error(err);
+    window._funcImportDrafts=[];
+    target.innerHTML=`<div style="padding:14px;color:#f87171;font-size:13px">Não consegui ler a planilha: ${esc(err.message||err)}</div>`;
+  }
+};
+window._importFuncionariosPlanilha=async(event)=>{
+  event?.stopPropagation?.();
+  const file=document.getElementById('m-func-import-file')?.files?.[0];
+  if(!file){toast('Selecione a planilha antes de importar.','#ef4444');return;}
+  if(!window._funcImportDrafts?.length)await window._previewFuncionariosImport(file);
+  const opts=funcionarioImportOptions();
+  const drafts=(window._funcImportDrafts||[]).filter(r=>!r.duplicate);
+  const inserts=drafts.filter(r=>!r.existingId).map(r=>({
+    id:uid(),obra:opts.obra||'',nome:r.nome,funcao:r.funcao,empresa:opts.empresa,telefone:'',documento:r.documento,data_entrada:null,status:'Ativo'
+  }));
+  const updateDrafts=opts.updateExisting?drafts.filter(r=>r.existingId):[];
+  if(!inserts.length&&!updateDrafts.length){toast('Nenhum colaborador novo ou existente para importar.','#f59e0b');return;}
+  if(!confirm(`Importar ${inserts.length} novo(s) e atualizar ${updateDrafts.length} existente(s)?`))return;
+  const btn=document.querySelector('.modal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Importando...';}
+  if(inserts.length){
+    const{error}=await sb.from('funcionarios').insert(inserts);
+    if(error){if(btn){btn.disabled=false;btn.textContent='Importar colaboradores';}toast('Erro ao importar colaboradores: '+error.message,'#ef4444');return;}
+    DB.funcionarios=[...(DB.funcionarios||[]),...inserts];
+  }
+  if(updateDrafts.length){
+    const updates=await Promise.all(updateDrafts.map(d=>{
+      const atual=(DB.funcionarios||[]).find(f=>f.id===d.existingId)||{};
+      const patch={nome:d.nome,funcao:d.funcao||atual.funcao||'',empresa:opts.empresa||atual.empresa||'JET',documento:d.documento||atual.documento||'',status:atual.status||'Ativo'};
+      if(!atual.obra&&opts.obra)patch.obra=opts.obra;
+      return sb.from('funcionarios').update(patch).eq('id',d.existingId).then(res=>({res,d,patch}));
+    }));
+    const failed=updates.find(u=>u.res.error);
+    if(failed){if(btn){btn.disabled=false;btn.textContent='Importar colaboradores';}toast('Erro ao atualizar colaborador: '+failed.res.error.message,'#ef4444');return;}
+    DB.funcionarios=(DB.funcionarios||[]).map(f=>{const u=updates.find(x=>x.d.existingId===f.id);return u?{...f,...u.patch}:f;});
+  }
+  DB.funcionarios=(DB.funcionarios||[]).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+  S.officeRhObraFilter='Todas';
+  S.officeRhStatusFilter='Todos';
+  toast(`${inserts.length} colaborador(es) importado(s) e ${updateDrafts.length} atualizado(s)!`,'#22c55e');
+  _closeModal();
+  renderApp();
+};
 
 window._updateEstoque=async(el)=>{
   const id=el.dataset.id;
@@ -7692,8 +7868,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426150418",
-  id: "/?build=20260426150418",
+  start_url: "/?build=20260426152443",
+  id: "/?build=20260426152443",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
