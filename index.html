@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426042247">
+<meta name="jet-build" content="20260426043620">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1095,16 +1095,16 @@ const COMMERCIAL_COMPANIES=[
   {
     id:'jet-servicos',
     short:'JET',
-    nome:'JET SERVIÇOS E INSTALAÇÕES LTDA',
+    nome:'JET SERVIÇOS, COMÉRCIO E INSTALAÇÕES LTDA',
     cnpj:'43.274.544/0001-54',
     inscricao_estadual:'0004131934.00-83',
-    rua:'RUA RAUL CORREA, 370 - LETRA A',
-    bairro:'FUNCIONÁRIOS',
-    cidade:'MONTES CLAROS - MG',
-    cep:'39.401-029',
-    email:'claraadm@jetmanutencoes.com',
-    telefone:'(38) 9.9944-2157 / (38) 3220-8607',
-    contato:'Clara ADM'
+    rua:'Rua Raul Corrêa, 370 - B',
+    bairro:'',
+    cidade:'Montes Claros - Minas Gerais',
+    cep:'39401-029',
+    email:'fabio@jetmanutencoes.com',
+    telefone:'(38) 99944-2157',
+    contato:'Fabio'
   },
   {
     id:'sdai',
@@ -1122,7 +1122,8 @@ const COMMERCIAL_COMPANIES=[
   }
 ];
 function formatCommercialCompanyAddress(company={}){
-  return [company.rua,company.bairro?`Bairro ${company.bairro}`:'',company.cidade,company.cep?`CEP ${company.cep}`:''].filter(Boolean).join(' - ');
+  const base=[company.rua,company.bairro?`Bairro ${company.bairro}`:'',company.cidade].filter(Boolean).join(' - ');
+  return company.cep?`${base}, ${company.cep}`:base;
 }
 function getCommercialCompany(idOrName=''){
   const key=String(idOrName||'').trim();
@@ -1144,6 +1145,29 @@ function renderCommercialCompanyPreview(company){
   const c=normalizeCommercialCompany(company);
   if(!c)return '<span style="font-size:12px;color:var(--text3)">Nenhuma empresa selecionada.</span>';
   return `<div class="commercial-company-card"><strong>${esc(c.nome)}</strong><span>CNPJ: ${esc(c.cnpj||'-')} · IE: ${esc(c.inscricao_estadual||'-')}</span><span>${esc(c.endereco||formatCommercialCompanyAddress(c)||'-')}</span><span>${esc(c.email||'-')} · ${esc(c.telefone||'-')}</span></div>`;
+}
+function getPropostaCompany(p={}){
+  return normalizeCommercialCompany(p?.empresa_id||getCommercialCompany(p?.cnpj||'')||null);
+}
+function commercialCompanyTextLines(company){
+  const c=normalizeCommercialCompany(company);
+  if(!c)return [];
+  return [
+    c.nome||'',
+    `Email: ${c.email||'-'}`,
+    `Telefone: ${c.telefone||'-'}`,
+    `Endereço: ${c.endereco||formatCommercialCompanyAddress(c)||'-'}`
+  ].filter(Boolean);
+}
+function commercialCompanyMetaLines(company){
+  const c=normalizeCommercialCompany(company);
+  if(!c)return [];
+  return [
+    `Empresa: ${c.nome||'-'}`,
+    `Email: ${c.email||'-'}`,
+    `Telefone: ${c.telefone||'-'}`,
+    `Endereço: ${c.endereco||formatCommercialCompanyAddress(c)||'-'}`
+  ];
 }
 const SUPABASE_MENTION_EMAILS=[
   'caio@jetmanutencoes.com',
@@ -4949,34 +4973,99 @@ window.cotacoesXLSX=()=>{
 
 
 function propostaExportRows(propostas=DB.propostas||[]){
-  return cleanPropostas(propostas).map((p,index)=>({idx:index+1,numero:p.numero||'',cliente:p.cliente||'',nome:p.nome||'',status:p.status||'Rascunho',emissao:fmtD(p.data_emissao),vencimento:fmtD(p.data_vencimento),responsavel:p.responsavel||'',itens:(p.itens||[]).length,subtotal:p.subtotal||0,desconto:p.desconto||0,total:p.total||0}));
+  return cleanPropostas(propostas).map((p,index)=>{
+    const company=getPropostaCompany(p);
+    return{
+      idx:index+1,
+      numero:p.numero||'',
+      empresa:company?.nome||'',
+      cliente:p.cliente||'',
+      nome:p.nome||'',
+      status:p.status||'Rascunho',
+      emissao:fmtD(p.data_emissao),
+      vencimento:fmtD(p.data_vencimento),
+      responsavel:p.responsavel||'',
+      itens:(p.itens||[]).length,
+      subtotal:p.subtotal||0,
+      desconto:p.desconto||0,
+      total:p.total||0
+    };
+  });
 }
 function cotacaoExportRows(cotacoes=DB.cotacoes||[]){
-  return (cotacoes||[]).map((c,index)=>{const itens=normalizeCotacaoItems(c.cotacoes||[]);const vencedor=cotacaoVencedor(itens);const melhor=cotacaoMelhorPreco(itens);const company=getCotacaoCompany(c);return{idx:index+1,item:c.item||'',obra:c.obra||'',empresa:company?.nome||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),itens:getCotacaoBaseItems(c).length,melhor,melhorTexto:melhor!=null?fmtV(melhor):'',vencedor:vencedor?.fornecedor||''};});
+  return (cotacoes||[]).map((c,index)=>{
+    const itens=normalizeCotacaoItems(c.cotacoes||[]);
+    const vencedor=cotacaoVencedor(itens);
+    const melhor=cotacaoMelhorPreco(itens);
+    const company=getCotacaoCompany(c);
+    return{idx:index+1,item:c.item||'',obra:c.obra||'',empresa:company?.nome||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),itens:getCotacaoBaseItems(c).length,melhor,melhorTexto:melhor!=null?fmtV(melhor):'',vencedor:vencedor?.fornecedor||''};
+  });
 }
 function getPropostaOrToast(id){const p=cleanPropostas(DB.propostas||[]).find(item=>item.id===id);if(!p)toast('Proposta não encontrada.','#ef4444');return p;}
 function getCotacaoOrToast(id){const c=(DB.cotacoes||[]).find(item=>item.id===id);if(!c)toast('Cotação não encontrada.','#ef4444');return c;}
-window.propostasTXT=()=>{const rows=propostaExportRows();exportTXT(rows.map(r=>[r.numero,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),['Numero','Cliente','Proposta','Status','Emissao','Vencimento','Responsavel','Itens','Total'],'Propostas_Comerciais');};
-window.propostaTXT=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const itens=normalizeCommercialItems(p.itens||[]);const rows=[['Numero',p.numero],['Cliente',p.cliente],['Proposta',p.nome],['Status',p.status],['Emissao',fmtD(p.data_emissao)],['Vencimento',fmtD(p.data_vencimento)],['Responsavel',p.responsavel],['Subtotal',fmtV(p.subtotal)],['Desconto',fmtV(p.desconto)],['Total',fmtV(p.total)],[],['Tipo','Nome','Descricao','Qtd','Unid','Valor Unitario','Total'],...itens.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario),(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)]).map(r=>{r[6]=fmtV(r[6]);return r;})];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(p.numero||'Proposta')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
-window.propostasXLSX=()=>exportStyledXLSX({sheetName:'Propostas',filename:'Propostas_Comerciais_'+todayISO(),title:'Propostas Comerciais JET',meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${(DB.propostas||[]).length} proposta(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Cliente',key:'cliente',width:28},{header:'Proposta',key:'nome',width:36},{header:'Status',key:'status',width:16,badgeMap:PROPOSTA_STATUS_MAP},{header:'Emissão',key:'emissao',width:14},{header:'Vencimento',key:'vencimento',width:14},{header:'Responsável',key:'responsavel',width:18},{header:'Itens',key:'itens',width:10,align:'center'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:propostaExportRows()});
-window.propostaXLSX=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const itens=normalizeCommercialItems(p.itens||[]);return exportStyledXLSX({sheetName:'Proposta',filename:p.numero||'Proposta_JET',title:`Proposta Comercial - ${p.numero||''}`,meta:[`Cliente: ${p.cliente||'-'}`,`Proposta: ${p.nome||'-'}`,`Emissão: ${fmtD(p.data_emissao)} · Vencimento: ${fmtD(p.data_vencimento)}`,`Total: ${fmtV(p.total)}`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Tipo',key:'tipo',width:14},{header:'Nome',key:'nome',width:30},{header:'Descrição',key:'descricao',width:42},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor Unit.',key:'valor',width:16,align:'right',type:'currency'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:itens.map((item,index)=>({idx:index+1,tipo:item.tipo,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,total:(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)}))});};
+function companyTextRows(company){
+  const c=normalizeCommercialCompany(company);
+  if(!c)return [];
+  return [['Empresa',c.nome||''],['Email',c.email||''],['Telefone',c.telefone||''],['Endereço',c.endereco||formatCommercialCompanyAddress(c)||'']];
+}
+function drawCommercialCompanyPDFBlock(doc,company,x,y,w){
+  const c=normalizeCommercialCompany(company);
+  if(!c)return 0;
+  const address=c.endereco||formatCommercialCompanyAddress(c)||'-';
+  const nameLines=doc.splitTextToSize(c.nome||'',w);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15,23,42);
+  doc.text(nameLines,x,y);
+  let cy=y+(nameLines.length*6)+3;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(45,58,86);
+  doc.text(`Email: ${c.email||'-'}`,x,cy);cy+=5.5;
+  doc.text(`Telefone: ${c.telefone||'-'}`,x,cy);cy+=5.5;
+  const addressLines=doc.splitTextToSize(`Endereço: ${address}`,w);
+  doc.text(addressLines,x,cy);
+  cy+=addressLines.length*5;
+  return Math.max(28,cy-y+2);
+}
+window.propostasTXT=()=>{
+  const rows=propostaExportRows();
+  exportTXT(rows.map(r=>[r.numero,r.empresa,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),['Numero','Empresa','Cliente','Proposta','Status','Emissao','Vencimento','Responsavel','Itens','Total'],'Propostas_Comerciais');
+};
+window.propostaTXT=(id)=>{
+  const p=getPropostaOrToast(id);if(!p)return;
+  const itens=normalizeCommercialItems(p.itens||[]);
+  const company=getPropostaCompany(p);
+  const rows=[...companyTextRows(company),[],['Numero',p.numero],['Cliente',p.cliente],['Proposta',p.nome],['Status',p.status],['Emissao',fmtD(p.data_emissao)],['Vencimento',fmtD(p.data_vencimento)],['Responsavel',p.responsavel],['Subtotal',fmtV(p.subtotal)],['Desconto',fmtV(p.desconto)],['Total',fmtV(p.total)],[],['Tipo','Nome','Descricao','Qtd','Unid','Valor Unitario','Total'],...itens.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario),(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)]).map(r=>{r[6]=fmtV(r[6]);return r;})];
+  const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(p.numero||'Proposta')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');
+};
+window.propostasXLSX=()=>exportStyledXLSX({sheetName:'Propostas',filename:'Propostas_Comerciais_'+todayISO(),title:'Propostas Comerciais JET',meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${(DB.propostas||[]).length} proposta(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Empresa',key:'empresa',width:32},{header:'Cliente',key:'cliente',width:28},{header:'Proposta',key:'nome',width:36},{header:'Status',key:'status',width:16,badgeMap:PROPOSTA_STATUS_MAP},{header:'Emissão',key:'emissao',width:14},{header:'Vencimento',key:'vencimento',width:14},{header:'Responsável',key:'responsavel',width:18},{header:'Itens',key:'itens',width:10,align:'center'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:propostaExportRows()});
+window.propostaXLSX=(id)=>{
+  const p=getPropostaOrToast(id);if(!p)return;
+  const itens=normalizeCommercialItems(p.itens||[]);
+  const company=getPropostaCompany(p);
+  return exportStyledXLSX({sheetName:'Proposta',filename:p.numero||'Proposta_JET',title:`Proposta Comercial - ${p.numero||''}`,meta:[...commercialCompanyMetaLines(company),`Cliente: ${p.cliente||'-'}`,`Proposta: ${p.nome||'-'}`,`Emissão: ${fmtD(p.data_emissao)} · Vencimento: ${fmtD(p.data_vencimento)}`,`Total: ${fmtV(p.total)}`].filter(Boolean),columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Tipo',key:'tipo',width:14},{header:'Nome',key:'nome',width:30},{header:'Descrição',key:'descricao',width:42},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor Unit.',key:'valor',width:16,align:'right',type:'currency'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:itens.map((item,index)=>({idx:index+1,tipo:item.tipo,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,total:(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)}))});
+};
 function drawPropostaPDF(p){
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=14,blue=[26,46,107],muted=[96,108,130];
-  const itens=normalizeCommercialItems(p.itens||[]);const rowTotal=item=>(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0);
+  const itens=normalizeCommercialItems(p.itens||[]);const company=getPropostaCompany(p);const rowTotal=item=>(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0);
   doc.setFillColor(...blue);doc.circle(24,24,14,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('JET',24,27,{align:'center'});
-  doc.setTextColor(...blue);doc.setFontSize(19);doc.text('Proposta Comercial',44,17);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(...muted);doc.text('JET Serviços de Engenharia',44,24);doc.text('Documento gerado pelo sistema JET Gestão de Obras',44,30);
+  doc.setTextColor(...blue);doc.setFontSize(19);doc.text('Proposta Comercial',44,17);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(...muted);doc.text('JET Gestão de Obras',44,24);doc.text('Documento gerado pelo sistema JET',44,30);
   doc.setDrawColor(...blue);doc.setLineWidth(.5);doc.roundedRect(145,12,51,22,2,2);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...blue);doc.text('ORÇAMENTO',170.5,20,{align:'center'});doc.setFontSize(11);doc.text(p.numero||'-',170.5,27,{align:'center'});
   doc.setDrawColor(...blue);doc.line(M,42,W-M,42);
-  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Dados do orçamento',M,52);
+  let baseY=52;
+  if(company){const h=drawCommercialCompanyPDFBlock(doc,company,M,50,182);baseY=50+h+10;doc.setDrawColor(218,224,235);doc.line(M,baseY-5,W-M,baseY-5);}
+  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Dados do orçamento',M,baseY);
   const box=(x,y,w,h,label,value)=>{doc.setDrawColor(218,224,235);doc.setLineWidth(.35);doc.roundedRect(x,y,w,h,2,2);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(45,58,86);doc.text(label,x+4,y+6);doc.setFontSize(10);doc.setTextColor(15,23,42);doc.text(String(value||'-'),x+4,y+13,{maxWidth:w-8});};
-  box(M,57,54,18,'EMISSÃO',fmtD(p.data_emissao));box(M+60,57,54,18,'VENCIMENTO',fmtD(p.data_vencimento));box(M+120,57,62,18,'RESPONSÁVEL',p.responsavel||'-');
-  box(M,81,88,30,'CLIENTE',`${p.cliente||'-'}${p.cnpj?'\nCNPJ: '+p.cnpj:''}${p.inscricao_estadual?'\nIE: '+p.inscricao_estadual:''}`);box(M+94,81,88,30,'CONTATO',`${p.contato||'-'}${p.email?' · '+p.email:''}${p.telefone?'\n'+p.telefone:''}`);
-  box(M,117,182,24,'ENDEREÇO',p.endereco||'-');
-  box(M,147,182,18,'NOME DO ORÇAMENTO',p.nome||'-');
-  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Serviços / Produtos',M,175);
-  doc.autoTable({startY:180,margin:{left:M,right:M},head:[['#','Tipo','Nome','Descrição','Qtd','Unid','Valor unit.','Total']],body:itens.map((item,index)=>[index+1,item.tipo,item.nome,item.descricao||'',item.quantidade,item.unidade,fmtV(item.valor_unitario),fmtV(rowTotal(item))]),styles:{fontSize:8,cellPadding:2.4,textColor:[20,32,60],lineColor:[218,224,235],lineWidth:.2},headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,250,255]},columnStyles:{0:{cellWidth:8,halign:'center'},4:{cellWidth:12,halign:'center'},5:{cellWidth:12,halign:'center'},6:{cellWidth:24,halign:'right'},7:{cellWidth:24,halign:'right'}}});
-  let y=(doc.lastAutoTable?.finalY||178)+12;if(y>230){doc.addPage();y=20;}
+  const y1=baseY+5,y2=y1+24,y3=y2+36,y4=y3+30,sectionY=y4+28,tableY=sectionY+5;
+  box(M,y1,54,18,'EMISSÃO',fmtD(p.data_emissao));box(M+60,y1,54,18,'VENCIMENTO',fmtD(p.data_vencimento));box(M+120,y1,62,18,'RESPONSÁVEL',p.responsavel||'-');
+  box(M,y2,88,30,'CLIENTE',`${p.cliente||'-'}${p.cnpj?'\nCNPJ: '+p.cnpj:''}${p.inscricao_estadual?'\nIE: '+p.inscricao_estadual:''}`);box(M+94,y2,88,30,'CONTATO',`${p.contato||'-'}${p.email?' · '+p.email:''}${p.telefone?'\n'+p.telefone:''}`);
+  box(M,y3,182,24,'ENDEREÇO',p.endereco||'-');
+  box(M,y4,182,18,'NOME DO ORÇAMENTO',p.nome||'-');
+  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Serviços / Produtos',M,sectionY);
+  doc.autoTable({startY:tableY,margin:{left:M,right:M},head:[['#','Tipo','Nome','Descrição','Qtd','Unid','Valor unit.','Total']],body:itens.map((item,index)=>[index+1,item.tipo,item.nome,item.descricao||'',item.quantidade,item.unidade,fmtV(item.valor_unitario),fmtV(rowTotal(item))]),styles:{fontSize:8,cellPadding:2.4,textColor:[20,32,60],lineColor:[218,224,235],lineWidth:.2},headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,250,255]},columnStyles:{0:{cellWidth:8,halign:'center'},4:{cellWidth:12,halign:'center'},5:{cellWidth:12,halign:'center'},6:{cellWidth:24,halign:'right'},7:{cellWidth:24,halign:'right'}}});
+  let y=(doc.lastAutoTable?.finalY||tableY)+12;if(y>230){doc.addPage();y=20;}
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...blue);doc.text('Resumo do orçamento',M,y);y+=6;
   const serv=calcCommercialItemsTotal(itens,'Serviço'),prod=calcCommercialItemsTotal(itens,'Produto'),desp=calcCommercialItemsTotal(itens,'Despesa');
   doc.autoTable({startY:y,margin:{left:M,right:M},head:[['Produtos','Serviços','Despesas','Subtotal','Desconto','Total']],body:[[fmtV(prod),fmtV(serv),fmtV(desp),fmtV(p.subtotal),fmtV(p.desconto),fmtV(p.total)]],styles:{fontSize:9,cellPadding:3,textColor:[20,32,60],halign:'right'},headStyles:{fillColor:[238,243,255],textColor:blue,fontStyle:'bold'},bodyStyles:{fontStyle:'bold'}});
@@ -4987,12 +5076,31 @@ function drawPropostaPDF(p){
   const pages=doc.getNumberOfPages();for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`JET Gestão de Obras · Página ${i}/${pages}`,W/2,291,{align:'center'});}return doc;
 }
 window.propostaPDF=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const doc=drawPropostaPDF(p);if(doc){doc.save(`${xlsxFileName(p.numero||'Proposta_JET')}.pdf`);toast('PDF exportado!');}};
-window.propostasPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=propostaExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Propostas Comerciais JET',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Número','Cliente','Proposta','Status','Emissão','Venc.','Resp.','Itens','Total']],body:rows.map(r=>[r.idx,r.numero,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Propostas_Comerciais_JET.pdf');toast('PDF exportado!');};
+window.propostasPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=propostaExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Propostas Comerciais JET',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Número','Empresa','Cliente','Proposta','Status','Emissão','Venc.','Resp.','Itens','Total']],body:rows.map(r=>[r.idx,r.numero,r.empresa,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Propostas_Comerciais_JET.pdf');toast('PDF exportado!');};
 window.cotacoesTXT=()=>{const rows=cotacaoExportRows();exportTXT(rows.map(r=>[r.item,r.obra,r.empresa,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),['Cotacao','Obra','Empresa','Status','Data','Itens','Fornecedores','Melhor preco','Vencedor'],'Cotacoes_Comerciais');};
-window.cotacaoTXT=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const company=getCotacaoCompany(c);const rows=[['Cotacao',c.item||''],['Obra',c.obra||''],['Empresa',company?.nome||''],['CNPJ',company?.cnpj||''],['Status',normalizeCotacaoStatus(c.status)],['Data',fmtD(c.data)],[],['Itens'],['Tipo','Nome','Descricao','Qtd','Unid','Valor referencia'],...base.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),[],['Fornecedores'],['Fornecedor','Preco total','Prazo','Observacao','Vencedor'],...forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':''])];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(c.item||'Cotacao')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
-window.cotacaoXLSX=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[...base.map((item,index)=>({grupo:'Item',idx:index+1,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,observacao:item.tipo,vencedor:''})),...forn.map((item,index)=>({grupo:'Fornecedor',idx:index+1,nome:item.fornecedor,descricao:item.prazo,quantidade:'',unidade:'',valor:item.preco,observacao:item.observacao,vencedor:item.escolhido?'Sim':''}))];return exportStyledXLSX({sheetName:'Cotação',filename:c.item||'Cotacao_JET',title:`Cotação Comercial - ${c.item||''}`,meta:[`Obra: ${c.obra||'-'}`,getCotacaoCompany(c)?`Empresa: ${getCotacaoCompany(c).nome} · CNPJ: ${getCotacaoCompany(c).cnpj}`:'',`Status: ${normalizeCotacaoStatus(c.status)} · Data: ${fmtD(c.data)}`],columns:[{header:'Grupo',key:'grupo',width:14},{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:32},{header:'Descrição/Prazo',key:'descricao',width:36},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Obs/Tipo',key:'observacao',width:34},{header:'Vencedor',key:'vencedor',width:12,align:'center'}],rows});};
+window.cotacaoTXT=(id)=>{
+  const c=getCotacaoOrToast(id);if(!c)return;
+  const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const company=getCotacaoCompany(c);
+  const rows=[...companyTextRows(company),[],['Cotacao',c.item||''],['Obra',c.obra||''],['Status',normalizeCotacaoStatus(c.status)],['Data',fmtD(c.data)],[],['Itens'],['Tipo','Nome','Descricao','Qtd','Unid','Valor referencia'],...base.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),[],['Fornecedores'],['Fornecedor','Preco total','Prazo','Observacao','Vencedor'],...forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':''])];
+  const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(c.item||'Cotacao')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');
+};
+window.cotacaoXLSX=(id)=>{
+  const c=getCotacaoOrToast(id);if(!c)return;
+  const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const company=getCotacaoCompany(c);
+  const rows=[...base.map((item,index)=>({grupo:'Item',idx:index+1,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,observacao:item.tipo,vencedor:''})),...forn.map((item,index)=>({grupo:'Fornecedor',idx:index+1,nome:item.fornecedor,descricao:item.prazo,quantidade:'',unidade:'',valor:item.preco,observacao:item.observacao,vencedor:item.escolhido?'Sim':''}))];
+  return exportStyledXLSX({sheetName:'Cotação',filename:c.item||'Cotacao_JET',title:`Cotação Comercial - ${c.item||''}`,meta:[...commercialCompanyMetaLines(company),`Obra: ${c.obra||'-'}`,`Status: ${normalizeCotacaoStatus(c.status)} · Data: ${fmtD(c.data)}`].filter(Boolean),columns:[{header:'Grupo',key:'grupo',width:14},{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:32},{header:'Descrição/Prazo',key:'descricao',width:36},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Obs/Tipo',key:'observacao',width:34},{header:'Vencedor',key:'vencedor',width:12,align:'center'}],rows});
+};
 window.cotacoesPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=cotacaoExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Mapa de Cotações Comerciais',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Cotação','Obra','Empresa','Status','Data','Itens','Fornecedores','Melhor preço','Vencedor']],body:rows.map(r=>[r.idx,r.item,r.obra,r.empresa,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Cotacoes_Comerciais_JET.pdf');toast('PDF exportado!');};
-window.cotacaoPDF=(id)=>{const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);const company=getCotacaoCompany(c);let startY=34;if(company){doc.setDrawColor(218,224,235);doc.roundedRect(14,30,182,20,2,2);doc.setFont('helvetica','bold');doc.setTextColor(26,46,107);doc.setFontSize(8);doc.text(company.nome||'',18,36,{maxWidth:174});doc.setFont('helvetica','normal');doc.setTextColor(96,108,130);doc.text(`CNPJ: ${company.cnpj||'-'} · IE: ${company.inscricao_estadual||'-'}`,18,42,{maxWidth:174});doc.text(company.endereco||formatCommercialCompanyAddress(company)||'',18,47,{maxWidth:174});startY=58;}doc.autoTable({startY,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.autoTable({startY:(doc.lastAutoTable?.finalY||34)+10,head:[['Fornecedor','Preço total','Prazo','Observação','Vencedor']],body:forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':'']),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save(`${xlsxFileName(c.item||'Cotacao_JET')}.pdf`);toast('PDF exportado!');};
+window.cotacaoPDF=(id)=>{
+  const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);
+  doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});
+  doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);
+  const company=getCotacaoCompany(c);let startY=34;if(company){const h=drawCommercialCompanyPDFBlock(doc,company,14,34,182);startY=34+h+8;}
+  doc.autoTable({startY,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});
+  doc.autoTable({startY:(doc.lastAutoTable?.finalY||34)+10,head:[['Fornecedor','Preço total','Prazo','Observação','Vencedor']],body:forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':'']),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});
+  doc.save(`${xlsxFileName(c.item||'Cotacao_JET')}.pdf`);toast('PDF exportado!');
+};
 
 // ALMOXARIFADO EXPORTERS
 window.estoqueCSV=()=>{const e=DB.estoque||[];exportCSV(e.map(x=>[x.item,x.obra,x.qtd,x.unidade,x.tipo||'',x.numero_controle||'',x.responsavel||'',x.entrada,x.saida,x.observacao||'']),['Item','Obra','Qtd','Unidade','Tipo','Nº Controle','Responsável','Entrada','Saída','Observação'],`Estoque`);};
@@ -7093,8 +7201,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426042247",
-  id: "/?build=20260426042247",
+  start_url: "/?build=20260426043620",
+  id: "/?build=20260426043620",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
