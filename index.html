@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426135121">
+<meta name="jet-build" content="20260426143141">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -4754,7 +4754,7 @@ function exportRDOPDF(obra,rdoId){
   const{jsPDF}=window.jspdf;
   const rdos=rdoId?DB.rdo.filter(r=>r.id===rdoId):DB.rdo.filter(r=>r.obra===obra);
   if(!rdos.length){toast('Nenhum RDO encontrado.','#f59e0b');return;}
-  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista'];
   const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,M=14;
@@ -5612,6 +5612,7 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
 <div class="form-group" style="margin-bottom:0"><label>Cliente</label><input id="m-rdo-import-cliente" value="C&A"></div>
 <div class="form-group" style="margin-bottom:0"><label>Prazo contratual</label><input id="m-rdo-import-prazo" value="144 Dias"></div>
 <div class="form-group" style="margin-bottom:0"><label>Contrato</label><input id="m-rdo-import-contrato" value=""></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-import-severino" checked> Incluir Severino como Encarregado de Hidráulica nos RDOs importados</label></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-import-update-existing" checked> Atualizar RDOs já existentes com a distribuição correta do efetivo</label></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de equipes</label><input id="m-rdo-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Equipes por Data”. Se a opção acima estiver marcada, datas já existentes serão recalculadas sem apagar atividades, observações ou fotos.</div></div>
 <div id="m-rdo-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:260px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
@@ -5624,7 +5625,7 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     const gjson=(k,def=[])=>r?(r[k]||def):def;
     const rdoNum=m==='new-rdo'?DB.rdo.filter(rd=>rd.obra===S.obra).length+1:(r?.rdo_numero||'');
     title=m==='new-rdo'?`Novo RDO Nº ${rdoNum}`:`Editar RDO — ${fmtD(r?.data)}`;
-    const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+    const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista'];
     const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
     const efJet=gjson('efetivo_jet',FUNCOES.map(f=>({funcao:f,jet:'',terceiros:''})));
     const efAdm=gjson('efetivo_admin',ADMIN.map(f=>({cargo:f,qtde:'',obs:''})));
@@ -7228,7 +7229,7 @@ window._saveDespesa=async()=>{
 window._saveRDO=async(mode,eid)=>{
   const data=document.getElementById('m-rdata')?.value;if(!data){toast('Data obrigatória.','#ef4444');return;}
   const tempo=document.querySelector('#m-tempo-wrap .weather-opt.active')?.dataset?.v||'Bom';
-  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista'];
   const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
   const jets=Array.from(document.querySelectorAll('.rdo-jet')).map(i=>i.value);
   const tercs=Array.from(document.querySelectorAll('.rdo-terc')).map(i=>i.value);
@@ -7290,16 +7291,17 @@ function rdoImportOptions(){
     autor:document.getElementById('m-rdo-import-autor')?.value?.trim()||'Eng. Cesar',
     cliente:document.getElementById('m-rdo-import-cliente')?.value?.trim()||'C&A',
     contrato:document.getElementById('m-rdo-import-contrato')?.value?.trim()||'',
-    prazo:document.getElementById('m-rdo-import-prazo')?.value?.trim()||'144 Dias'
+    prazo:document.getElementById('m-rdo-import-prazo')?.value?.trim()||'144 Dias',
+    incluirSeverino:!!document.getElementById('m-rdo-import-severino')?.checked
   };
 }
 function rdoDefaultEfetivoJet(jet=0,terceiros=0){
-  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista'];
   return FUNCOES.map(funcao=>({funcao,jet:funcao==='Eletricista'&&jet?String(jet):'',terceiros:funcao==='Eletricista'&&terceiros?String(terceiros):''}));
 }
 function rdoDefaultEfetivoAdmin(qtde=0,autor='Eng. Cesar'){
   const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
-  return ADMIN.map(cargo=>({cargo,qtde:cargo==='Engº Civil'&&qtde?String(qtde):'',obs:cargo==='Engº Civil'&&qtde?autor:''}));
+  return ADMIN.map(cargo=>({cargo,qtde:cargo==='Engº Eletricista'&&qtde?String(qtde):'',obs:cargo==='Engº Eletricista'&&qtde?autor:''}));
 }
 function rdoPersonKey(value=''){
   const aliases={dicio:'joedson',rai:'raionei',ray:'raionei',ney:'neiton',nei:'neiton',nene:'nenem',neneh:'nenem',pade:'pade',pad:'pade',vel:'vell'};
@@ -7308,6 +7310,7 @@ function rdoPersonKey(value=''){
 }
 function rdoFuncaoClass(funcao=''){
   const f=stripAccents(funcao).toLowerCase();
+  if((/\beng|engenheiro/.test(f))&&/eletr/.test(f))return{admin:'Engº Eletricista'};
   if(/\beng|engenheiro/.test(f))return{admin:'Engº Civil'};
   if(/coord/.test(f))return{admin:'Coord. de Obras'};
   if(/encarregado/.test(f)&&/hidraul|encan/.test(f))return{admin:'Encarregado de Hidráulica'};
@@ -7330,7 +7333,7 @@ function rdoFuncaoClass(funcao=''){
   if(/elevador/.test(f))return{mo:'Op. elevador'};
   if(/betoneira/.test(f))return{mo:'Op. betoneira'};
   if(/bomba/.test(f))return{mo:'Op. bombas'};
-  return{mo:'Aux. técnico meio oficial'};
+  return{mo:'Ajud. Eletricista'};
 }
 function rdoFindFuncionarioByName(nome='',obra=''){
   const target=rdoPersonKey(nome);
@@ -7353,7 +7356,7 @@ function rdoFindFuncionarioByName(nome='',obra=''){
   return bestScore>=38?best:null;
 }
 function rdoBuildEfetivoByPeople(nomes=[],obra='',autor='Eng. Cesar'){
-  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista'];
   const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
   const mo=Object.fromEntries(FUNCOES.map(f=>[f,{funcao:f,jet:0,terceiros:0}]));
   const adm=Object.fromEntries(ADMIN.map(c=>[c,{cargo:c,qtde:0,obs:''}]));
@@ -7361,8 +7364,15 @@ function rdoBuildEfetivoByPeople(nomes=[],obra='',autor='Eng. Cesar'){
   nomes.forEach(raw=>{
     const terceiro=/terc|terceir/i.test(stripAccents(raw));
     const clean=String(raw||'').replace(/\([^)]*\)/g,'').trim();
-    if(/^cesar\b/i.test(stripAccents(clean))){
-      adm['Engº Civil'].qtde+=1;adm['Engº Civil'].obs=autor;return;
+    const nameKey=rdoPersonKey(clean);
+    if(nameKey==='cesar'){
+      adm['Engº Eletricista'].qtde+=1;adm['Engº Eletricista'].obs=autor;return;
+    }
+    if(nameKey==='joedson'){
+      adm['Encarregado de Elétrica'].qtde+=1;adm['Encarregado de Elétrica'].obs='Joedson';return;
+    }
+    if(nameKey==='severino'){
+      adm['Encarregado de Hidráulica'].qtde+=1;adm['Encarregado de Hidráulica'].obs='Severino';return;
     }
     const func=rdoFindFuncionarioByName(clean,obra);
     const cls=rdoFuncaoClass(func?.funcao||'');
@@ -7372,7 +7382,7 @@ function rdoBuildEfetivoByPeople(nomes=[],obra='',autor='Eng. Cesar'){
       adm[cls.admin].obs=[adm[cls.admin].obs,clean].filter(Boolean).join(', ');
       return;
     }
-    const key=cls.mo||'Aux. técnico meio oficial';
+    const key=cls.mo||'Ajud. Eletricista';
     if(isThird)mo[key].terceiros+=1;else mo[key].jet+=1;
     if(!func)unmatched.push(clean);
   });
@@ -7383,6 +7393,19 @@ function rdoBuildEfetivoByPeople(nomes=[],obra='',autor='Eng. Cesar'){
   const admin=efAdm.reduce((s,e)=>s+(parseInt(e.qtde)||0),0);
   const distribuicao=efJet.filter(e=>(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)>0).map(e=>`${e.funcao}: ${(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)}`).concat(efAdm.filter(e=>parseInt(e.qtde)||0).map(e=>`${e.cargo}: ${e.qtde}`));
   return{efetivo_jet:efJet,efetivo_admin:efAdm,jet,terceiros,admin,distribuicao,unmatched};
+}
+function rdoEnsureAdmin(dist,cargo,nome){
+  if(!dist||!cargo)return dist;
+  const row=(dist.efetivo_admin||[]).find(e=>e.cargo===cargo);
+  if(row&&!(parseInt(row.qtde)||0)){
+    row.qtde='1';
+    row.obs=nome||row.obs||'';
+    dist.admin=(dist.admin||0)+1;
+  }else if(row&&nome&&!String(row.obs||'').includes(nome)){
+    row.obs=[row.obs,nome].filter(Boolean).join(', ');
+  }
+  dist.distribuicao=(dist.efetivo_jet||[]).filter(e=>(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)>0).map(e=>`${e.funcao}: ${(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)}`).concat((dist.efetivo_admin||[]).filter(e=>parseInt(e.qtde)||0).map(e=>`${e.cargo}: ${e.qtde}`));
+  return dist;
 }
 function rdoImportBuildRows(rawRows=[]){
   const opts=rdoImportOptions();
@@ -7398,6 +7421,7 @@ function rdoImportBuildRows(rawRows=[]){
     const obs=String(rdoImportCell(row,'Observações','Observacoes')||'');
     const efetivo=qtdPlan||nomes.length;
     const dist=rdoBuildEfetivoByPeople(nomes,opts.obra,opts.autor);
+    if(opts.incluirSeverino&&!nomes.some(n=>rdoPersonKey(n)==='severino'))rdoEnsureAdmin(dist,'Encarregado de Hidráulica','Severino');
     const duplicated=!!existingMap[data]||seen.has(data);
     seen.add(data);
     return{
@@ -7635,8 +7659,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426135121",
-  id: "/?build=20260426135121",
+  start_url: "/?build=20260426143141",
+  id: "/?build=20260426143141",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
