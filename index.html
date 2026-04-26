@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426040210">
+<meta name="jet-build" content="20260426042247">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -690,6 +690,10 @@ html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b
 .proposal-actions{display:flex;gap:8px;flex-wrap:wrap}
 .commercial-subnav{margin-bottom:18px}
 .commercial-form-note{border:1px solid rgba(59,130,246,.16);background:rgba(59,130,246,.08);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.5;margin-bottom:14px}
+.commercial-company-card{display:grid;gap:4px;border:1px solid rgba(59,130,246,.16);background:rgba(79,140,255,.07);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.35}
+.commercial-company-card strong{color:var(--text);font-size:13px}
+.commercial-company-card span{color:var(--text3)}
+html[data-theme="light"] .commercial-company-card{background:#f4f8ff;border-color:#d8e6ff}
 .commercial-item-head,.commercial-item-row{display:grid;grid-template-columns:105px 1.05fr 1.25fr 74px 78px 110px 34px;gap:6px;align-items:center;margin-bottom:6px}
 .commercial-item-head span{font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:0 2px}
 .commercial-item-row input,.commercial-item-row select{min-width:0}
@@ -1087,6 +1091,60 @@ const ALMOX_TRANSFER_STATUS=['Separado','Em transito','Recebido'];
 const HOME_NOTICE_PRIORITIES=['Alta','Media','Baixa'];
 const PROPOSTA_STATUS_LIST=['Rascunho','Enviada','Aprovada','Recusada','Vencida'];
 const PROPOSTA_STATUS_MAP={Rascunho:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Enviada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Recusada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'},Vencida:{bg:'#27150a',c:'#fb923c',d:'#f97316'}};
+const COMMERCIAL_COMPANIES=[
+  {
+    id:'jet-servicos',
+    short:'JET',
+    nome:'JET SERVIÇOS E INSTALAÇÕES LTDA',
+    cnpj:'43.274.544/0001-54',
+    inscricao_estadual:'0004131934.00-83',
+    rua:'RUA RAUL CORREA, 370 - LETRA A',
+    bairro:'FUNCIONÁRIOS',
+    cidade:'MONTES CLAROS - MG',
+    cep:'39.401-029',
+    email:'claraadm@jetmanutencoes.com',
+    telefone:'(38) 9.9944-2157 / (38) 3220-8607',
+    contato:'Clara ADM'
+  },
+  {
+    id:'sdai',
+    short:'SDAI',
+    nome:'SDAI - SISTEMAS DE DETECÇÃO E ALARME DE INCÊNDIO MINAS GERAIS LTDA',
+    cnpj:'03.709.370/0001-90',
+    inscricao_estadual:'ISENTA',
+    rua:'RUA RAUL CORREA, 370 - LETRA C',
+    bairro:'FUNCIONÁRIOS',
+    cidade:'MONTES CLAROS - MG',
+    cep:'39.401-029',
+    email:'claraadm@jetmanutencoes.com',
+    telefone:'(38) 9 9944-2157 / (38) 3220-8607',
+    contato:'Clara ADM'
+  }
+];
+function formatCommercialCompanyAddress(company={}){
+  return [company.rua,company.bairro?`Bairro ${company.bairro}`:'',company.cidade,company.cep?`CEP ${company.cep}`:''].filter(Boolean).join(' - ');
+}
+function getCommercialCompany(idOrName=''){
+  const key=String(idOrName||'').trim();
+  if(!key)return null;
+  const clean=key.replace(/\D/g,'');
+  return COMMERCIAL_COMPANIES.find(c=>c.id===key||c.short===key||c.nome===key||c.cnpj.replace(/\D/g,'')===clean)||null;
+}
+function normalizeCommercialCompany(raw=null){
+  if(!raw)return null;
+  const base=typeof raw==='string'?getCommercialCompany(raw):(raw?.id?getCommercialCompany(raw.id):getCommercialCompany(raw?.cnpj||raw?.nome||''));
+  const merged={...(base||{}),...(typeof raw==='object'?raw:{})};
+  if(!merged.nome&&!merged.cnpj&&!merged.id)return null;
+  return {...merged,endereco:merged.endereco||formatCommercialCompanyAddress(merged)};
+}
+function commercialCompanyOptions(selected=''){
+  return `<option value="">Preencher manualmente</option>${COMMERCIAL_COMPANIES.map(c=>`<option value="${esc(c.id)}"${selected===c.id?' selected':''}>${esc(c.short)} - ${esc(c.nome)}</option>`).join('')}`;
+}
+function renderCommercialCompanyPreview(company){
+  const c=normalizeCommercialCompany(company);
+  if(!c)return '<span style="font-size:12px;color:var(--text3)">Nenhuma empresa selecionada.</span>';
+  return `<div class="commercial-company-card"><strong>${esc(c.nome)}</strong><span>CNPJ: ${esc(c.cnpj||'-')} · IE: ${esc(c.inscricao_estadual||'-')}</span><span>${esc(c.endereco||formatCommercialCompanyAddress(c)||'-')}</span><span>${esc(c.email||'-')} · ${esc(c.telefone||'-')}</span></div>`;
+}
 const SUPABASE_MENTION_EMAILS=[
   'caio@jetmanutencoes.com',
   'cesar@jetmanutencoes.com',
@@ -1307,8 +1365,10 @@ function cleanProposta(row={}){
   return{
     id:String(row?.id||('prop-'+uid())),
     numero:String(row?.numero||'').trim(),
+    empresa_id:String(row?.empresa_id||row?.empresaId||getCommercialCompany(row?.cnpj||'')?.id||'').trim(),
     cliente:String(row?.cliente||'').trim(),
     cnpj:String(row?.cnpj||row?.cpf_cnpj||'').trim(),
+    inscricao_estadual:String(row?.inscricao_estadual||row?.inscricao||row?.ie||'').trim(),
     endereco:String(row?.endereco||'').trim(),
     contato:String(row?.contato||'').trim(),
     email:String(row?.email||'').trim(),
@@ -1761,12 +1821,15 @@ function normalizeCotacaoItem(entry={}){
   const raw=typeof entry==='string'?{fornecedor:entry}:entry||{};
   const itens=normalizeCommercialItems(raw.itens||raw.items||[]);
   const preco=moneyNumber(raw.preco??raw.valor_total??raw.total);
+  const empresa=normalizeCommercialCompany(raw.empresa||raw.company||raw.empresa_id||raw.empresaId||null);
   return{
     fornecedor:String(raw.fornecedor||raw.nome||'').trim(),
     preco,
     prazo:String(raw.prazo||raw.prazo_dias||'').trim(),
     observacao:String(raw.observacao||raw.obs||'').trim(),
     itens,
+    empresa_id:String(raw.empresa_id||raw.empresaId||empresa?.id||'').trim(),
+    empresa,
     escolhido:!!raw.escolhido
   };
 }
@@ -2567,20 +2630,27 @@ function renderCotacaoComercialCard(c){
   const baseItems=getCotacaoBaseItems(c);
   const melhor=cotacaoMelhorPreco(fornecedores);
   const vencedor=cotacaoVencedor(fornecedores);
+  const company=getCotacaoCompany(c);
   const expanded=window._cotExpanded&&window._cotExpanded[c.id];
-  return `<div class="quote-card"><div class="quote-card-head"><div><div class="quote-card-title">${esc(c.item||'Cotação sem título')}</div><div class="quote-card-sub">${esc(c.obra||'Sem obra')} · ${fmtD(c.data)}${vencedor?` · vencedor: ${esc(vencedor.fornecedor)}`:''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${makeCd(COTACAO_STATUS_LIST,COTACAO_STATUS_MAP,normalizeCotacaoStatus(c.status),`window._updateCotacaoStatus('${id}',VAL)`)}<button class="btn btn-secondary btn-sm" onclick="window._toggleCotacaoExpand('${id}')">${expanded?'Ocultar':'Expandir'}</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoTXT('${id}')">TXT</button></div></div><div class="quote-metrics"><span class="quote-metric">${baseItems.length} item(ns)</span><span class="quote-metric">${fornecedores.length} fornecedor(es)</span><span class="quote-metric">${melhor!=null?`Melhor ${fmtV(melhor)}`:'Aguardando preço'}</span></div>${expanded?renderCotacaoComercialExpanded(c,fornecedores,baseItems):''}</div>`;
+  return `<div class="quote-card"><div class="quote-card-head"><div><div class="quote-card-title">${esc(c.item||'Cotação sem título')}</div><div class="quote-card-sub">${esc(c.obra||'Sem obra')} · ${fmtD(c.data)}${company?` · ${esc(company.short||company.nome)}`:''}${vencedor?` · vencedor: ${esc(vencedor.fornecedor)}`:''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${makeCd(COTACAO_STATUS_LIST,COTACAO_STATUS_MAP,normalizeCotacaoStatus(c.status),`window._updateCotacaoStatus('${id}',VAL)`)}<button class="btn btn-secondary btn-sm" onclick="window._toggleCotacaoExpand('${id}')">${expanded?'Ocultar':'Expandir'}</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoTXT('${id}')">TXT</button></div></div><div class="quote-metrics"><span class="quote-metric">${baseItems.length} item(ns)</span><span class="quote-metric">${fornecedores.length} fornecedor(es)</span><span class="quote-metric">${melhor!=null?`Melhor ${fmtV(melhor)}`:'Aguardando preço'}</span></div>${expanded?renderCotacaoComercialExpanded(c,fornecedores,baseItems):''}</div>`;
 }
 function renderCotacaoComercialExpanded(c,fornecedores=[],baseItems=[]){
   const id=escJs(c.id);
   const itemRows=baseItems.length?baseItems.map(item=>`<tr><td>${esc(item.nome)}</td><td>${esc(item.descricao||'')}</td><td style="text-align:center">${esc(item.quantidade)}</td><td style="text-align:center">${esc(item.unidade)}</td></tr>`).join(''):`<tr><td colspan="4" class="quote-empty">Sem itens detalhados nesta cotação.</td></tr>`;
   const vendorRows=fornecedores.length?fornecedores.map((item,index)=>`<tr class="${item.escolhido?'quote-winner':''}"><td style="font-weight:700;color:var(--text)">${esc(item.fornecedor)}</td><td><input class="ci ci-num" type="number" step="0.01" value="${item.preco!=null?item.preco:''}" placeholder="0,00" onblur="window._updateCotacaoFornecedorField('${id}',${index},'preco',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.prazo||'')}" placeholder="Ex: 3 dias" onblur="window._updateCotacaoFornecedorField('${id}',${index},'prazo',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.observacao||'')}" placeholder="Condições, frete, garantia..." onblur="window._updateCotacaoFornecedorField('${id}',${index},'observacao',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><button class="btn ${item.escolhido?'btn-success':'btn-secondary'} btn-sm" onclick="window._setCotacaoVencedor('${id}',${index})">${item.escolhido?'Selecionado':'Marcar vencedor'}</button></td></tr>`).join(''):`<tr><td colspan="5" class="quote-empty">Nenhum fornecedor selecionado.</td></tr>`;
-  return `<div class="commercial-quote-expanded"><div class="quote-vendor-table"><table><thead><tr><th>Item</th><th>Descrição</th><th style="width:80px">Qtd</th><th style="width:80px">Unid</th></tr></thead><tbody>${itemRows}</tbody></table></div><div class="quote-vendor-table" style="margin-top:12px"><table><thead><tr><th>Fornecedor</th><th style="width:130px">Valor total</th><th style="width:130px">Prazo</th><th>Observação</th><th style="width:140px">Vencedor</th></tr></thead><tbody>${vendorRows}</tbody></table></div></div>`;
+  const company=getCotacaoCompany(c);
+  return `<div class="commercial-quote-expanded">${company?renderCommercialCompanyPreview(company):''}<div class="quote-vendor-table"><table><thead><tr><th>Item</th><th>Descrição</th><th style="width:80px">Qtd</th><th style="width:80px">Unid</th></tr></thead><tbody>${itemRows}</tbody></table></div><div class="quote-vendor-table" style="margin-top:12px"><table><thead><tr><th>Fornecedor</th><th style="width:130px">Valor total</th><th style="width:130px">Prazo</th><th>Observação</th><th style="width:140px">Vencedor</th></tr></thead><tbody>${vendorRows}</tbody></table></div></div>`;
 }
 function getCotacaoBaseItems(c){
   const fornecedores=normalizeCotacaoItems(c?.cotacoes||[]);
   const first=fornecedores.find(f=>f.itens&&f.itens.length);
   if(first)return normalizeCommercialItems(first.itens);
   return normalizeCommercialItems(c?.itens||[]);
+}
+function getCotacaoCompany(c){
+  const fornecedores=normalizeCotacaoItems(c?.cotacoes||[]);
+  const found=fornecedores.find(f=>f.empresa||f.empresa_id);
+  return normalizeCommercialCompany(found?.empresa||found?.empresa_id||c?.empresa||c?.empresa_id||null);
 }
 
 function renderEscritorioModule(){
@@ -4866,14 +4936,14 @@ window.cotacoesCSV=()=>{
   exportCSV(rows,['Item','Obra','Status','Data','Fornecedores','Melhor Preço','Vencedor'],'Cotacoes');
 };
 window.cotacoesXLSX=()=>{
-  const rows=DB.cotacoes||[];
+  const rows=cotacaoExportRows(DB.cotacoes||[]);
   return exportStyledXLSX({
     sheetName:'Cotações',
     filename:'Cotacoes_'+new Date().toISOString().slice(0,10),
     title:'Mapa de Cotações',
     meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} processo(s)`],
-    columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Item',key:'item',width:30},{header:'Obra',key:'obra',width:20},{header:'Status',key:'status',width:16,badgeMap:COTACAO_STATUS_MAP},{header:'Data',key:'data',width:14},{header:'Fornecedores',key:'fornecedores',width:34},{header:'Melhor Preço',key:'melhor',width:16,align:'right',type:'currency'},{header:'Vencedor',key:'vencedor',width:20}],
-    rows:rows.map((c,index)=>{const itens=normalizeCotacaoItems(c.cotacoes||[]);const vencedor=cotacaoVencedor(itens);return{idx:index+1,item:c.item||'',obra:c.obra||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),melhor:cotacaoMelhorPreco(itens),vencedor:vencedor?.fornecedor||''};})
+    columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Item',key:'item',width:30},{header:'Obra',key:'obra',width:20},{header:'Empresa',key:'empresa',width:34},{header:'Status',key:'status',width:16,badgeMap:COTACAO_STATUS_MAP},{header:'Data',key:'data',width:14},{header:'Fornecedores',key:'fornecedores',width:34},{header:'Melhor Preço',key:'melhor',width:16,align:'right',type:'currency'},{header:'Vencedor',key:'vencedor',width:20}],
+    rows
   });
 };
 
@@ -4882,7 +4952,7 @@ function propostaExportRows(propostas=DB.propostas||[]){
   return cleanPropostas(propostas).map((p,index)=>({idx:index+1,numero:p.numero||'',cliente:p.cliente||'',nome:p.nome||'',status:p.status||'Rascunho',emissao:fmtD(p.data_emissao),vencimento:fmtD(p.data_vencimento),responsavel:p.responsavel||'',itens:(p.itens||[]).length,subtotal:p.subtotal||0,desconto:p.desconto||0,total:p.total||0}));
 }
 function cotacaoExportRows(cotacoes=DB.cotacoes||[]){
-  return (cotacoes||[]).map((c,index)=>{const itens=normalizeCotacaoItems(c.cotacoes||[]);const vencedor=cotacaoVencedor(itens);const melhor=cotacaoMelhorPreco(itens);return{idx:index+1,item:c.item||'',obra:c.obra||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),itens:getCotacaoBaseItems(c).length,melhor,melhorTexto:melhor!=null?fmtV(melhor):'',vencedor:vencedor?.fornecedor||''};});
+  return (cotacoes||[]).map((c,index)=>{const itens=normalizeCotacaoItems(c.cotacoes||[]);const vencedor=cotacaoVencedor(itens);const melhor=cotacaoMelhorPreco(itens);const company=getCotacaoCompany(c);return{idx:index+1,item:c.item||'',obra:c.obra||'',empresa:company?.nome||'',status:normalizeCotacaoStatus(c.status),data:fmtD(c.data),fornecedores:itens.map(item=>item.fornecedor).join(', '),itens:getCotacaoBaseItems(c).length,melhor,melhorTexto:melhor!=null?fmtV(melhor):'',vencedor:vencedor?.fornecedor||''};});
 }
 function getPropostaOrToast(id){const p=cleanPropostas(DB.propostas||[]).find(item=>item.id===id);if(!p)toast('Proposta não encontrada.','#ef4444');return p;}
 function getCotacaoOrToast(id){const c=(DB.cotacoes||[]).find(item=>item.id===id);if(!c)toast('Cotação não encontrada.','#ef4444');return c;}
@@ -4901,11 +4971,11 @@ function drawPropostaPDF(p){
   doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Dados do orçamento',M,52);
   const box=(x,y,w,h,label,value)=>{doc.setDrawColor(218,224,235);doc.setLineWidth(.35);doc.roundedRect(x,y,w,h,2,2);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(45,58,86);doc.text(label,x+4,y+6);doc.setFontSize(10);doc.setTextColor(15,23,42);doc.text(String(value||'-'),x+4,y+13,{maxWidth:w-8});};
   box(M,57,54,18,'EMISSÃO',fmtD(p.data_emissao));box(M+60,57,54,18,'VENCIMENTO',fmtD(p.data_vencimento));box(M+120,57,62,18,'RESPONSÁVEL',p.responsavel||'-');
-  box(M,81,88,28,'CLIENTE',`${p.cliente||'-'}${p.cnpj?'\n'+p.cnpj:''}`);box(M+94,81,88,28,'CONTATO',`${p.contato||'-'}${p.email?' · '+p.email:''}${p.telefone?'\n'+p.telefone:''}`);
-  box(M,115,182,24,'ENDEREÇO',p.endereco||'-');
-  box(M,145,182,18,'NOME DO ORÇAMENTO',p.nome||'-');
-  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Serviços / Produtos',M,173);
-  doc.autoTable({startY:178,margin:{left:M,right:M},head:[['#','Tipo','Nome','Descrição','Qtd','Unid','Valor unit.','Total']],body:itens.map((item,index)=>[index+1,item.tipo,item.nome,item.descricao||'',item.quantidade,item.unidade,fmtV(item.valor_unitario),fmtV(rowTotal(item))]),styles:{fontSize:8,cellPadding:2.4,textColor:[20,32,60],lineColor:[218,224,235],lineWidth:.2},headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,250,255]},columnStyles:{0:{cellWidth:8,halign:'center'},4:{cellWidth:12,halign:'center'},5:{cellWidth:12,halign:'center'},6:{cellWidth:24,halign:'right'},7:{cellWidth:24,halign:'right'}}});
+  box(M,81,88,30,'CLIENTE',`${p.cliente||'-'}${p.cnpj?'\nCNPJ: '+p.cnpj:''}${p.inscricao_estadual?'\nIE: '+p.inscricao_estadual:''}`);box(M+94,81,88,30,'CONTATO',`${p.contato||'-'}${p.email?' · '+p.email:''}${p.telefone?'\n'+p.telefone:''}`);
+  box(M,117,182,24,'ENDEREÇO',p.endereco||'-');
+  box(M,147,182,18,'NOME DO ORÇAMENTO',p.nome||'-');
+  doc.setFontSize(12);doc.setTextColor(...blue);doc.setFont('helvetica','bold');doc.text('Serviços / Produtos',M,175);
+  doc.autoTable({startY:180,margin:{left:M,right:M},head:[['#','Tipo','Nome','Descrição','Qtd','Unid','Valor unit.','Total']],body:itens.map((item,index)=>[index+1,item.tipo,item.nome,item.descricao||'',item.quantidade,item.unidade,fmtV(item.valor_unitario),fmtV(rowTotal(item))]),styles:{fontSize:8,cellPadding:2.4,textColor:[20,32,60],lineColor:[218,224,235],lineWidth:.2},headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[247,250,255]},columnStyles:{0:{cellWidth:8,halign:'center'},4:{cellWidth:12,halign:'center'},5:{cellWidth:12,halign:'center'},6:{cellWidth:24,halign:'right'},7:{cellWidth:24,halign:'right'}}});
   let y=(doc.lastAutoTable?.finalY||178)+12;if(y>230){doc.addPage();y=20;}
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...blue);doc.text('Resumo do orçamento',M,y);y+=6;
   const serv=calcCommercialItemsTotal(itens,'Serviço'),prod=calcCommercialItemsTotal(itens,'Produto'),desp=calcCommercialItemsTotal(itens,'Despesa');
@@ -4918,11 +4988,11 @@ function drawPropostaPDF(p){
 }
 window.propostaPDF=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const doc=drawPropostaPDF(p);if(doc){doc.save(`${xlsxFileName(p.numero||'Proposta_JET')}.pdf`);toast('PDF exportado!');}};
 window.propostasPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=propostaExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Propostas Comerciais JET',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Número','Cliente','Proposta','Status','Emissão','Venc.','Resp.','Itens','Total']],body:rows.map(r=>[r.idx,r.numero,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Propostas_Comerciais_JET.pdf');toast('PDF exportado!');};
-window.cotacoesTXT=()=>{const rows=cotacaoExportRows();exportTXT(rows.map(r=>[r.item,r.obra,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),['Cotacao','Obra','Status','Data','Itens','Fornecedores','Melhor preco','Vencedor'],'Cotacoes_Comerciais');};
-window.cotacaoTXT=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[['Cotacao',c.item||''],['Obra',c.obra||''],['Status',normalizeCotacaoStatus(c.status)],['Data',fmtD(c.data)],[],['Itens'],['Tipo','Nome','Descricao','Qtd','Unid','Valor referencia'],...base.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),[],['Fornecedores'],['Fornecedor','Preco total','Prazo','Observacao','Vencedor'],...forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':''])];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(c.item||'Cotacao')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
-window.cotacaoXLSX=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[...base.map((item,index)=>({grupo:'Item',idx:index+1,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,observacao:item.tipo,vencedor:''})),...forn.map((item,index)=>({grupo:'Fornecedor',idx:index+1,nome:item.fornecedor,descricao:item.prazo,quantidade:'',unidade:'',valor:item.preco,observacao:item.observacao,vencedor:item.escolhido?'Sim':''}))];return exportStyledXLSX({sheetName:'Cotação',filename:c.item||'Cotacao_JET',title:`Cotação Comercial - ${c.item||''}`,meta:[`Obra: ${c.obra||'-'}`,`Status: ${normalizeCotacaoStatus(c.status)} · Data: ${fmtD(c.data)}`],columns:[{header:'Grupo',key:'grupo',width:14},{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:32},{header:'Descrição/Prazo',key:'descricao',width:36},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Obs/Tipo',key:'observacao',width:34},{header:'Vencedor',key:'vencedor',width:12,align:'center'}],rows});};
-window.cotacoesPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=cotacaoExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Mapa de Cotações Comerciais',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Cotação','Obra','Status','Data','Itens','Fornecedores','Melhor preço','Vencedor']],body:rows.map(r=>[r.idx,r.item,r.obra,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Cotacoes_Comerciais_JET.pdf');toast('PDF exportado!');};
-window.cotacaoPDF=(id)=>{const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);doc.autoTable({startY:34,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.autoTable({startY:(doc.lastAutoTable?.finalY||34)+10,head:[['Fornecedor','Preço total','Prazo','Observação','Vencedor']],body:forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':'']),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save(`${xlsxFileName(c.item||'Cotacao_JET')}.pdf`);toast('PDF exportado!');};
+window.cotacoesTXT=()=>{const rows=cotacaoExportRows();exportTXT(rows.map(r=>[r.item,r.obra,r.empresa,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),['Cotacao','Obra','Empresa','Status','Data','Itens','Fornecedores','Melhor preco','Vencedor'],'Cotacoes_Comerciais');};
+window.cotacaoTXT=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const company=getCotacaoCompany(c);const rows=[['Cotacao',c.item||''],['Obra',c.obra||''],['Empresa',company?.nome||''],['CNPJ',company?.cnpj||''],['Status',normalizeCotacaoStatus(c.status)],['Data',fmtD(c.data)],[],['Itens'],['Tipo','Nome','Descricao','Qtd','Unid','Valor referencia'],...base.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),[],['Fornecedores'],['Fornecedor','Preco total','Prazo','Observacao','Vencedor'],...forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':''])];const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(c.item||'Cotacao')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');};
+window.cotacaoXLSX=(id)=>{const c=getCotacaoOrToast(id);if(!c)return;const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);const rows=[...base.map((item,index)=>({grupo:'Item',idx:index+1,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,observacao:item.tipo,vencedor:''})),...forn.map((item,index)=>({grupo:'Fornecedor',idx:index+1,nome:item.fornecedor,descricao:item.prazo,quantidade:'',unidade:'',valor:item.preco,observacao:item.observacao,vencedor:item.escolhido?'Sim':''}))];return exportStyledXLSX({sheetName:'Cotação',filename:c.item||'Cotacao_JET',title:`Cotação Comercial - ${c.item||''}`,meta:[`Obra: ${c.obra||'-'}`,getCotacaoCompany(c)?`Empresa: ${getCotacaoCompany(c).nome} · CNPJ: ${getCotacaoCompany(c).cnpj}`:'',`Status: ${normalizeCotacaoStatus(c.status)} · Data: ${fmtD(c.data)}`],columns:[{header:'Grupo',key:'grupo',width:14},{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:32},{header:'Descrição/Prazo',key:'descricao',width:36},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Obs/Tipo',key:'observacao',width:34},{header:'Vencedor',key:'vencedor',width:12,align:'center'}],rows});};
+window.cotacoesPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const rows=cotacaoExportRows();doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,46,107);doc.text('Mapa de Cotações Comerciais',14,16);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')}`,14,22);doc.autoTable({startY:28,head:[['#','Cotação','Obra','Empresa','Status','Data','Itens','Fornecedores','Melhor preço','Vencedor']],body:rows.map(r=>[r.idx,r.item,r.obra,r.empresa,r.status,r.data,r.itens,r.fornecedores,r.melhorTexto,r.vencedor]),styles:{fontSize:8,cellPadding:2.3},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save('Cotacoes_Comerciais_JET.pdf');toast('PDF exportado!');};
+window.cotacaoPDF=(id)=>{const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);const company=getCotacaoCompany(c);let startY=34;if(company){doc.setDrawColor(218,224,235);doc.roundedRect(14,30,182,20,2,2);doc.setFont('helvetica','bold');doc.setTextColor(26,46,107);doc.setFontSize(8);doc.text(company.nome||'',18,36,{maxWidth:174});doc.setFont('helvetica','normal');doc.setTextColor(96,108,130);doc.text(`CNPJ: ${company.cnpj||'-'} · IE: ${company.inscricao_estadual||'-'}`,18,42,{maxWidth:174});doc.text(company.endereco||formatCommercialCompanyAddress(company)||'',18,47,{maxWidth:174});startY=58;}doc.autoTable({startY,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.autoTable({startY:(doc.lastAutoTable?.finalY||34)+10,head:[['Fornecedor','Preço total','Prazo','Observação','Vencedor']],body:forn.map(item=>[item.fornecedor,fmtV(item.preco),item.prazo,item.observacao,item.escolhido?'Sim':'']),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});doc.save(`${xlsxFileName(c.item||'Cotacao_JET')}.pdf`);toast('PDF exportado!');};
 
 // ALMOXARIFADO EXPORTERS
 window.estoqueCSV=()=>{const e=DB.estoque||[];exportCSV(e.map(x=>[x.item,x.obra,x.qtd,x.unidade,x.tipo||'',x.numero_controle||'',x.responsavel||'',x.entrada,x.saida,x.observacao||'']),['Item','Obra','Qtd','Unidade','Tipo','Nº Controle','Responsável','Entrada','Saída','Observação'],`Estoque`);};
@@ -5526,10 +5596,13 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
       responsavel:prop.responsavel||getCurrentUserHandle(),
       itens:prop.itens&&prop.itens.length?prop.itens:[{tipo:'Serviço',nome:'',descricao:'',quantidade:1,unidade:'un',valor_unitario:''}]
     });
+    const selectedCompany=base.empresa_id||getCommercialCompany(base.cnpj||'')?.id||'';
     title=isEdit?'Editar Proposta':'Nova Proposta';
     body=`<div>
 <div class="commercial-form-note">Modelo inspirado na proposta enviada: dados do orçamento, cliente, tabela de serviços/produtos e resumo final para aceite.</div>
 <div class="form-grid-2" style="margin-bottom:14px">
+  <div class="form-group"><label>Pré preencher empresa</label><select id="m-prop-company">${commercialCompanyOptions(selectedCompany)}</select></div>
+  <div class="form-group" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-secondary" style="width:100%" onclick="window._prefillPropostaEmpresa(document.getElementById('m-prop-company')?.value)">Usar dados da empresa</button></div>
   <div class="form-group"><label>Nº da Proposta</label><input id="m-prop-numero" value="${esc(base.numero)}" placeholder="PROP-2026-001"></div>
   <div class="form-group"><label>Status</label><select id="m-prop-status">${PROPOSTA_STATUS_LIST.map(st=>`<option value="${esc(st)}"${base.status===st?' selected':''}>${esc(st)}</option>`).join('')}</select></div>
   <div class="form-group"><label>Emissão</label><input id="m-prop-emissao" type="date" value="${esc(base.data_emissao)}"></div>
@@ -5537,6 +5610,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group" style="grid-column:1/-1"><label>Nome do orçamento *</label><input id="m-prop-nome" value="${esc(base.nome)}" placeholder="Ex: Proposta Projeto SPDA - NASP"></div>
   <div class="form-group"><label>Cliente *</label><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Nome/Razão social"></div>
   <div class="form-group"><label>CNPJ / CPF</label><input id="m-prop-cnpj" value="${esc(base.cnpj)}" placeholder="00.000.000/0000-00"></div>
+  <div class="form-group"><label>Inscrição Estadual</label><input id="m-prop-ie" value="${esc(base.inscricao_estadual)}" placeholder="ISENTA / nº inscrição"></div>
   <div class="form-group"><label>Contato</label><input id="m-prop-contato" value="${esc(base.contato)}" placeholder="Pessoa de contato"></div>
   <div class="form-group"><label>E-mail</label><input id="m-prop-email" type="email" value="${esc(base.email)}" placeholder="contato@cliente.com"></div>
   <div class="form-group"><label>Telefone</label><input id="m-prop-telefone" value="${esc(base.telefone)}" placeholder="(00) 00000-0000"></div>
@@ -5567,6 +5641,9 @@ ${commercialItemsHeaderHtml()}
 <div class="form-grid-2" style="margin-bottom:14px">
   <div class="form-group"><label>Obra</label><select id="m-cobra">${obras.map(obra=>`<option value="${esc(obra)}"${obra===obraAtual?' selected':''}>${esc(obra)}</option>`).join('')}</select></div>
   <div class="form-group"><label>Data da Solicitação</label><input id="m-cdata" type="date" value="${todayISO()}"></div>
+  <div class="form-group"><label>Pré preencher empresa</label><select id="m-cempresa" onchange="window._refreshCotacaoEmpresaPreview(this.value)">${commercialCompanyOptions(d.empresa_id||'')}</select></div>
+  <div class="form-group" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-secondary" style="width:100%" onclick="window._prefillCotacaoEmpresa(document.getElementById('m-cempresa')?.value)">Aplicar empresa</button></div>
+  <div class="form-group" style="grid-column:1/-1"><div id="m-cempresa-preview">${renderCommercialCompanyPreview(getCommercialCompany(d.empresa_id||''))}</div></div>
   <div class="form-group" style="grid-column:1/-1"><label>Nome / Escopo da Cotação *</label><input id="m-citem" placeholder="Ex: Materiais SPDA - NASP" value="${esc(d.item||'')}"></div>
   <div class="form-group" style="grid-column:1/-1"><label>Fornecedores cadastrados</label><div style="display:flex;gap:8px;flex-wrap:wrap">${fornecedoresAtivos.length?fornecedoresAtivos.map(f=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)"><input type="checkbox" class="m-cforn" value="${esc(f.nome)}"${d.fornecedor===f.nome?' checked':''}> ${esc(f.nome)}</label>`).join(''):'<span style="font-size:12px;color:var(--text3)">Cadastre fornecedores em Compras ou informe avulsos abaixo.</span>'}</div></div>
   <div class="form-group" style="grid-column:1/-1"><label>Fornecedores avulsos</label><input id="m-cforn-manual" placeholder="Separe por vírgula ou ponto e vírgula. Ex: Fornecedor A; Fornecedor B"></div>
@@ -5595,6 +5672,34 @@ ${m==='new-material'?`<button class="btn btn-secondary btn-sm" onclick="_preview
 
 
 window._closeModal=()=>{S.modal=null;S.modalData={};renderApp();};
+
+window._prefillPropostaEmpresa=(id)=>{
+  const company=getCommercialCompany(id);
+  if(!company){toast('Selecione uma empresa para preencher.','#f59e0b');return;}
+  const endereco=formatCommercialCompanyAddress(company);
+  const set=(field,value)=>{const el=document.getElementById(field);if(el)el.value=value||'';};
+  set('m-prop-company',company.id);
+  set('m-prop-cliente',company.nome);
+  set('m-prop-cnpj',company.cnpj);
+  set('m-prop-ie',company.inscricao_estadual);
+  set('m-prop-contato',company.contato||'');
+  set('m-prop-email',company.email);
+  set('m-prop-telefone',company.telefone);
+  set('m-prop-endereco',endereco);
+  toast(`Dados de ${company.short} preenchidos.`,'#22c55e');
+};
+window._refreshCotacaoEmpresaPreview=(id)=>{
+  const box=document.getElementById('m-cempresa-preview');
+  if(box)box.innerHTML=renderCommercialCompanyPreview(getCommercialCompany(id));
+};
+window._prefillCotacaoEmpresa=(id)=>{
+  const company=getCommercialCompany(id);
+  if(!company){toast('Selecione uma empresa para aplicar.','#f59e0b');return;}
+  window._refreshCotacaoEmpresaPreview(company.id);
+  const escopo=document.getElementById('m-citem');
+  if(escopo&&!escopo.value.trim())escopo.value=`Cotação - ${company.short}`;
+  toast(`Empresa ${company.short} vinculada à cotação.`,'#22c55e');
+};
 
 window._getModalMatItems=()=>{
   const rows=Array.from(document.querySelectorAll('.mat-item-row'));
@@ -6535,9 +6640,11 @@ window._saveProposta=async(id=null)=>{
   const obj=cleanProposta({
     ...(old||{}),
     id:id||('prop-'+uid()),
+    empresa_id:document.getElementById('m-prop-company')?.value||'',
     numero:document.getElementById('m-prop-numero')?.value?.trim()||nextNum(DB.propostas||[],'PROP'),
     cliente,
     cnpj:document.getElementById('m-prop-cnpj')?.value?.trim()||'',
+    inscricao_estadual:document.getElementById('m-prop-ie')?.value?.trim()||'',
     contato:document.getElementById('m-prop-contato')?.value?.trim()||'',
     email:document.getElementById('m-prop-email')?.value?.trim()||'',
     telefone:document.getElementById('m-prop-telefone')?.value?.trim()||'',
@@ -6580,8 +6687,9 @@ window._saveCotacao=async()=>{
   const fornSelecionados=Array.from(document.querySelectorAll('.m-cforn:checked')).map(el=>el.value);
   const avulsos=String(document.getElementById('m-cforn-manual')?.value||'').split(/[;,]/).map(v=>v.trim()).filter(Boolean);
   const fornecedores=[...new Set([...fornSelecionados,...avulsos])];
+  const empresa=normalizeCommercialCompany(document.getElementById('m-cempresa')?.value||null);
   if(!obra||!item||fornecedores.length===0||itensBase.length===0){toast('Selecione obra, escopo, fornecedores e pelo menos um item.','#ef4444');return;}
-  const obj={id:uid(),obra,item,cotacoes:fornecedores.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',itens:itensBase,escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||todayISO(),created_at:new Date().toISOString()};
+  const obj={id:uid(),obra,item,cotacoes:fornecedores.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',itens:itensBase,empresa_id:empresa?.id||'',empresa,escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||todayISO(),created_at:new Date().toISOString()};
   const{error}=await sb.from('cotacoes').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   if(!DB.cotacoes.find(c=>c.id===obj.id))DB.cotacoes.unshift(obj);
@@ -6633,7 +6741,7 @@ window._addCotacaoFornecedor=async(id,fornecedor)=>{
   if(!cot||!fornecedor)return;
   const itens=normalizeCotacaoItems(cot.cotacoes||[]);
   if(itens.some(item=>item.fornecedor===fornecedor)){toast('Fornecedor já está nesta cotação.','#f59e0b');return;}
-  itens.push({fornecedor,preco:null,prazo:'',observacao:'',itens:getCotacaoBaseItems(cot),escolhido:false});
+  itens.push({fornecedor,preco:null,prazo:'',observacao:'',itens:getCotacaoBaseItems(cot),empresa_id:getCotacaoCompany(cot)?.id||'',empresa:getCotacaoCompany(cot),escolhido:false});
   const ok=await saveCotacaoPatch(id,{cotacoes:itens});
   if(ok)renderApp();
 };
@@ -6985,8 +7093,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426040210",
-  id: "/?build=20260426040210",
+  start_url: "/?build=20260426042247",
+  id: "/?build=20260426042247",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
