@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426133900">
+<meta name="jet-build" content="20260426135121">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -5612,7 +5612,8 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
 <div class="form-group" style="margin-bottom:0"><label>Cliente</label><input id="m-rdo-import-cliente" value="C&A"></div>
 <div class="form-group" style="margin-bottom:0"><label>Prazo contratual</label><input id="m-rdo-import-prazo" value="144 Dias"></div>
 <div class="form-group" style="margin-bottom:0"><label>Contrato</label><input id="m-rdo-import-contrato" value=""></div>
-<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de equipes</label><input id="m-rdo-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Equipes por Data”. O importador pula datas que já existem nesta obra.</div></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-import-update-existing" checked> Atualizar RDOs já existentes com a distribuição correta do efetivo</label></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de equipes</label><input id="m-rdo-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Equipes por Data”. Se a opção acima estiver marcada, datas já existentes serão recalculadas sem apagar atividades, observações ou fotos.</div></div>
 <div id="m-rdo-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:260px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
 </div>`;
     onSave=`window._importRDOPlanilha(event)`;
@@ -7300,9 +7301,93 @@ function rdoDefaultEfetivoAdmin(qtde=0,autor='Eng. Cesar'){
   const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
   return ADMIN.map(cargo=>({cargo,qtde:cargo==='Engº Civil'&&qtde?String(qtde):'',obs:cargo==='Engº Civil'&&qtde?autor:''}));
 }
+function rdoPersonKey(value=''){
+  const aliases={dicio:'joedson',rai:'raionei',ray:'raionei',ney:'neiton',nei:'neiton',nene:'nenem',neneh:'nenem',pade:'pade',pad:'pade',vel:'vell'};
+  const clean=stripAccents(String(value||'')).toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  return aliases[clean]||clean;
+}
+function rdoFuncaoClass(funcao=''){
+  const f=stripAccents(funcao).toLowerCase();
+  if(/\beng|engenheiro/.test(f))return{admin:'Engº Civil'};
+  if(/coord/.test(f))return{admin:'Coord. de Obras'};
+  if(/encarregado/.test(f)&&/hidraul|encan/.test(f))return{admin:'Encarregado de Hidráulica'};
+  if(/encarregado/.test(f)&&/eletr/.test(f))return{admin:'Encarregado de Elétrica'};
+  if(/ajud|aux/.test(f)&&/eletr/.test(f))return{mo:'Ajud. Eletricista'};
+  if(/eletr/.test(f))return{mo:'Eletricista'};
+  if(/ajud|aux/.test(f)&&/(hidraul|encan)/.test(f))return{mo:'Ajudantes (Hidráulica)'};
+  if(/hidraul|encan/.test(f))return{mo:'Encanador'};
+  if(/pedr/.test(f))return{mo:'Pedreiro'};
+  if(/pint/.test(f))return{mo:'Pintor'};
+  if(/carpint|montador/.test(f))return{mo:'Carpinteiro / Montador'};
+  if(/sold/.test(f))return{mo:'Soldador'};
+  if(/armad/.test(f))return{mo:'Armador'};
+  if(/marcen/.test(f))return{mo:'Marceneiro'};
+  if(/guinch/.test(f))return{mo:'Guincheiro'};
+  if(/limpeza/.test(f))return{mo:'Aux. limpeza'};
+  if(/apont/.test(f))return{mo:'Apontador'};
+  if(/laborator/.test(f))return{mo:/aux/.test(f)?'Aux. laboratorista':'Laboratorista'};
+  if(/maquina/.test(f))return{mo:'Op. máquinas'};
+  if(/elevador/.test(f))return{mo:'Op. elevador'};
+  if(/betoneira/.test(f))return{mo:'Op. betoneira'};
+  if(/bomba/.test(f))return{mo:'Op. bombas'};
+  return{mo:'Aux. técnico meio oficial'};
+}
+function rdoFindFuncionarioByName(nome='',obra=''){
+  const target=rdoPersonKey(nome);
+  if(!target)return null;
+  const parts=target.split(' ').filter(Boolean);
+  const pool=(DB.funcionarios||[]).filter(f=>String(f.status||'Ativo')!=='Desligado');
+  let best=null,bestScore=0;
+  pool.forEach(f=>{
+    const key=rdoPersonKey(f.nome||'');
+    if(!key)return;
+    let score=0;
+    if(key===target)score=100;
+    else if(key.split(' ')[0]===parts[0])score=72;
+    else if(key.includes(target)||target.includes(key))score=58;
+    else if(parts.some(p=>p.length>2&&key.split(' ').includes(p)))score=38;
+    if(f.obra===obra)score+=12;
+    if(String(f.status||'Ativo')==='Ativo')score+=4;
+    if(score>bestScore){bestScore=score;best=f;}
+  });
+  return bestScore>=38?best:null;
+}
+function rdoBuildEfetivoByPeople(nomes=[],obra='',autor='Eng. Cesar'){
+  const FUNCOES=['Armador','Marceneiro','Eletricista','Ajud. Eletricista','Encanador','Ajudantes (Hidráulica)','Pedreiro','Pintor','Carpinteiro / Montador','Soldador','Guincheiro','Op. de guindaste','Op. máquinas','Op. elevador','Op. montagem','Op. betoneira','Op. bombas','Aux. limpeza','Apontador','Laboratorista','Aux. laboratorista','Aux. técnico meio oficial'];
+  const ADMIN=['Engº Civil','Engº Eletricista','Coord. de Obras','Encarregado de Elétrica','Encarregado de Hidráulica'];
+  const mo=Object.fromEntries(FUNCOES.map(f=>[f,{funcao:f,jet:0,terceiros:0}]));
+  const adm=Object.fromEntries(ADMIN.map(c=>[c,{cargo:c,qtde:0,obs:''}]));
+  const unmatched=[];
+  nomes.forEach(raw=>{
+    const terceiro=/terc|terceir/i.test(stripAccents(raw));
+    const clean=String(raw||'').replace(/\([^)]*\)/g,'').trim();
+    if(/^cesar\b/i.test(stripAccents(clean))){
+      adm['Engº Civil'].qtde+=1;adm['Engº Civil'].obs=autor;return;
+    }
+    const func=rdoFindFuncionarioByName(clean,obra);
+    const cls=rdoFuncaoClass(func?.funcao||'');
+    const isThird=terceiro||(/terceir|terc/i.test(stripAccents(func?.empresa||'')));
+    if(cls.admin){
+      adm[cls.admin].qtde+=1;
+      adm[cls.admin].obs=[adm[cls.admin].obs,clean].filter(Boolean).join(', ');
+      return;
+    }
+    const key=cls.mo||'Aux. técnico meio oficial';
+    if(isThird)mo[key].terceiros+=1;else mo[key].jet+=1;
+    if(!func)unmatched.push(clean);
+  });
+  const efJet=FUNCOES.map(f=>({funcao:f,jet:mo[f].jet?String(mo[f].jet):'',terceiros:mo[f].terceiros?String(mo[f].terceiros):''}));
+  const efAdm=ADMIN.map(c=>({cargo:c,qtde:adm[c].qtde?String(adm[c].qtde):'',obs:adm[c].obs||''}));
+  const jet=efJet.reduce((s,e)=>s+(parseInt(e.jet)||0),0);
+  const terceiros=efJet.reduce((s,e)=>s+(parseInt(e.terceiros)||0),0);
+  const admin=efAdm.reduce((s,e)=>s+(parseInt(e.qtde)||0),0);
+  const distribuicao=efJet.filter(e=>(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)>0).map(e=>`${e.funcao}: ${(parseInt(e.jet)||0)+(parseInt(e.terceiros)||0)}`).concat(efAdm.filter(e=>parseInt(e.qtde)||0).map(e=>`${e.cargo}: ${e.qtde}`));
+  return{efetivo_jet:efJet,efetivo_admin:efAdm,jet,terceiros,admin,distribuicao,unmatched};
+}
 function rdoImportBuildRows(rawRows=[]){
   const opts=rdoImportOptions();
-  const existing=new Set((DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>String(r.data||'').slice(0,10)));
+  const existingRows=(DB.rdo||[]).filter(r=>r.obra===opts.obra);
+  const existingMap=Object.fromEntries(existingRows.map(r=>[String(r.data||'').slice(0,10),r]));
   const seen=new Set();
   return rawRows.map(row=>{
     const data=rdoImportISO(rdoImportCell(row,'Data do turno','Data'));
@@ -7311,28 +7396,24 @@ function rdoImportBuildRows(rawRows=[]){
     const nomes=equipe.split(/\r?\n|;/).map(n=>n.trim()).filter(Boolean);
     const qtdPlan=parseInt(rdoImportCell(row,'Qtd','Quantidade'))||nomes.length;
     const obs=String(rdoImportCell(row,'Observações','Observacoes')||'');
-    const tercPorNome=nomes.filter(n=>/terc|terceir/i.test(stripAccents(n))).length;
-    const tercPorObs=parseInt((obs.match(/(\d+)\s*terceir/i)||[])[1]||'0')||0;
-    const terceiros=Math.max(tercPorNome,tercPorObs);
-    const temCesar=nomes.some(n=>/^cesar\b/i.test(stripAccents(n).replace(/[()]/g,'')));
-    const admin=temCesar?1:0;
     const efetivo=qtdPlan||nomes.length;
-    const jet=Math.max(efetivo-terceiros-admin,0);
-    const duplicated=existing.has(data)||seen.has(data);
+    const dist=rdoBuildEfetivoByPeople(nomes,opts.obra,opts.autor);
+    const duplicated=!!existingMap[data]||seen.has(data);
     seen.add(data);
     return{
       data,obra:opts.obra,tempo:opts.tempo,turno:opts.turno,autor:opts.autor,cliente:opts.cliente,contrato:opts.contrato,prazo:opts.prazo,
-      efetivo,jet,terceiros,admin,nomes,skipped:duplicated,
+      efetivo:Math.max(efetivo,dist.jet+dist.terceiros+dist.admin),jet:dist.jet,terceiros:dist.terceiros,admin:dist.admin,nomes,skipped:duplicated,existingId:existingMap[data]?.id||'',distribuicao:dist.distribuicao,unmatched:dist.unmatched,
       dia_semana:['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(data+'T12:00:00').getDay()],
-      efetivo_jet:rdoDefaultEfetivoJet(jet,terceiros),
-      efetivo_admin:rdoDefaultEfetivoAdmin(admin,opts.autor)
+      efetivo_jet:dist.efetivo_jet,
+      efetivo_admin:dist.efetivo_admin
     };
   }).filter(Boolean).sort((a,b)=>a.data.localeCompare(b.data));
 }
 function rdoImportPreviewHtml(rows=[]){
   if(!rows.length)return'<div style="padding:14px;color:var(--text3);font-size:13px">Nenhum RDO encontrado para os filtros informados.</div>';
   const ok=rows.filter(r=>!r.skipped).length;
-  return`<table><thead><tr><th>Data</th><th>Dia</th><th>Efetivo</th><th>JET</th><th>Terceiros</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtD(r.data)}</td><td>${esc(r.dia_semana)}</td><td><strong>${r.efetivo}</strong></td><td>${r.jet}</td><td>${r.terceiros}</td><td>${r.skipped?'<span class="tag">Já existe / duplicado</span>':'<span class="tag" style="color:#34d399">Pronto</span>'}</td></tr>`).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} linha(s), ${ok} nova(s). Atividades, observações e fotos ficam em branco para preencher manualmente.</div>`;
+  const upd=rows.filter(r=>r.existingId).length;
+  return`<table><thead><tr><th>Data</th><th>Dia</th><th>Efetivo</th><th>JET</th><th>Terceiros</th><th>Distribuição</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtD(r.data)}</td><td>${esc(r.dia_semana)}</td><td><strong>${r.efetivo}</strong></td><td>${r.jet}</td><td>${r.terceiros}</td><td style="max-width:320px;color:var(--text3);font-size:11px">${esc((r.distribuicao||[]).join(' · ')||'Sem função identificada')}</td><td>${r.existingId?'<span class="tag">Atualizar existente</span>':r.skipped?'<span class="tag">Duplicado na planilha</span>':'<span class="tag" style="color:#34d399">Novo</span>'}</td></tr>`).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} linha(s), ${ok} nova(s), ${upd} existente(s) para recalcular. Atividades, observações e fotos ficam preservadas/para preencher manualmente.</div>`;
 }
 window._previewRDOImport=async(file)=>{
   const target=document.getElementById('m-rdo-import-preview');
@@ -7361,9 +7442,11 @@ window._importRDOPlanilha=async(event)=>{
   const opts=rdoImportOptions();
   const existing=new Set((DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>String(r.data||'').slice(0,10)));
   const seen=new Set();
-  const drafts=(window._rdoImportDrafts||[]).filter(r=>!r.skipped&&!existing.has(r.data)&&!seen.has(r.data)&&(seen.add(r.data)||true));
-  if(!drafts.length){toast('Nenhum RDO novo para importar.','#f59e0b');return;}
-  if(!confirm(`Importar ${drafts.length} RDO(s) para ${opts.obra}?`))return;
+  const updateExisting=!!document.getElementById('m-rdo-import-update-existing')?.checked;
+  const drafts=(window._rdoImportDrafts||[]).filter(r=>!r.existingId&&!existing.has(r.data)&&!seen.has(r.data)&&(seen.add(r.data)||true));
+  const updateDrafts=updateExisting?(window._rdoImportDrafts||[]).filter(r=>r.existingId):[];
+  if(!drafts.length&&!updateDrafts.length){toast('Nenhum RDO novo ou existente para atualizar.','#f59e0b');return;}
+  if(!confirm(`Importar ${drafts.length} RDO(s) novo(s) e atualizar ${updateDrafts.length} existente(s) em ${opts.obra}?`))return;
   const currentNums=(DB.rdo||[]).filter(r=>r.obra===opts.obra).map(r=>parseInt(r.rdo_numero)||0);
   let nextNum=Math.max(0,...currentNums)+1;
   const rows=drafts.map(d=>({
@@ -7372,10 +7455,21 @@ window._importRDOPlanilha=async(event)=>{
     paralisacao:false,prazo_contratual:opts.prazo,efetivo_jet:d.efetivo_jet,efetivo_admin:d.efetivo_admin,
     atividades:'',ocorrencias:'',fotos:[],autor:opts.autor
   }));
-  const{error}=await sb.from('rdo').insert(rows);
-  if(error){toast('Erro ao importar RDOs: '+error.message,'#ef4444');return;}
-  DB.rdo=[...rows,...DB.rdo];
-  toast(`${rows.length} RDO(s) importado(s)!`,'#22c55e');
+  if(rows.length){
+    const{error}=await sb.from('rdo').insert(rows);
+    if(error){toast('Erro ao importar RDOs: '+error.message,'#ef4444');return;}
+    DB.rdo=[...rows,...DB.rdo];
+  }
+  if(updateDrafts.length){
+    const updates=await Promise.all(updateDrafts.map(d=>{
+      const patch={tempo:opts.tempo,efetivo:d.efetivo,turno:opts.turno,dia_semana:d.dia_semana,paralisacao:false,prazo_contratual:opts.prazo,efetivo_jet:d.efetivo_jet,efetivo_admin:d.efetivo_admin,autor:opts.autor,cliente:opts.cliente,contrato:opts.contrato};
+      return sb.from('rdo').update(patch).eq('id',d.existingId).then(res=>({res,d,patch}));
+    }));
+    const failed=updates.find(u=>u.res.error);
+    if(failed){toast('Erro ao atualizar RDO existente: '+failed.res.error.message,'#ef4444');return;}
+    DB.rdo=DB.rdo.map(r=>{const u=updates.find(x=>x.d.existingId===r.id);return u?{...r,...u.patch}:r;});
+  }
+  toast(`${rows.length} RDO(s) importado(s) e ${updateDrafts.length} atualizado(s)!`,'#22c55e');
   _closeModal();
 };
 
@@ -7541,8 +7635,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426133900",
-  id: "/?build=20260426133900",
+  start_url: "/?build=20260426135121",
+  id: "/?build=20260426135121",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
