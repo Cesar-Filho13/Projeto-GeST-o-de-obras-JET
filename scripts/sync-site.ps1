@@ -15,9 +15,10 @@ if (-not (Test-Path $SourceFile)) {
 Copy-Item $SourceFile $TargetFile -Force
 
 $buildStamp = Get-Date -Format 'yyyyMMddHHmmss'
-$content = Get-Content -Path $TargetFile -Raw
+$utf8 = [System.Text.UTF8Encoding]::new($false)
+$content = [System.IO.File]::ReadAllText($TargetFile, $utf8)
 $content = $content -replace '__APP_BUILD__', $buildStamp
-Set-Content -Path $TargetFile -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText($TargetFile, $content, $utf8)
 
 if (-not $Quiet) {
   Write-Host "Sincronizado:" -ForegroundColor Green
