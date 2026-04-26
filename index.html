@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260425211414">
+<meta name="jet-build" content="20260425212918">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -813,7 +813,7 @@ html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b
 </style>
 </head>
 <body>
-<div id="root"><div class="loader" style="padding:100px 20px">âŸ³ Carregando...</div></div>
+<div id="root"><div class="loader" style="padding:100px 20px">Carregando...</div></div>
 
 <script>
 // â”€â”€â”€ GLOBAL ERROR HANDLER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -996,7 +996,7 @@ function getDbObras(){
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
 
-const normalizeStockKey=value=>String(value||'').normalize('NFD').replace(/[Ì€-Í¯]/g,'').trim().toLowerCase();
+const normalizeStockKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 function normalizeAlmoxTransferStatus(status){return ALMOX_TRANSFER_STATUS.includes(status)?status:'Separado';}
 function getAlmoxInventario(){return(DB.estoque||[]).filter(e=>!isExpedicaoTipo(e.tipo));}
 function getAlmoxExpedicao(){return(DB.estoque||[]).filter(e=>isExpedicaoTipo(e.tipo));}
@@ -6202,8 +6202,8 @@ const _manifest = {
   name: "JET GestÃ£o de Obras",
   short_name: "JET Obras",
   description: "Sistema de GestÃ£o de Obras â€” JET ServiÃ§os de Engenharia",
-  start_url: "/?build=20260425211414",
-  id: "/?build=20260425211414",
+  start_url: "/?build=20260425212918",
+  id: "/?build=20260425212918",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
