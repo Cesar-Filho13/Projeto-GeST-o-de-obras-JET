@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426045108">
+<meta name="jet-build" content="20260426051520">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1017,6 +1017,17 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 const escJs=s=>String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\x27").replace(/"/g,"\\x22").replace(/`/g,"\\x60").replace(/</g,'\\x3c');
 const fmtV=v=>(v!=null&&v!=='')?`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—';
 const fmtD=d=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+const onlyDigits=(value='',max=999)=>String(value||'').replace(/\D/g,'').slice(0,max);
+function formatCNPJ(value=''){
+  const d=onlyDigits(value,14);
+  if(!d)return '';
+  if(d.length<=2)return d;
+  if(d.length<=5)return `${d.slice(0,2)}.${d.slice(2)}`;
+  if(d.length<=8)return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+  if(d.length<=12)return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12,14)}`;
+}
+function validateCNPJLength(value=''){const d=onlyDigits(value,14);return !d||d.length===14;}
 const todayISO=()=>new Date().toISOString().slice(0,10);
 const getCurrentUserHandle=()=>currentUser?String(currentUser.email||'').split('@')[0]:'Anonimo';
 function normalizeMentionToken(raw){
@@ -1151,7 +1162,7 @@ function commercialCompanyOptions(selected=''){
 function renderCommercialCompanyPreview(company){
   const c=normalizeCommercialCompany(company);
   if(!c)return '<span style="font-size:12px;color:var(--text3)">Nenhuma empresa selecionada.</span>';
-  return `<div class="commercial-company-card"><strong>${esc(c.nome)}</strong><span>CNPJ: ${esc(c.cnpj||'-')} · IE: ${esc(c.inscricao_estadual||'-')}</span><span>${esc(c.endereco||formatCommercialCompanyAddress(c)||'-')}</span><span>${esc(c.email||'-')} · ${esc(c.telefone||'-')}</span></div>`;
+  return `<div class="commercial-company-card"><strong>${esc(c.nome)}</strong><span>CNPJ: ${esc(formatCNPJ(c.cnpj)||'-')} · IE: ${esc(c.inscricao_estadual||'-')}</span><span>${esc(c.endereco||formatCommercialCompanyAddress(c)||'-')}</span><span>${esc(c.email||'-')} · ${esc(c.telefone||'-')}</span></div>`;
 }
 function getPropostaCompany(p={}){
   return normalizeCommercialCompany(p?.empresa_id||getCommercialCompany(p?.cnpj||'')||null);
@@ -1401,7 +1412,7 @@ function cleanProposta(row={}){
     numero:String(row?.numero||'').trim(),
     empresa_id:String(row?.empresa_id||row?.empresaId||getCommercialCompany(row?.cnpj||'')?.id||'').trim(),
     cliente:String(row?.cliente||'').trim(),
-    cnpj:String(row?.cnpj||row?.cpf_cnpj||'').trim(),
+    cnpj:formatCNPJ(row?.cnpj||row?.cpf_cnpj||''),
     inscricao_estadual:String(row?.inscricao_estadual||row?.inscricao||row?.ie||'').trim(),
     endereco:String(row?.endereco||'').trim(),
     contato:String(row?.contato||'').trim(),
@@ -4036,7 +4047,7 @@ function renderFornecedores(forn){
   const contatoCompleto=forn.filter(f=>f.telefone&&f.email).length;
   const comCnpj=forn.filter(f=>f.cnpj).length;
   const statusMap={Ativo:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Inativo:{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
-  return`<div><div class="section-header"><div><div class="section-title">🏢 Fornecedores</div><div class="section-sub">Base viva de parceiros para compras e cotações, com contato rápido e edição inline.</div></div><button class="btn btn-primary" onclick="S.modal='new-fornecedor';S.modalData={};renderApp()">+ Novo Fornecedor</button></div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Ativos</div><div class="stat-value" style="color:#34d399">${ativos.length}</div><div class="stat-sub">${forn.length} fornecedor(es) no cadastro</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Contato Completo</div><div class="stat-value" style="color:#60a5fa">${contatoCompleto}</div><div class="stat-sub">Telefone + e-mail preenchidos</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Com CNPJ</div><div class="stat-value" style="color:#fbbf24">${comCnpj}</div><div class="stat-sub">Prontos para pedido formal</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Usados em Pedidos</div><div class="stat-value" style="color:#c084fc">${forn.filter(f=>DB.pedidos.some(p=>(p.fornecedor||'')===f.nome)).length}</div><div class="stat-sub">Com histórico de compra</div></div></div>${forn.length===0?`<div class="empty-state"><p>Nenhum fornecedor cadastrado ainda.</p><button class="btn btn-primary" onclick="S.modal='new-fornecedor';S.modalData={};renderApp()">+ Primeiro Fornecedor</button></div>`:`<div class="forn-card-grid">${forn.map(f=>{const id=escJs(f.id);const pedidos=DB.pedidos.filter(p=>(p.fornecedor||'')===f.nome).length;const cots=DB.cotacoes.filter(c=>normalizeCotacaoItems(c.cotacoes||[]).some(item=>item.fornecedor===f.nome)).length;return`<div class="forn-card"><div class="forn-card-head"><div><div class="forn-card-name"><input class="ci field-strong" value="${esc(f.nome||'')}" placeholder="Nome do fornecedor" onblur="window._saveFornecedorInline('${id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="quote-card-sub">${pedidos} pedido(s) · ${cots} cotação(ões) vinculada(s)</div></div><div>${makeCd(['Ativo','Inativo'],statusMap,f.ativo===false?'Inativo':'Ativo',`window._toggleFornecedorAtivo('${id}',VAL)`)}</div></div><div class="forn-card-meta"><div class="forn-meta-row"><span>Telefone</span><span><input class="ci field-muted" value="${esc(f.telefone||'')}" placeholder="(00) 00000-0000" onblur="window._saveFornecedorInline('${id}','telefone',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div><div class="forn-meta-row"><span>E-mail</span><span><input class="ci field-muted" value="${esc(f.email||'')}" placeholder="contato@fornecedor.com" onblur="window._saveFornecedorInline('${id}','email',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div><div class="forn-meta-row"><span>CNPJ</span><span><input class="ci field-muted" value="${esc(f.cnpj||'')}" placeholder="00.000.000/0000-00" onblur="window._saveFornecedorInline('${id}','cnpj',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||'',fornecedor:'${escJs(f.nome||'')}'};renderApp()">💵 Cotação</button><button class="btn btn-danger btn-sm" onclick="window._deleteFornecedor('${id}')">🗑 Excluir</button></div></div>`;}).join('')}</div>`}</div>`;
+  return`<div><div class="section-header"><div><div class="section-title">🏢 Fornecedores</div><div class="section-sub">Base viva de parceiros para compras e cotações, com contato rápido e edição inline.</div></div><button class="btn btn-primary" onclick="S.modal='new-fornecedor';S.modalData={};renderApp()">+ Novo Fornecedor</button></div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Ativos</div><div class="stat-value" style="color:#34d399">${ativos.length}</div><div class="stat-sub">${forn.length} fornecedor(es) no cadastro</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Contato Completo</div><div class="stat-value" style="color:#60a5fa">${contatoCompleto}</div><div class="stat-sub">Telefone + e-mail preenchidos</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Com CNPJ</div><div class="stat-value" style="color:#fbbf24">${comCnpj}</div><div class="stat-sub">Prontos para pedido formal</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Usados em Pedidos</div><div class="stat-value" style="color:#c084fc">${forn.filter(f=>DB.pedidos.some(p=>(p.fornecedor||'')===f.nome)).length}</div><div class="stat-sub">Com histórico de compra</div></div></div>${forn.length===0?`<div class="empty-state"><p>Nenhum fornecedor cadastrado ainda.</p><button class="btn btn-primary" onclick="S.modal='new-fornecedor';S.modalData={};renderApp()">+ Primeiro Fornecedor</button></div>`:`<div class="forn-card-grid">${forn.map(f=>{const id=escJs(f.id);const pedidos=DB.pedidos.filter(p=>(p.fornecedor||'')===f.nome).length;const cots=DB.cotacoes.filter(c=>normalizeCotacaoItems(c.cotacoes||[]).some(item=>item.fornecedor===f.nome)).length;return`<div class="forn-card"><div class="forn-card-head"><div><div class="forn-card-name"><input class="ci field-strong" value="${esc(f.nome||'')}" placeholder="Nome do fornecedor" onblur="window._saveFornecedorInline('${id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="quote-card-sub">${pedidos} pedido(s) · ${cots} cotação(ões) vinculada(s)</div></div><div>${makeCd(['Ativo','Inativo'],statusMap,f.ativo===false?'Inativo':'Ativo',`window._toggleFornecedorAtivo('${id}',VAL)`)}</div></div><div class="forn-card-meta"><div class="forn-meta-row"><span>Telefone</span><span><input class="ci field-muted" value="${esc(f.telefone||'')}" placeholder="(00) 00000-0000" onblur="window._saveFornecedorInline('${id}','telefone',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div><div class="forn-meta-row"><span>E-mail</span><span><input class="ci field-muted" value="${esc(f.email||'')}" placeholder="contato@fornecedor.com" onblur="window._saveFornecedorInline('${id}','email',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div><div class="forn-meta-row"><span>CNPJ</span><span><input class="ci field-muted" inputmode="numeric" maxlength="18" value="${esc(formatCNPJ(f.cnpj)||'')}" placeholder="00.000.000/0000-00" oninput="window._formatCNPJInput(this)" onblur="window._saveFornecedorInline('${id}','cnpj',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||'',fornecedor:'${escJs(f.nome||'')}'};renderApp()">💵 Cotação</button><button class="btn btn-danger btn-sm" onclick="window._deleteFornecedor('${id}')">🗑 Excluir</button></div></div>`;}).join('')}</div>`}</div>`;
 }
 
 // ─── COTAÇÕES ─────────────────────────────────────────────────────────────
@@ -4952,7 +4963,7 @@ window.pedidosPDF=()=>{
   doc.save('Pedidos_JET_'+new Date().toISOString().slice(0,10)+'.pdf');toast('PDF exportado!');
 };
 window.fornecedoresCSV=()=>{
-  const rows=(DB.fornecedores||[]).map(f=>[f.nome||'',f.telefone||'',f.email||'',f.cnpj||'',f.ativo===false?'Inativo':'Ativo']);
+  const rows=(DB.fornecedores||[]).map(f=>[f.nome||'',f.telefone||'',f.email||'',formatCNPJ(f.cnpj)||'',f.ativo===false?'Inativo':'Ativo']);
   exportCSV(rows,['Nome','Telefone','E-mail','CNPJ','Status'],'Fornecedores');
 };
 window.fornecedoresXLSX=()=>{
@@ -4963,7 +4974,7 @@ window.fornecedoresXLSX=()=>{
     title:'Base de Fornecedores',
     meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} fornecedor(es)`],
     columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Nome',key:'nome',width:28},{header:'Telefone',key:'telefone',width:18},{header:'E-mail',key:'email',width:28},{header:'CNPJ',key:'cnpj',width:20},{header:'Status',key:'status',width:16,badgeMap:{Ativo:{bg:'#E8FFF4',c:'#0F9C72'},Inativo:{bg:'#FFF1F1',c:'#DC4A4A'}}}],
-    rows:rows.map((f,index)=>({idx:index+1,nome:f.nome||'',telefone:f.telefone||'',email:f.email||'',cnpj:f.cnpj||'',status:f.ativo===false?'Inativo':'Ativo'}))
+    rows:rows.map((f,index)=>({idx:index+1,nome:f.nome||'',telefone:f.telefone||'',email:f.email||'',cnpj:formatCNPJ(f.cnpj)||'',status:f.ativo===false?'Inativo':'Ativo'}))
   });
 };
 window.cotacoesCSV=()=>{
@@ -5039,6 +5050,14 @@ function drawCommercialCompanyPDFBlock(doc,company,x,y,w){
   cy+=addressLines.length*5;
   return Math.max(28,cy-y+2);
 }
+function drawJetPDFLogo(doc,x,y,r=15){
+  doc.setFillColor(26,46,107);
+  doc.circle(x,y,r,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(Math.max(9,r*.72));
+  doc.text('JET',x,y+1.4,{align:'center'});
+}
 function drawProposalClientPDFBlock(doc,p,x,y,w){
   const h=48;
   const blue=[26,46,107],muted=[96,108,130];
@@ -5066,7 +5085,7 @@ function drawProposalClientPDFBlock(doc,p,x,y,w){
   doc.setFont('helvetica','normal');
   doc.setFontSize(10);
   doc.setTextColor(0,0,0);
-  doc.text(`CPF/CNPJ: ${p.cnpj||'-'}`,textX,cy);cy+=6;
+  doc.text(`CNPJ: ${formatCNPJ(p.cnpj)||'-'}`,textX,cy);cy+=6;
   doc.setFontSize(8.5);
   doc.setTextColor(...muted);
   const details=[p.inscricao_estadual?`IE: ${p.inscricao_estadual}`:'',p.contato?`Contato: ${p.contato}`:'',p.telefone?`Telefone: ${p.telefone}`:''].filter(Boolean).join(' · ');
@@ -5082,7 +5101,7 @@ window.propostaTXT=(id)=>{
   const p=getPropostaOrToast(id);if(!p)return;
   const itens=normalizeCommercialItems(p.itens||[]);
   const company=getPropostaCompany(p);
-  const rows=[...companyTextRows(company),[],['Numero',p.numero],['Cliente',p.cliente],['Proposta',p.nome],['Status',p.status],['Emissao',fmtD(p.data_emissao)],['Vencimento',fmtD(p.data_vencimento)],['Responsavel',p.responsavel],['Subtotal',fmtV(p.subtotal)],['Desconto',fmtV(p.desconto)],['Total',fmtV(p.total)],[],['Tipo','Nome','Descricao','Qtd','Unid','Valor Unitario','Total'],...itens.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario),(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)]).map(r=>{r[6]=fmtV(r[6]);return r;})];
+  const rows=[...companyTextRows(company),[],['Numero',p.numero],['Cliente',p.cliente],['CNPJ',formatCNPJ(p.cnpj)],['Proposta',p.nome],['Status',p.status],['Emissao',fmtD(p.data_emissao)],['Vencimento',fmtD(p.data_vencimento)],['Responsavel',p.responsavel],['Subtotal',fmtV(p.subtotal)],['Desconto',fmtV(p.desconto)],['Total',fmtV(p.total)],[],['Tipo','Nome','Descricao','Qtd','Unid','Valor Unitario','Total'],...itens.map(item=>[item.tipo,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario),(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)]).map(r=>{r[6]=fmtV(r[6]);return r;})];
   const blob=new Blob(['\uFEFF'+rows.map(r=>r.join('\t')).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${xlsxFileName(p.numero||'Proposta')}.txt`;a.click();URL.revokeObjectURL(url);toast('TXT exportado!');
 };
 window.propostasXLSX=()=>exportStyledXLSX({sheetName:'Propostas',filename:'Propostas_Comerciais_'+todayISO(),title:'Propostas Comerciais JET',meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${(DB.propostas||[]).length} proposta(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Empresa',key:'empresa',width:32},{header:'Cliente',key:'cliente',width:28},{header:'Proposta',key:'nome',width:36},{header:'Status',key:'status',width:16,badgeMap:PROPOSTA_STATUS_MAP},{header:'Emissão',key:'emissao',width:14},{header:'Vencimento',key:'vencimento',width:14},{header:'Responsável',key:'responsavel',width:18},{header:'Itens',key:'itens',width:10,align:'center'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:propostaExportRows()});
@@ -5090,13 +5109,13 @@ window.propostaXLSX=(id)=>{
   const p=getPropostaOrToast(id);if(!p)return;
   const itens=normalizeCommercialItems(p.itens||[]);
   const company=getPropostaCompany(p);
-  return exportStyledXLSX({sheetName:'Proposta',filename:p.numero||'Proposta_JET',title:`Proposta Comercial - ${p.numero||''}`,meta:[...commercialCompanyMetaLines(company),`Cliente: ${p.cliente||'-'}`,`Proposta: ${p.nome||'-'}`,`Emissão: ${fmtD(p.data_emissao)} · Vencimento: ${fmtD(p.data_vencimento)}`,`Total: ${fmtV(p.total)}`].filter(Boolean),columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Tipo',key:'tipo',width:14},{header:'Nome',key:'nome',width:30},{header:'Descrição',key:'descricao',width:42},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor Unit.',key:'valor',width:16,align:'right',type:'currency'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:itens.map((item,index)=>({idx:index+1,tipo:item.tipo,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,total:(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)}))});
+  return exportStyledXLSX({sheetName:'Proposta',filename:p.numero||'Proposta_JET',title:`Proposta Comercial - ${p.numero||''}`,meta:[...commercialCompanyMetaLines(company),`Cliente: ${p.cliente||'-'}`,`CNPJ: ${formatCNPJ(p.cnpj)||'-'}`,`Proposta: ${p.nome||'-'}`,`Emissão: ${fmtD(p.data_emissao)} · Vencimento: ${fmtD(p.data_vencimento)}`,`Total: ${fmtV(p.total)}`].filter(Boolean),columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Tipo',key:'tipo',width:14},{header:'Nome',key:'nome',width:30},{header:'Descrição',key:'descricao',width:42},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unid',key:'unidade',width:10,align:'center'},{header:'Valor Unit.',key:'valor',width:16,align:'right',type:'currency'},{header:'Total',key:'total',width:16,align:'right',type:'currency'}],rows:itens.map((item,index)=>({idx:index+1,tipo:item.tipo,nome:item.nome,descricao:item.descricao,quantidade:item.quantidade,unidade:item.unidade,valor:item.valor_unitario,total:(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0)}))});
 };
 function drawPropostaPDF(p){
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=14,blue=[26,46,107],muted=[96,108,130];
   const itens=normalizeCommercialItems(p.itens||[]);const company=getPropostaCompany(p);const rowTotal=item=>(Number(item.quantidade)||0)*(Number(item.valor_unitario)||0);
-  doc.setFillColor(...blue);doc.circle(24,24,14,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('JET',24,27,{align:'center'});
+  drawJetPDFLogo(doc,24,24,16);
   doc.setTextColor(...blue);doc.setFontSize(19);doc.text('Proposta Comercial',44,17);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(...muted);doc.text('JET Gestão de Obras',44,24);doc.text('Documento gerado pelo sistema JET',44,30);
   doc.setDrawColor(...blue);doc.setLineWidth(.5);doc.roundedRect(145,12,51,22,2,2);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...blue);doc.text('ORÇAMENTO',170.5,20,{align:'center'});doc.setFontSize(11);doc.text(p.numero||'-',170.5,27,{align:'center'});
   doc.setDrawColor(...blue);doc.line(M,42,W-M,42);
@@ -5118,12 +5137,17 @@ function drawPropostaPDF(p){
   doc.autoTable({startY:y,margin:{left:M,right:M},head:[['Produtos','Serviços','Despesas','Subtotal','Desconto','Total']],body:[[fmtV(prod),fmtV(serv),fmtV(desp),fmtV(p.subtotal),fmtV(p.desconto),fmtV(p.total)]],styles:{fontSize:9,cellPadding:3,textColor:[20,32,60],halign:'right'},headStyles:{fillColor:[238,243,255],textColor:blue,fontStyle:'bold'},bodyStyles:{fontStyle:'bold'}});
   y=(doc.lastAutoTable?.finalY||y)+12;if(y>244){doc.addPage();y=20;}
   if(p.observacoes){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...blue);doc.text('Observações / condições',M,y);y+=5;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(45,58,86);doc.text(doc.splitTextToSize(p.observacoes,182),M,y);y+=Math.min(28,doc.splitTextToSize(p.observacoes,182).length*5)+6;}
-  if(y>216){doc.addPage();y=24;}
-  doc.setDrawColor(210,218,232);doc.roundedRect(M,y,182,62,2,2);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...blue);doc.text('Responder proposta',M+5,y+8);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...muted);doc.text('Assinatura, identificação e comentários do cliente',M+5,y+15);
-  doc.setDrawColor(205,216,238);doc.line(M+5,y+32,M+83,y+32);doc.line(M+99,y+32,M+177,y+32);
-  doc.setFontSize(7.5);doc.setTextColor(...muted);doc.text('Assinatura',M+5,y+37);doc.text('Nome legível / cargo',M+99,y+37);
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...blue);doc.text('Comentários / aceite',M+5,y+47);
-  doc.setFont('helvetica','normal');doc.setDrawColor(222,228,240);doc.line(M+5,y+56,M+177,y+56);
+  if(y>158){doc.addPage();y=24;}
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(36,36,36);doc.text('Responder orçamento',M,y);y+=11;
+  doc.setDrawColor(205,216,238);doc.setLineWidth(.45);doc.roundedRect(M,y,182,54,1.5,1.5);
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(160,160,160);doc.text('Assine aqui',W/2,y+29,{align:'center'});
+  y+=54;
+  doc.setDrawColor(205,216,238);doc.roundedRect(M,y,182,17,1.5,1.5);
+  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(115,115,115);doc.text('Digite seu nome',M+7,y+11);
+  y+=26;
+  doc.setDrawColor(205,216,238);doc.roundedRect(M,y,182,46,1.5,1.5);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(115,115,115);doc.text('Comentário para a empresa',M+6,y+10);
+  doc.setFontSize(10);doc.text('0/2000',M+174,y+39,{align:'right'});
   const pages=doc.getNumberOfPages();for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`JET Gestão de Obras · Página ${i}/${pages}`,W/2,291,{align:'center'});}return doc;
 }
 window.propostaPDF=(id)=>{const p=getPropostaOrToast(id);if(!p)return;const doc=drawPropostaPDF(p);if(doc){doc.save(`${xlsxFileName(p.numero||'Proposta_JET')}.pdf`);toast('PDF exportado!');}};
@@ -5145,7 +5169,7 @@ window.cotacoesPDF=()=>{if(!window.jspdf){toast('Biblioteca não carregada.','#f
 window.cotacaoPDF=(id)=>{
   const c=getCotacaoOrToast(id);if(!c||!window.jspdf)return;
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const base=getCotacaoBaseItems(c);const forn=normalizeCotacaoItems(c.cotacoes||[]);
-  doc.setFillColor(26,46,107);doc.circle(22,18,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',22,21,{align:'center'});
+  drawJetPDFLogo(doc,22,18,11);
   doc.setTextColor(26,46,107);doc.setFontSize(16);doc.text('Cotação Comercial',38,15);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(96,108,130);doc.text(`${c.item||'-'} · ${c.obra||'Sem obra'} · ${fmtD(c.data)}`,38,22);
   const company=getCotacaoCompany(c);let startY=34;if(company){const h=drawCommercialCompanyPDFBlock(doc,company,14,34,182);startY=34+h+8;}
   doc.autoTable({startY,head:[['#','Item','Descrição','Qtd','Unid','Valor ref.']],body:base.map((item,index)=>[index+1,item.nome,item.descricao,item.quantidade,item.unidade,fmtV(item.valor_unitario)]),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[26,46,107],textColor:255},alternateRowStyles:{fillColor:[247,250,255]}});
@@ -5739,7 +5763,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div class="form-group" style="grid-column:1/-1"><label>Razão Social *</label><input id="m-fnome" placeholder="Ex: Telhanorte LTDA..."></div>
 <div class="form-group"><label>Contato</label><input id="m-ftelefone" placeholder="(11) 98765-4321"></div>
 <div class="form-group"><label>E-mail</label><input id="m-femail" type="email" placeholder="contato@fornecedor.com"></div>
-<div class="form-group"><label>CNPJ</label><input id="m-fcnpj" placeholder="00.000.000/0000-00"></div>
+<div class="form-group"><label>CNPJ</label><input id="m-fcnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" oninput="window._formatCNPJInput(this)" onblur="window._validateCNPJInput(this)"></div>
 <div class="form-group" style="grid-column:1/-1"><label><input type="checkbox" id="m-fativo" checked> Ativo</label></div>
 </div>`;
     onSave=`_saveFornecedor()`;
@@ -5768,7 +5792,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group"><label>Vencimento</label><input id="m-prop-venc" type="date" value="${esc(base.data_vencimento)}"></div>
   <div class="form-group" style="grid-column:1/-1"><label>Nome do orçamento *</label><input id="m-prop-nome" value="${esc(base.nome)}" placeholder="Ex: Proposta Projeto SPDA - NASP"></div>
   <div class="form-group"><label>Cliente *</label><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Nome/Razão social"></div>
-  <div class="form-group"><label>CNPJ / CPF</label><input id="m-prop-cnpj" value="${esc(base.cnpj)}" placeholder="00.000.000/0000-00"></div>
+  <div class="form-group"><label>CNPJ</label><input id="m-prop-cnpj" inputmode="numeric" maxlength="18" value="${esc(formatCNPJ(base.cnpj))}" placeholder="00.000.000/0000-00" oninput="window._formatCNPJInput(this)" onblur="window._validateCNPJInput(this)"></div>
   <div class="form-group"><label>Inscrição Estadual</label><input id="m-prop-ie" value="${esc(base.inscricao_estadual)}" placeholder="ISENTA / nº inscrição"></div>
   <div class="form-group"><label>Contato</label><input id="m-prop-contato" value="${esc(base.contato)}" placeholder="Pessoa de contato"></div>
   <div class="form-group"><label>E-mail</label><input id="m-prop-email" type="email" value="${esc(base.email)}" placeholder="contato@cliente.com"></div>
@@ -5833,6 +5857,8 @@ ${m==='new-material'?`<button class="btn btn-secondary btn-sm" onclick="_preview
 
 window._closeModal=()=>{S.modal=null;S.modalData={};renderApp();};
 
+window._formatCNPJInput=(el)=>{if(el)el.value=formatCNPJ(el.value);};
+window._validateCNPJInput=(el)=>{if(el&&!validateCNPJLength(el.value))toast('CNPJ deve ter 14 números.','#ef4444');};
 window._setPropostaLogo=(data='')=>{
   const hidden=document.getElementById('m-prop-logo-data');
   const preview=document.getElementById('m-prop-logo-preview');
@@ -6812,7 +6838,9 @@ window._togglePedExpand=(id)=>{window._pedExpanded[id]=!window._pedExpanded[id];
 window._saveFornecedor=async()=>{
   const nome=document.getElementById('m-fnome')?.value?.trim();
   if(!nome){toast('Nome obrigatório.','#ef4444');return;}
-  const obj={id:uid(),nome,telefone:document.getElementById('m-ftelefone')?.value||'',email:document.getElementById('m-femail')?.value||'',cnpj:document.getElementById('m-fcnpj')?.value||'',ativo:document.getElementById('m-fativo')?.checked??true,created_at:new Date().toISOString()};
+  const cnpj=document.getElementById('m-fcnpj')?.value||'';
+  if(!validateCNPJLength(cnpj)){toast('CNPJ deve ter 14 números.','#ef4444');return;}
+  const obj={id:uid(),nome,telefone:document.getElementById('m-ftelefone')?.value||'',email:document.getElementById('m-femail')?.value||'',cnpj:formatCNPJ(cnpj),ativo:document.getElementById('m-fativo')?.checked??true,created_at:new Date().toISOString()};
   const{error}=await sb.from('fornecedores').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   if(!DB.fornecedores.find(f=>f.id===obj.id))DB.fornecedores.unshift(obj);
@@ -6829,13 +6857,15 @@ window._saveProposta=async(id=null)=>{
   if(!cliente||!nome||itens.length===0){toast('Informe cliente, nome da proposta e pelo menos um item.','#ef4444');return;}
   const old=id?DB.propostas.find(p=>p.id===id):null;
   const desconto=moneyNumber(document.getElementById('m-prop-desconto')?.value)||0;
+  const cnpj=document.getElementById('m-prop-cnpj')?.value?.trim()||'';
+  if(!validateCNPJLength(cnpj)){toast('CNPJ deve ter 14 números.','#ef4444');return;}
   const obj=cleanProposta({
     ...(old||{}),
     id:id||('prop-'+uid()),
     empresa_id:document.getElementById('m-prop-company')?.value||'',
     numero:document.getElementById('m-prop-numero')?.value?.trim()||nextNum(DB.propostas||[],'PROP'),
     cliente,
-    cnpj:document.getElementById('m-prop-cnpj')?.value?.trim()||'',
+    cnpj:formatCNPJ(cnpj),
     inscricao_estadual:document.getElementById('m-prop-ie')?.value?.trim()||'',
     contato:document.getElementById('m-prop-contato')?.value?.trim()||'',
     email:document.getElementById('m-prop-email')?.value?.trim()||'',
@@ -6890,7 +6920,8 @@ window._saveCotacao=async()=>{
   _closeModal();renderApp();
 };
 window._saveFornecedorInline=async(id,field,value)=>{
-  const val=String(value||'').trim();
+  const val=field==='cnpj'?formatCNPJ(value):String(value||'').trim();
+  if(field==='cnpj'&&!validateCNPJLength(value)){toast('CNPJ deve ter 14 números.','#ef4444');renderApp();return;}
   if(field==='nome'&&!val){toast('O fornecedor precisa ter um nome.','#ef4444');renderApp();return;}
   await updateField('fornecedores',id,field,val);
   renderApp();
@@ -7286,8 +7317,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426045108",
-  id: "/?build=20260426045108",
+  start_url: "/?build=20260426051520",
+  id: "/?build=20260426051520",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
