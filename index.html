@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426152443">
+<meta name="jet-build" content="20260426180622">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -3560,6 +3560,7 @@ function renderRDO(rdos,obra){
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('rdo',obra)}
     <button class="btn btn-secondary" onclick="_openModal('import-rdo')">Importar planilha</button>
+    <button class="btn btn-secondary" onclick="_openModal('import-rdo-fotos')">Importar fotos</button>
     <button class="btn btn-primary" onclick="_openModal('new-rdo')">+ Novo RDO</button>
   </div>
 </div>
@@ -5672,6 +5673,17 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
 </div>`;
     onSave=`window._importRDOPlanilha(event)`;
   }
+  else if(m==='import-rdo-fotos'){
+    title='Importar fotos dos RDOs';
+    saveLabel='Anexar fotos';
+    body=`<div class="form-grid-2">
+<div class="form-group" style="margin-bottom:0"><label>Obra</label><input id="m-rdo-foto-import-obra" value="${esc(S.obra||'APL - AV. Paulista')}" oninput="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
+<div class="form-group" style="margin-bottom:0"><label>Importar a partir de</label><input id="m-rdo-foto-import-start" type="date" value="2026-04-09" onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de índice de fotos</label><input id="m-rdo-foto-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOFotoImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Índice de Fotos”. A prévia cruza por data com os RDOs da obra, preserva fotos já anexadas e ignora links duplicados.</div></div>
+<div id="m-rdo-foto-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:340px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
+</div>`;
+    onSave=`window._importRDOFotosPlanilha(event)`;
+  }
   else if(m==='new-rdo'||m==='edit-rdo'){
     const r=m==='edit-rdo'?DB.rdo.find(x=>x.id===d.id):null;
     const gv=(k,def='')=>r?(r[k]??def):def;
@@ -7706,6 +7718,211 @@ window._importRDOPlanilha=async(event)=>{
   _closeModal();
 };
 
+window._rdoFotoImportRaw=[];
+window._rdoFotoImportGroups=[];
+function rdoFotoImportOptions(){
+  return{
+    obra:document.getElementById('m-rdo-foto-import-obra')?.value?.trim()||S.obra||'APL - AV. Paulista',
+    start:document.getElementById('m-rdo-foto-import-start')?.value||'2026-04-09'
+  };
+}
+function rdoFotoCell(sheet,row,col){
+  const cell=sheet?.[window.XLSX.utils.encode_cell({r:row,c:col})];
+  if(!cell)return'';
+  return cell.w??cell.v??'';
+}
+function rdoFotoLink(sheet,row,col){
+  const cell=sheet?.[window.XLSX.utils.encode_cell({r:row,c:col})];
+  const link=cell?.l?.Target||cell?.l?.target||'';
+  if(link)return String(link);
+  const value=cell?.v??cell?.w??'';
+  return /^https?:\/\//i.test(String(value||''))?String(value):'';
+}
+function rdoFotoHeaderKey(value=''){
+  return stripAccents(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function rdoFotoTime(value=''){
+  if(!value&&value!==0)return'';
+  if(value instanceof Date&&!Number.isNaN(value.getTime())){
+    return `${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}:${String(value.getSeconds()).padStart(2,'0')}`;
+  }
+  if(typeof value==='number'){
+    const total=Math.round((value%1)*86400);
+    const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  const text=String(value||'').trim();
+  const m=text.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  return m?`${m[1].padStart(2,'0')}:${m[2]}:${(m[3]||'00').padStart(2,'0')}`:text;
+}
+function rdoFotoDriveId(url=''){
+  const text=String(url||'');
+  let m=text.match(/\/file\/d\/([^/?#]+)/i);
+  if(m)return m[1];
+  m=text.match(/[?&]id=([^&#]+)/i);
+  return m?decodeURIComponent(m[1]):'';
+}
+function rdoFotoThumb(url=''){
+  const id=rdoFotoDriveId(url);
+  return id?`https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1000`:url;
+}
+function rdoFotoKey(f){
+  const raw=f?.drive_url||f?.original_url||f?.url||'';
+  const id=rdoFotoDriveId(raw);
+  if(id)return`drive:${id}`;
+  const name=String(f?.name||'').trim().toLowerCase();
+  if(name)return`name:${name}`;
+  return`url:${String(raw).trim().toLowerCase()}`;
+}
+function rdoFotoParseSheet(sheet){
+  const ref=sheet?.['!ref'];
+  if(!ref)throw new Error('A planilha está vazia.');
+  const range=window.XLSX.utils.decode_range(ref);
+  let headerRow=-1;
+  for(let r=range.s.r;r<=Math.min(range.e.r,range.s.r+40);r++){
+    const labels=[];
+    for(let c=range.s.c;c<=range.e.c;c++)labels.push(rdoFotoHeaderKey(rdoFotoCell(sheet,r,c)));
+    if(labels.includes('data')&&labels.some(label=>label.includes('arquivo'))&&labels.some(label=>label.includes('drive')||label.includes('abrir')))headerRow=r;
+    if(headerRow>=0)break;
+  }
+  if(headerRow<0)throw new Error('Não encontrei o cabeçalho Data / Arquivo / Abrir no Drive.');
+  const headers=[];
+  for(let c=range.s.c;c<=range.e.c;c++)headers.push(rdoFotoHeaderKey(rdoFotoCell(sheet,headerRow,c)));
+  const findCol=(names,fallback)=> {
+    const idx=headers.findIndex(h=>names.some(n=>h===n||h.includes(n)));
+    return idx>=0?range.s.c+idx:fallback;
+  };
+  const colData=findCol(['data'],0),colDia=findCol(['dia'],1),colHora=findCol(['horario','hora'],2),colAutor=findCol(['enviado por','autor'],3),colDesc=findCol(['legenda','descricao'],4),colArquivo=findCol(['arquivo'],5),colLink=findCol(['drive','abrir'],6);
+  const photos=[];
+  for(let r=headerRow+1;r<=range.e.r;r++){
+    const arquivo=String(rdoFotoCell(sheet,r,colArquivo)||'').trim();
+    const link=String(rdoFotoLink(sheet,r,colLink)||'').trim();
+    if(!arquivo||!/^https?:\/\//i.test(link))continue;
+    const data=rdoImportISO(rdoFotoCell(sheet,r,colData));
+    if(!data)continue;
+    const hora=rdoFotoTime(rdoFotoCell(sheet,r,colHora));
+    photos.push({
+      data,
+      dia:String(rdoFotoCell(sheet,r,colDia)||'').trim(),
+      hora,
+      enviado_por:String(rdoFotoCell(sheet,r,colAutor)||'').trim(),
+      desc:String(rdoFotoCell(sheet,r,colDesc)||'').trim(),
+      name:arquivo,
+      url:rdoFotoThumb(link),
+      thumb:rdoFotoThumb(link),
+      drive_url:link,
+      original_url:link,
+      source:'google-drive'
+    });
+  }
+  return photos;
+}
+function rdoFotoBuildGroups(raw=[]){
+  const opts=rdoFotoImportOptions();
+  const rdos=(DB.rdo||[]).filter(r=>(r.obra||'')===opts.obra);
+  const rdoByDate=new Map(rdos.map(r=>[String(r.data||'').slice(0,10),r]));
+  const grouped=new Map();
+  raw.filter(p=>p.data&&p.data>=opts.start).forEach(photo=>{
+    if(!grouped.has(photo.data)){
+      const rdo=rdoByDate.get(photo.data)||null;
+      grouped.set(photo.data,{data:photo.data,rdo,rdoId:rdo?.id||'',rdoNumero:rdo?.rdo_numero||'',fotos:[],novas:[],duplicadas:[],semRdo:[]});
+    }
+    grouped.get(photo.data).fotos.push(photo);
+  });
+  const sheetSeen=new Set();
+  grouped.forEach(group=>{
+    if(!group.rdo){group.semRdo=[...group.fotos];return;}
+    const existing=new Set((group.rdo.fotos||[]).map(rdoFotoKey).filter(Boolean));
+    group.fotos.forEach(photo=>{
+      const key=rdoFotoKey(photo);
+      const scoped=`${group.rdoId}:${key}`;
+      if(existing.has(key)||sheetSeen.has(scoped))group.duplicadas.push(photo);
+      else{group.novas.push(photo);sheetSeen.add(scoped);}
+    });
+  });
+  return [...grouped.values()].sort((a,b)=>a.data.localeCompare(b.data));
+}
+function rdoFotoPreviewHtml(groups=[]){
+  if(!groups.length)return'<div style="padding:14px;color:var(--text3);font-size:13px">Nenhuma foto encontrada para os filtros informados.</div>';
+  const total=groups.reduce((s,g)=>s+g.fotos.length,0);
+  const novas=groups.reduce((s,g)=>s+g.novas.length,0);
+  const duplicadas=groups.reduce((s,g)=>s+g.duplicadas.length,0);
+  const semRdo=groups.reduce((s,g)=>s+g.semRdo.length,0);
+  return`<table><thead><tr><th>Data</th><th>RDO</th><th>Fotos na planilha</th><th>Novas</th><th>Duplicadas</th><th>Sem RDO</th><th>Status</th></tr></thead><tbody>${groups.map(g=>{
+    const status=!g.rdo?'<span class="tag" style="color:#f87171">Sem RDO nesta data</span>':g.novas.length?'<span class="tag" style="color:#34d399">Pronto para anexar</span>':'<span class="tag">Nada novo</span>';
+    return`<tr><td>${fmtD(g.data)}</td><td>${g.rdo?`RDO Nº ${esc(g.rdoNumero||'—')}`:'—'}</td><td><strong>${g.fotos.length}</strong></td><td style="color:#34d399;font-weight:800">${g.novas.length}</td><td style="color:#fbbf24;font-weight:800">${g.duplicadas.length}</td><td style="color:#f87171;font-weight:800">${g.semRdo.length}</td><td>${status}</td></tr>`;
+  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${total} foto(s) · ${novas} nova(s) para anexar · ${duplicadas} duplicada(s) ignorada(s) · ${semRdo} sem RDO correspondente. Nada será excluído.</div>`;
+}
+window._refreshRDOFotoImportPreview=()=>{
+  const target=document.getElementById('m-rdo-foto-import-preview');
+  if(!target||!window._rdoFotoImportRaw?.length)return;
+  window._rdoFotoImportGroups=rdoFotoBuildGroups(window._rdoFotoImportRaw);
+  target.innerHTML=rdoFotoPreviewHtml(window._rdoFotoImportGroups);
+};
+window._previewRDOFotoImport=async(file)=>{
+  const target=document.getElementById('m-rdo-foto-import-preview');
+  if(!target)return;
+  if(!file){target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div>';return;}
+  if(!window.XLSX){toast('Leitor de planilha não carregado. Atualize a página.','#ef4444');return;}
+  try{
+    target.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Lendo links do Drive...</div>';
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array',cellDates:true});
+    const sheetName=wb.SheetNames.includes('Índice de Fotos')?'Índice de Fotos':(wb.SheetNames.includes('Indice de Fotos')?'Indice de Fotos':wb.SheetNames[0]);
+    window._rdoFotoImportRaw=rdoFotoParseSheet(wb.Sheets[sheetName]);
+    window._rdoFotoImportGroups=rdoFotoBuildGroups(window._rdoFotoImportRaw);
+    target.innerHTML=rdoFotoPreviewHtml(window._rdoFotoImportGroups);
+  }catch(err){
+    console.error(err);
+    window._rdoFotoImportRaw=[];
+    window._rdoFotoImportGroups=[];
+    target.innerHTML=`<div style="padding:14px;color:#f87171;font-size:13px">Não consegui ler a planilha: ${esc(err.message||err)}</div>`;
+  }
+};
+window._importRDOFotosPlanilha=async(event)=>{
+  event?.stopPropagation?.();
+  const file=document.getElementById('m-rdo-foto-import-file')?.files?.[0];
+  if(!file){toast('Selecione a planilha antes de importar.','#ef4444');return;}
+  if(!window._rdoFotoImportRaw?.length)await window._previewRDOFotoImport(file);
+  const groups=rdoFotoBuildGroups(window._rdoFotoImportRaw||[]);
+  const updates=groups.map(group=>{
+    const current=(DB.rdo||[]).find(r=>r.id===group.rdoId);
+    if(!current)return null;
+    const existing=new Set((current.fotos||[]).map(rdoFotoKey).filter(Boolean));
+    const nextFotos=[];
+    group.fotos.forEach(photo=>{
+      const key=rdoFotoKey(photo);
+      if(key&&!existing.has(key)){
+        nextFotos.push(photo);
+        existing.add(key);
+      }
+    });
+    return nextFotos.length?{rdo:current,nextFotos}:null;
+  }).filter(Boolean);
+  const count=updates.reduce((s,u)=>s+u.nextFotos.length,0);
+  if(!count){toast('Nenhuma foto nova para anexar.','#f59e0b');return;}
+  if(!confirm(`Anexar ${count} foto(s) nova(s) aos RDOs encontrados? Links duplicados serão ignorados.`))return;
+  const btn=document.querySelector('.modal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Anexando...';}
+  const results=await Promise.all(updates.map(u=>{
+    const fotos=[...(u.rdo.fotos||[]),...u.nextFotos];
+    return sb.from('rdo').update({fotos}).eq('id',u.rdo.id).then(res=>({res,u,fotos}));
+  }));
+  const failed=results.find(item=>item.res.error);
+  if(failed){
+    if(btn){btn.disabled=false;btn.textContent='Anexar fotos';}
+    toast('Erro ao anexar fotos: '+failed.res.error.message,'#ef4444');
+    return;
+  }
+  DB.rdo=(DB.rdo||[]).map(r=>{
+    const saved=results.find(item=>item.u.rdo.id===r.id);
+    return saved?{...r,fotos:saved.fotos}:r;
+  });
+  toast(`${count} foto(s) anexada(s) aos RDOs!`,'#22c55e');
+  _closeModal();
+  renderApp();
+};
+
 // ─── RENDER APP ───────────────────────────────────────────────────────────
 // ─── ONLINE PRESENCE ──────────────────────────────────────────────────────
 let _onlineUsers = {};
@@ -7868,8 +8085,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426152443",
-  id: "/?build=20260426152443",
+  start_url: "/?build=20260426180622",
+  id: "/?build=20260426180622",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
