@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426020716">
+<meta name="jet-build" content="20260426021831">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -2349,36 +2349,43 @@ function renderEscritorioModule(){
   const pendencias=DB.todos.filter(t=>t.status!=='Concluído').length;
   const avisosNaoLidos=getHomeNoticeStats().unread;
   const tabs=[
-    {id:'financeiro',label:'Financeiro',icon:'R$'},
-    {id:'rh',label:'Pessoas',icon:'RH'},
-    {id:'administracao',label:'Administração',icon:'ADM'}
-  ].map(item=>`<button class="office-nav-btn${tab===item.id?' active':''}" onclick="S.escritorioTab='${item.id}';renderApp()"><span class="office-nav-ico">${esc(item.icon)}</span><span class="office-nav-label">${esc(item.label)}</span></button>`).join('');
-  const goCompras=`S.page='dashboard';S.modulo='compras';S.comprasTab='pedidos';S.obra=null;renderApp()`;
-  const goObras=`S.page='dashboard';S.modulo='obras';S.obra=null;renderApp()`;
-  const goGerenciar=`S.page='gerenciar-obras';S.modulo='obras';S.obra=null;renderApp()`;
-  const goFuncionarios=firstObra?`S.page='obra';S.modulo='obras';S.obra='${escJs(firstObra)}';S.obraTab='funcionarios';S.selectedAditivo=null;renderApp()`:goObras;
-  const goDespesas=firstObra?`S.page='obra';S.modulo='obras';S.obra='${escJs(firstObra)}';S.obraTab='despesas';S.selectedAditivo=null;renderApp()`:goObras;
+    {id:'financeiro',label:'Financeiro'},
+    {id:'rh',label:'RH'},
+    {id:'administracao',label:'Administração'}
+  ].map(item=>`<button class="office-nav-btn${tab===item.id?' active':''}" onclick="S.escritorioTab='${item.id}';renderApp()"><span class="office-nav-label">${esc(item.label)}</span></button>`).join('');
   let main='',actions='';
   if(tab==='financeiro'){
     main=`<div class="office-panel-title">Resumo financeiro operacional</div><div class="office-panel-sub">Visão consolidada de contratos, compras e prestações registradas no sistema.</div><div class="office-metric-grid"><div class="office-metric"><span>Aditivos</span><strong>${fmtV(totalAditivos)}</strong><small>${DB.aditivos.length} lançamento(s) de obra</small></div><div class="office-metric"><span>Compras</span><strong>${fmtV(totalPedidos)}</strong><small>${DB.pedidos.filter(p=>p.status==='Pendente').length} pedido(s) pendente(s)</small></div><div class="office-metric"><span>Despesas</span><strong>${fmtV(totalDespesas)}</strong><small>${fmtV(totalAdiantado)} adiantado</small></div></div><div class="office-list"><div class="office-row"><div class="office-row-main"><strong>Pedidos aguardando fechamento</strong><span>Itens que ainda precisam de aprovação, envio ou recebimento.</span></div><span class="office-pill">${DB.pedidos.filter(p=>p.status==='Pendente').length} pend.</span></div><div class="office-row"><div class="office-row-main"><strong>Prestações com anexos</strong><span>Comprovantes vinculados aos lançamentos de despesas.</span></div><span class="office-pill">${Object.values(DB.despesaFiles||{}).flat().length} arq.</span></div><div class="office-row"><div class="office-row-main"><strong>Cotações em andamento</strong><span>Processos que ainda não foram fechados ou cancelados.</span></div><span class="office-pill">${DB.cotacoes.filter(c=>!['Fechada','Cancelada'].includes(normalizeCotacaoStatus(c.status))).length}</span></div></div>`;
-    actions=`${officeAction('Compras e pedidos','Abrir painel financeiro de compras',goCompras,'PC')}${officeAction('Adiantamentos','Ir para prestação da primeira obra',goDespesas,'AD')}${officeAction('Obras e contratos','Ver valores por obra',goObras,'OB')}`;
+    actions=`${officeAction('Compras e pedidos','Abrir painel financeiro de compras','compras','PC')}${officeAction('Adiantamentos','Ir para prestação da primeira obra','despesas','AD')}${officeAction('Obras e contratos','Ver valores por obra','obras','OB')}`;
   }else if(tab==='rh'){
     main=`<div class="office-panel-title">RH e mobilização</div><div class="office-panel-sub">Controle rápido de equipe, status e baixadas programadas.</div><div class="office-metric-grid"><div class="office-metric"><span>Ativos</span><strong>${funcsAtivos}</strong><small>Funcionários em operação</small></div><div class="office-metric"><span>Atenção</span><strong>${funcsAusentes}</strong><small>Ausentes ou afastados</small></div><div class="office-metric"><span>Baixadas</span><strong>${baixadasAbertas}</strong><small>Solicitadas, aceitas ou em baixada</small></div></div><div class="office-list"><div class="office-row"><div class="office-row-main"><strong>Funcionários cadastrados</strong><span>Base atual por obra, função, empresa e documento.</span></div><span class="office-pill">${DB.funcionarios.length}</span></div><div class="office-row"><div class="office-row-main"><strong>Baixadas programáveis</strong><span>Calendário de ida, volta, dias e status por colaborador.</span></div><span class="office-pill">${(DB.baixadas||[]).length}</span></div><div class="office-row"><div class="office-row-main"><strong>Obras com equipe ativa</strong><span>Distribuição de mão de obra em campo.</span></div><span class="office-pill">${new Set(DB.funcionarios.filter(f=>f.status==='Ativo').map(f=>f.obra)).size}</span></div></div>`;
-    actions=`${officeAction('Equipe da obra','Abrir aba de funcionários',goFuncionarios,'EQ')}${officeAction('Painel de obras','Ver distribuição por obra',goObras,'OB')}${officeAction('Avisos internos','Abrir painel de avisos na home',`S.page='home';S.homeNoticeOpen=true;renderApp()`,'AV')}`;
+    actions=`${officeAction('Equipe da obra','Abrir aba de funcionários','funcionarios','EQ')}${officeAction('Painel de obras','Ver distribuição por obra','obras','OB')}${officeAction('Avisos internos','Abrir painel de avisos na home','avisos','AV')}`;
   }else{
     main=`<div class="office-panel-title">Administração e rotina interna</div><div class="office-panel-sub">Atalhos para cadastros, governança e acompanhamento do sistema.</div><div class="office-metric-grid"><div class="office-metric"><span>Obras</span><strong>${obras.length}</strong><small>Cadastros ativos no painel</small></div><div class="office-metric"><span>Pendências</span><strong>${pendencias}</strong><small>A fazer ainda em aberto</small></div><div class="office-metric"><span>Avisos</span><strong>${avisosNaoLidos}</strong><small>Não lidos para você</small></div></div><div class="office-list"><div class="office-row"><div class="office-row-main"><strong>Cadastros principais</strong><span>Obras, fornecedores, funcionários, materiais e estoque.</span></div><span class="office-pill">base</span></div><div class="office-row"><div class="office-row-main"><strong>Documentos gerenciais</strong><span>PDFs e planilhas padronizados por módulo.</span></div><span class="office-pill">export</span></div><div class="office-row"><div class="office-row-main"><strong>Comunicação interna</strong><span>Avisos com menções para usuários cadastrados.</span></div><span class="office-pill">${DB.avisos.length}</span></div></div>`;
-    actions=`${officeAction('Gerenciar obras','Cadastrar, renomear ou excluir obra',goGerenciar,'GE')}${officeAction('Fornecedores','Abrir base administrativa de parceiros',`S.page='dashboard';S.modulo='compras';S.comprasTab='fornecedores';S.obra=null;renderApp()`,'FO')}${officeAction('Avisos','Abrir central de comunicação',`S.page='home';S.homeNoticeOpen=true;renderApp()`,'SI')}`;
+    actions=`${officeAction('Gerenciar obras','Cadastrar, renomear ou excluir obra','gerenciar','GE')}${officeAction('Fornecedores','Abrir base administrativa de parceiros','fornecedores','FO')}${officeAction('Avisos','Abrir central de comunicação','avisos','SI')}`;
   }
   return `<div class="office-shell"><div class="office-nav">${tabs}</div><div class="office-grid"><section class="office-panel">${main}</section><aside class="office-side-actions">${actions}</aside></div></div>`;
 }
-function officeAction(title,desc,onclick,icon){
-  return `<button class="office-action" onclick="${onclick}"><div><strong>${esc(title)}</strong><span>${esc(desc)}</span></div><span class="office-action-icon">${esc(icon)}</span></button>`;
+function officeAction(title,desc,action,icon){
+  return `<button type="button" class="office-action" onclick="window._officeGo('${escJs(action)}')"><div><strong>${esc(title)}</strong><span>${esc(desc)}</span></div><span class="office-action-icon">${esc(icon)}</span></button>`;
 }
+window._officeGo=(action)=>{
+  const firstObra=getAllObras()[0]||'';
+  if(action==='compras'){S.page='dashboard';S.modulo='compras';S.comprasTab='pedidos';S.obra=null;}
+  else if(action==='fornecedores'){S.page='dashboard';S.modulo='compras';S.comprasTab='fornecedores';S.obra=null;}
+  else if(action==='obras'){S.page='dashboard';S.modulo='obras';S.obra=null;}
+  else if(action==='gerenciar'){S.page='gerenciar-obras';S.modulo='obras';S.obra=null;}
+  else if(action==='funcionarios'&&firstObra){S.page='obra';S.modulo='obras';S.obra=firstObra;S.obraTab='funcionarios';S.selectedAditivo=null;}
+  else if(action==='despesas'&&firstObra){S.page='obra';S.modulo='obras';S.obra=firstObra;S.obraTab='despesas';S.selectedAditivo=null;}
+  else if(action==='avisos'){S.page='home';S.homeNoticeOpen=true;}
+  else{S.page='dashboard';S.modulo='obras';S.obra=null;}
+  renderApp();
+};
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────
 function renderDashboard(){
   if(S.modulo==='escritorio'){
-    const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.escritorioTab='financeiro';renderApp()">Financeiro</button><button class="btn btn-secondary btn-sm" onclick="S.escritorioTab='rh';renderApp()">Pessoas</button><button class="btn btn-secondary btn-sm" onclick="S.escritorioTab='administracao';renderApp()">Administração</button></div>`;
+    const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button>`;
     return `<div class="page">${renderPageHero('JET','Escritório','FINANCEIRO · RH · ADMINISTRAÇÃO',heroActions)}${renderEscritorioModule()}</div>`;
   }
   // PAINEL COMPRAS
@@ -6389,8 +6396,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426020716",
-  id: "/?build=20260426020716",
+  start_url: "/?build=20260426021831",
+  id: "/?build=20260426021831",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
