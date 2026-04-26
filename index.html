@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260425223101">
+<meta name="jet-build" content="20260425223740">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1120,7 +1120,15 @@ function cleanNotices(list){
     .slice(0,120);
 }
 function getLocalHomeNotices(){try{return cleanNotices(JSON.parse(localStorage.getItem('jet-home-notices')||'[]'));}catch{return[];}}
-function saveLocalHomeNotices(list){localStorage.setItem('jet-home-notices',JSON.stringify(cleanNotices(list)));}
+function saveLocalHomeNotices(list){
+  try{
+    localStorage.setItem('jet-home-notices',JSON.stringify(cleanNotices(list)));
+    return true;
+  }catch(err){
+    console.warn('[JET] Avisos mantidos em memoria; localStorage indisponivel:',err?.message||err);
+    return false;
+  }
+}
 function cleanDespesaFile(file={}){return{id:String(file?.id||uid()),name:String(file?.name||file?.nome||'').trim(),size:Number(file?.size||0)||0,path:String(file?.path||'').trim(),url:String(file?.url||'').trim()};}
 function cleanDespesaFileMap(map={}){const out={};Object.entries(map||{}).forEach(([despId,files])=>{const cleaned=(Array.isArray(files)?files:[]).map(cleanDespesaFile).filter(f=>f.name&&f.path&&f.url);if(cleaned.length)out[despId]=cleaned;});return out;}
 function getLocalDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem('jet-despesa-files')||'{}'));}catch{return{};}}
@@ -1969,7 +1977,8 @@ window._postHomeNotice=async(event)=>{
     renderApp();
   }catch(err){
     console.error('[JET] Erro ao publicar aviso:',err);
-    toast('Nao consegui publicar o aviso. Veja o console para detalhes.','#ef4444');
+    const msg=String(err?.message||err||'erro desconhecido').slice(0,120);
+    toast(`Nao consegui publicar o aviso: ${msg}`,'#ef4444');
   }finally{
     if(btn&&document.body.contains(btn)){
       btn.disabled=false;
@@ -6237,8 +6246,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260425223101",
-  id: "/?build=20260425223101",
+  start_url: "/?build=20260425223740",
+  id: "/?build=20260425223740",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
