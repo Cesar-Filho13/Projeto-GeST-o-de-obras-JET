@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426070559">
+<meta name="jet-build" content="20260426071147">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -806,7 +806,7 @@ html[data-theme="light"] .proposal-meta span,html[data-theme="light"] .proposal-
 .comment-input-wrap{position:relative;flex:1}
 .comment-input{width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:11px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;outline:none;resize:none;min-height:42px;max-height:120px;transition:all .2s}
 .comment-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,126,248,.1)}
-.mention-menu{position:absolute;bottom:calc(100%+6px);left:0;background:var(--panel-grad);border:1px solid var(--border2);border-radius:12px;padding:4px;min-width:200px;z-index:500;box-shadow:0 12px 30px rgba(4,10,24,.28);display:none;backdrop-filter:blur(14px)}
+.mention-menu{position:absolute;bottom:calc(100%+6px);left:0;background:var(--panel-grad);border:1px solid var(--border2);border-radius:12px;padding:4px;min-width:240px;max-height:min(340px,52vh);overflow-y:auto;z-index:500;box-shadow:0 12px 30px rgba(4,10,24,.28);display:none;backdrop-filter:blur(14px)}
 .mention-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s}.mention-item:hover,.mention-item.active{background:rgba(59,126,248,.1);transform:translateX(2px)}
 .m-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#1a2e6b 0%,#2a3f8a 100%);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;border:1px solid rgba(59,126,248,.2)}
 
@@ -2244,6 +2244,10 @@ function getMentionDirectory(){
   }).filter(item=>item.token);
 }
 function getTeamMembers(){return getMentionDirectory().map(item=>item.label);}
+function getMentionSuggestions(query=''){
+  const q=String(query||'').toLowerCase();
+  return getTeamMembers().filter(name=>name.toLowerCase().includes(q));
+}
 function getHomeNoticeFieldRefs(){
   const inModal=S.modal==='home-notice';
   return{
@@ -2295,7 +2299,7 @@ window._homeNoticeInput=(el)=>{
     const q=before.slice(atIdx+1);
     if(!/\s/.test(q)){
       _homeMentionActive=true;_homeMentionStart=atIdx;_homeMentionQuery=q;_homeMentionIdx=0;
-      _showHomeMentions(getTeamMembers().filter(name=>name.toLowerCase().includes(q.toLowerCase())).slice(0,6));
+      _showHomeMentions(getMentionSuggestions(q));
       return;
     }
   }
@@ -2305,11 +2309,11 @@ window._homeNoticeInput=(el)=>{
 };
 window._homeNoticeKey=(e)=>{
   if(_homeMentionActive){
-    const items=getTeamMembers().filter(name=>name.toLowerCase().includes(_homeMentionQuery.toLowerCase())).slice(0,6);
+    const items=getMentionSuggestions(_homeMentionQuery);
     if(e.key==='ArrowDown'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx+1)%Math.max(items.length,1);_showHomeMentions(items);return;}
     if(e.key==='ArrowUp'){e.preventDefault();_homeMentionIdx=(_homeMentionIdx-1+Math.max(items.length,1))%Math.max(items.length,1);_showHomeMentions(items);return;}
     if(e.key==='Enter'&&items.length){e.preventDefault();_pickHomeMention(items[_homeMentionIdx]);return;}
-    if(e.key==='Escape'){_homeMentionActive=false;const menu=document.getElementById('home-mention-menu');if(menu)menu.style.display='none';return;}
+    if(e.key==='Escape'){_homeMentionActive=false;const {menuEl}=getHomeNoticeFieldRefs();if(menuEl)menuEl.style.display='none';return;}
   }
 };
 function _showHomeMentions(items){
@@ -3321,8 +3325,8 @@ ${cs.map((c,ci)=>{const parsed=esc(c.texto).replace(/@([\w.]+)/g,'<span class="c
 </div></div>`;
 }
 
-window._cInput=(el)=>{el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';const val=el.value,pos=el.selectionStart,before=val.slice(0,pos),atIdx=before.lastIndexOf('@');if(atIdx>=0&&(atIdx===0||/\s/.test(before[atIdx-1]))){const q=before.slice(atIdx+1);if(!/\s/.test(q)){_mentionActive=true;_mentionStart=atIdx;_mentionQuery=q;_mentionIdx=0;_showMentions(getTeamMembers().filter(m=>m.toLowerCase().includes(q.toLowerCase())).slice(0,6));return;}}  _mentionActive=false;const m=document.getElementById('mention-menu');if(m)m.style.display='none';};
-window._cKey=(e)=>{if(_mentionActive){const ms=getTeamMembers().filter(m=>m.toLowerCase().includes(_mentionQuery.toLowerCase())).slice(0,6);if(e.key==='ArrowDown'){e.preventDefault();_mentionIdx=(_mentionIdx+1)%Math.max(ms.length,1);_showMentions(ms);return;}if(e.key==='ArrowUp'){e.preventDefault();_mentionIdx=(_mentionIdx-1+Math.max(ms.length,1))%Math.max(ms.length,1);_showMentions(ms);return;}if(e.key==='Enter'&&ms.length){e.preventDefault();_pickMention(ms[_mentionIdx]);return;}if(e.key==='Escape'){_mentionActive=false;const m=document.getElementById('mention-menu');if(m)m.style.display='none';return;}}if(e.key==='Enter'&&!e.shiftKey&&!_mentionActive){e.preventDefault();window._sendComment(S.selectedAditivo);}};
+window._cInput=(el)=>{el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';const val=el.value,pos=el.selectionStart,before=val.slice(0,pos),atIdx=before.lastIndexOf('@');if(atIdx>=0&&(atIdx===0||/\s/.test(before[atIdx-1]))){const q=before.slice(atIdx+1);if(!/\s/.test(q)){_mentionActive=true;_mentionStart=atIdx;_mentionQuery=q;_mentionIdx=0;_showMentions(getMentionSuggestions(q));return;}}  _mentionActive=false;const m=document.getElementById('mention-menu');if(m)m.style.display='none';};
+window._cKey=(e)=>{if(_mentionActive){const ms=getMentionSuggestions(_mentionQuery);if(e.key==='ArrowDown'){e.preventDefault();_mentionIdx=(_mentionIdx+1)%Math.max(ms.length,1);_showMentions(ms);return;}if(e.key==='ArrowUp'){e.preventDefault();_mentionIdx=(_mentionIdx-1+Math.max(ms.length,1))%Math.max(ms.length,1);_showMentions(ms);return;}if(e.key==='Enter'&&ms.length){e.preventDefault();_pickMention(ms[_mentionIdx]);return;}if(e.key==='Escape'){_mentionActive=false;const m=document.getElementById('mention-menu');if(m)m.style.display='none';return;}}if(e.key==='Enter'&&!e.shiftKey&&!_mentionActive){e.preventDefault();window._sendComment(S.selectedAditivo);}};
 function _showMentions(ms){const m=document.getElementById('mention-menu');if(!m)return;if(!ms.length){m.style.display='none';return;}m.style.display='block';m.innerHTML=ms.map((n,i)=>`<div class="mention-item${i===_mentionIdx?' active':''}" onmousedown="event.preventDefault();_pickMention('${escJs(n)}')"><div class="m-avatar">${n.charAt(0).toUpperCase()}</div>@${esc(n)}</div>`).join('');}
 function _pickMention(name){const el=document.getElementById('c-text');if(!el)return;const val=el.value,after=val.slice(el.selectionStart);el.value=val.slice(0,_mentionStart)+'@'+name+' '+after;_mentionActive=false;const m=document.getElementById('mention-menu');if(m)m.style.display='none';el.focus();}
 window._sendComment=async(aid)=>{const el=document.getElementById('c-text');const txt=el?.value?.trim();if(!txt)return;const autor=currentUser?currentUser.email.split('@')[0]:'Anônimo';const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const cs=[...(a.comentarios||[]),{id:uid(),autor,texto:txt,data:new Date().toISOString().slice(0,10)}];await sb.from('aditivos').update({comentarios:cs}).eq('id',aid);a.comentarios=cs;el.value='';el.style.height='auto';_mentionActive=false;renderApp();};
@@ -7377,8 +7381,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426070559",
-  id: "/?build=20260426070559",
+  start_url: "/?build=20260426071147",
+  id: "/?build=20260426071147",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
