@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JET — Gestão de Obras</title>
-<meta name="application-name" content="JET Obras">
+<title>JET Gestão de Obras</title>
+<meta name="application-name" content="JET Gestão de Obras">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="JET Obras">
+<meta name="apple-mobile-web-app-title" content="JET Gestão">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07111f">
 <meta name="description" content="Sistema de Gestão de Obras — JET Serviços de Engenharia">
@@ -15,10 +15,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427194625">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
+<meta name="jet-build" content="20260427202652">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/jet-icon-512.png">
+<link rel="icon" type="image/svg+xml" href="/icons/jet-icon.svg">
+<meta name="msapplication-TileColor" content="#1a2e6b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1016,6 +1019,11 @@ html[data-theme="light"] .online-more{background:#eef4ff;color:#1e3a8a}
 <div id="root"><div class="loader" style="padding:100px 20px">Carregando...</div></div>
 
 <script>
+
+(function setJetWindowTitle(){
+  const standalone=window.matchMedia?.('(display-mode: standalone)')?.matches||window.navigator?.standalone===true;
+  document.title=standalone?'Painel':'JET Gestão de Obras';
+})();
 // ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────
 window.onerror=function(msg){if(msg&&(String(msg).includes('ServiceWorker')||String(msg).includes('blob-request')))return true;};
 window.addEventListener('unhandledrejection',function(e){var r=e.reason?String(e.reason):'';if(r.includes('ServiceWorker')||r.includes('blob-request'))e.preventDefault();});
@@ -8987,22 +8995,21 @@ try{
 // ─── PWA MANIFEST (injected inline) ──────────────────────────────────────
 const _manifest = {
   name: "JET Gestão de Obras",
-  short_name: "JET Obras",
-  description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427194625",
-  id: "/?build=20260427194625",
+  short_name: "JET Gestão",
+  description: "Sistema de Gestão de Obras da JET",
+  start_url: "/?app=1",
+  id: "/",
   scope: "/",
   display: "standalone",
+  display_override: ["window-controls-overlay", "standalone"],
   background_color: "#07111f",
-  theme_color: "#2757d9",
+  theme_color: "#07111f",
   orientation: "any",
+  categories: ["business", "productivity"],
   icons: [
-    {
-      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E",
-      sizes: "512x512",
-      type: "image/svg+xml",
-      purpose: "any maskable"
-    }
+    {src: "/icons/jet-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any"},
+    {src: "/icons/jet-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any"},
+    {src: "/icons/jet-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable"}
   ]
 };
 try{

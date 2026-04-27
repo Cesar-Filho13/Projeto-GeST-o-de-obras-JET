@@ -25,7 +25,7 @@ try {
     return
   }
 
-  & $GitExe add index.html README.md .github/workflows scripts
+  & $GitExe add index.html README.md .github/workflows scripts icons
 
   $stagedFiles = & $GitExe diff --cached --name-only
   if (-not $stagedFiles) {
@@ -48,3 +48,4 @@ try {
 finally {
   Pop-Location
 }
+

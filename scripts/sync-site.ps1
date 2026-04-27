@@ -7,12 +7,19 @@ $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $TargetFile = Join-Path $RepoRoot 'index.html'
+$SourceRoot = Split-Path $SourceFile -Parent
+$SourceIcons = Join-Path $SourceRoot 'icons'
+$TargetIcons = Join-Path $RepoRoot 'icons'
 
 if (-not (Test-Path $SourceFile)) {
   throw "Arquivo de origem nao encontrado: $SourceFile"
 }
 
 Copy-Item $SourceFile $TargetFile -Force
+if (Test-Path $SourceIcons) {
+  New-Item -ItemType Directory -Force -Path $TargetIcons | Out-Null
+  Copy-Item (Join-Path $SourceIcons '*') $TargetIcons -Force
+}
 
 $buildStamp = Get-Date -Format 'yyyyMMddHHmmss'
 $utf8 = [System.Text.UTF8Encoding]::new($false)
@@ -25,4 +32,5 @@ if (-not $Quiet) {
   Write-Host "  origem : $SourceFile"
   Write-Host "  destino: $TargetFile"
   Write-Host "  build  : $buildStamp"
+  if (Test-Path $TargetIcons) { Write-Host "  icons  : $TargetIcons" }
 }
