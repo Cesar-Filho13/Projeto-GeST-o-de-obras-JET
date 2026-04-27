@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427105309">
+<meta name="jet-build" content="20260427124000">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -4144,6 +4144,257 @@ window._exportDespesaPackage=async(obra,month='all')=>{
   downloadBinaryBlob(blob,`${base}.zip`);
   toast(`Pacote ZIP gerado: ${ok}/${attachments.length} anexo(s) incluído(s).`,'#22c55e');
 };
+const DESPESA_IMPORT_ALLOWED_EXTS=['pdf','png','jpg','jpeg','webp','gif','doc','docx','xls','xlsx','csv','txt'];
+window._despesaImportState={file:null,rawDrafts:[],drafts:[],zipFiles:new Map(),fileName:'',errors:[]};
+function despImportTextKey(value=''){
+  return stripAccents(String(value||'')).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function despImportMoney(value){
+  if(value==null||value==='')return null;
+  if(typeof value==='number'&&Number.isFinite(value))return value;
+  const parsed=moneyNumber(value);
+  return parsed==null?null:parsed;
+}
+function despImportISO(value){
+  if(!value&&value!==0)return'';
+  if(value instanceof Date&&!isNaN(value))return value.toISOString().slice(0,10);
+  if(typeof value==='number'&&Number.isFinite(value)){
+    const date=new Date(Math.round((value-25569)*86400*1000));
+    return isNaN(date)?'':date.toISOString().slice(0,10);
+  }
+  const text=String(value||'').trim();
+  if(!text)return'';
+  const iso=text.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(iso)return`${iso[1]}-${iso[2].padStart(2,'0')}-${iso[3].padStart(2,'0')}`;
+  const br=text.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})/);
+  if(br)return`${br[3]}-${br[2].padStart(2,'0')}-${br[1].padStart(2,'0')}`;
+  const parsed=new Date(text);
+  return isNaN(parsed)?'':parsed.toISOString().slice(0,10);
+}
+function despImportBasename(path=''){
+  return String(path||'').replace(/\\/g,'/').split('/').filter(Boolean).pop()||'';
+}
+function despImportFileKey(path=''){
+  return despImportTextKey(despImportBasename(path)).replace(/\s+/g,'');
+}
+function despImportMime(name=''){
+  const ext=getExt(String(name||''));
+  if(['jpg','jpeg'].includes(ext))return'image/jpeg';
+  if(ext==='png')return'image/png';
+  if(ext==='webp')return'image/webp';
+  if(ext==='gif')return'image/gif';
+  if(ext==='pdf')return'application/pdf';
+  if(ext==='xlsx')return'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if(ext==='xls')return'application/vnd.ms-excel';
+  return'application/octet-stream';
+}
+function despImportCell(row,index){return Array.isArray(row)?(row[index]??''):'';}
+function despImportMainSheetName(workbook){
+  return workbook.SheetNames.find(name=>!/foto|nf|nota|anexo|comprov/i.test(name))||workbook.SheetNames[0];
+}
+function despImportPhotoSheetName(workbook){
+  return workbook.SheetNames.find(name=>/foto|nf|nota|anexo|comprov/i.test(name))||'';
+}
+function despImportAOA(workbook,sheetName){
+  if(!sheetName||!workbook.Sheets[sheetName])return[];
+  return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{header:1,defval:'',raw:true,cellDates:true});
+}
+function despImportFindHeaderRow(rows=[]){
+  return rows.findIndex(row=>{
+    const norm=despImportTextKey((row||[]).slice(0,8).join(' '));
+    return norm.includes('data')&&norm.includes('descricao')&&norm.includes('valor');
+  });
+}
+function despImportSummaryLabel(row=[]){
+  const label=despImportTextKey([despImportCell(row,0),despImportCell(row,1)].join(' '));
+  return /^(total de despesas|total de creditos|total de créditos|tarifa|abatimento|saldo total|saldo final)$/.test(label)||/total de despesas|total de creditos|total de créditos|tarifa pix|saldo final/.test(label);
+}
+function despImportAttachmentRows(workbook,zipFiles){
+  const sheetName=despImportPhotoSheetName(workbook);
+  const rows=despImportAOA(workbook,sheetName);
+  const header=rows.findIndex(row=>despImportTextKey((row||[]).join(' ')).includes('arquivo')&&despImportTextKey((row||[]).join(' ')).includes('data'));
+  if(header<0)return[];
+  return rows.slice(header+1).map(row=>{
+    const name=String(despImportCell(row,0)||'').trim();
+    if(!name)return null;
+    const data=despImportISO(despImportCell(row,1));
+    const descricao=String(despImportCell(row,2)||'').trim();
+    const valor=despImportMoney(despImportCell(row,3));
+    const tipo=/adiant/i.test(String(despImportCell(row,4)||''))?'Adiantamento':'Despesa';
+    const file=zipFiles?.get(despImportFileKey(name))||null;
+    return{name,data,descricao,valor,tipo,file,keyExact:[data,tipo,valor!=null?valor.toFixed(2):'',despImportTextKey(descricao)].join('|'),keyLoose:[data,tipo,valor!=null?valor.toFixed(2):''].join('|')};
+  }).filter(Boolean);
+}
+function despImportAttachFiles(draft,attachments=[],used=new Set()){
+  const value=draft.tipo==='Adiantamento'?(draft.importCredit??draft.valor_adiantamento):draft.valor_conta;
+  const exact=[draft.data,draft.tipo,value!=null?Number(value).toFixed(2):'',despImportTextKey(draft.descricao)].join('|');
+  const loose=[draft.data,draft.tipo,value!=null?Number(value).toFixed(2):''].join('|');
+  let matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.keyExact===exact);
+  if(!matches.length)matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.keyLoose===loose);
+  if(!matches.length){
+    const desc=despImportTextKey(draft.descricao);
+    matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.tipo===draft.tipo&&a.valor!=null&&value!=null&&Math.abs(Number(a.valor)-Number(value))<0.01&&despImportTextKey(a.descricao)===desc);
+  }
+  matches.forEach(a=>used.add(a.name));
+  return matches.map(a=>a.file).filter(Boolean);
+}
+function despImportDuplicateKey(item){
+  const value=item.tipo==='Adiantamento'?item.valor_adiantamento:item.valor_conta;
+  return[item.obra,item.data,despImportTextKey(item.descricao),despImportTextKey(item.loja),despImportTextKey(item.nfe),item.tipo,value!=null?Number(value).toFixed(2):''].join('|');
+}
+function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
+  const mainName=despImportMainSheetName(workbook);
+  const rows=despImportAOA(workbook,mainName);
+  const header=despImportFindHeaderRow(rows);
+  if(header<0)throw new Error('Não encontrei o cabeçalho esperado: Data, Descrição e Valor.');
+  const attachments=despImportAttachmentRows(workbook,zipFiles);
+  const drafts=[];
+  const usedFiles=new Set();
+  let running=0;
+  let lastDate='';
+  for(let i=header+1;i<rows.length;i++){
+    const row=rows[i]||[];
+    if(despImportSummaryLabel(row))break;
+    const rawDate=despImportCell(row,0);
+    const desc=String(despImportCell(row,1)||'').trim();
+    const nfe=String(despImportCell(row,2)||'').trim();
+    const loja=String(despImportCell(row,3)||'').trim();
+    const valorConta=despImportMoney(despImportCell(row,4));
+    const rawSaldo=despImportMoney(despImportCell(row,5));
+    const hasCore=!!(rawDate||desc||nfe||loja||valorConta!=null);
+    if(!hasCore&&rawSaldo!=null&&drafts.length&&drafts[drafts.length-1].tipo==='Adiantamento'){
+      drafts[drafts.length-1].valor_adiantamento=Number(rawSaldo)||0;
+      running=Number(rawSaldo)||running;
+      continue;
+    }
+    if(!hasCore)continue;
+    const headerLike=despImportTextKey(row.join(' '));
+    if(headerLike.includes('conta bancaria')||headerLike==='valor adiantamento')continue;
+    let data=despImportISO(rawDate)||lastDate;
+    if(!data)continue;
+    lastDate=data;
+    const tipo=(valorConta!=null&&Math.abs(valorConta)>0.0001)?'Despesa':'Adiantamento';
+    let importCredit=null;
+    if(tipo==='Adiantamento'){
+      importCredit=rawSaldo!=null?Number(rawSaldo):0;
+      running=running+importCredit;
+    }else{
+      running=rawSaldo!=null?Number(rawSaldo):(running-(Number(valorConta)||0));
+    }
+    const draft={
+      id:uid(),obra,data,descricao:desc||'Lançamento importado',nfe,loja,
+      valor_conta:tipo==='Despesa'?(Number(valorConta)||0):null,
+      valor_adiantamento:Number(running)||0,tipo,responsavel:responsavel||despesaExportResponsible(),
+      importCredit,sourceRow:i+1,files:[]
+    };
+    draft.files=despImportAttachFiles(draft,attachments,usedFiles);
+    drafts.push(draft);
+  }
+  return{drafts,attachments,mainName};
+}
+async function despImportReadPackage(file){
+  if(!file)throw new Error('Selecione um arquivo .xlsx ou .zip.');
+  if(!window.XLSX)throw new Error('Biblioteca de planilhas ainda não carregou. Atualize a página e tente novamente.');
+  const ext=getExt(file.name||'');
+  const zipFiles=new Map();
+  let workbookBuffer=null;
+  if(ext==='zip'){
+    if(!window.JSZip)throw new Error('Biblioteca ZIP ainda não carregou. Atualize a página e tente novamente.');
+    const zip=await window.JSZip.loadAsync(await file.arrayBuffer());
+    const entries=Object.values(zip.files||{});
+    const xlsxEntry=entries.find(entry=>!entry.dir&&!/^~\$/.test(despImportBasename(entry.name))&&/\.xlsx?$/i.test(entry.name));
+    if(!xlsxEntry)throw new Error('Não encontrei uma planilha .xlsx dentro do ZIP.');
+    workbookBuffer=await xlsxEntry.async('arraybuffer');
+    for(const entry of entries){
+      if(entry.dir||entry===xlsxEntry)continue;
+      const name=despImportBasename(entry.name);
+      const extName=getExt(name);
+      if(!name||!DESPESA_IMPORT_ALLOWED_EXTS.includes(extName))continue;
+      const blob=await entry.async('blob');
+      const importedFile=new File([blob],name,{type:blob.type||despImportMime(name),lastModified:Date.now()});
+      zipFiles.set(despImportFileKey(name),importedFile);
+    }
+  }else{
+    workbookBuffer=await file.arrayBuffer();
+  }
+  const workbook=XLSX.read(workbookBuffer,{type:'array',cellDates:true,cellFormula:true,cellNF:false,cellText:false});
+  return{workbook,zipFiles,fileName:file.name};
+}
+function despImportMarkDuplicates(rawDrafts=[],obra){
+  const existing=new Set((DB.despesas||[]).filter(d=>d.obra===obra).map(d=>despImportDuplicateKey({...d,obra})));
+  const seen=new Set();
+  return rawDrafts.map(draft=>{
+    const row={...draft,obra};
+    const key=despImportDuplicateKey(row);
+    const duplicateExisting=existing.has(key);
+    const duplicateImport=seen.has(key);
+    seen.add(key);
+    return{...row,duplicateExisting,duplicateImport,duplicate:duplicateExisting||duplicateImport};
+  });
+}
+function despImportPreviewHtml(state=window._despesaImportState){
+  const box=document.getElementById('m-desp-import-preview');
+  if(!box)return;
+  const skipDup=document.getElementById('m-desp-import-skip-duplicates')?.checked!==false;
+  const uploadFiles=document.getElementById('m-desp-import-upload-files')?.checked!==false;
+  const drafts=state.drafts||[];
+  const toImport=drafts.filter(d=>!(skipDup&&d.duplicate));
+  const dup=drafts.length-toImport.length;
+  const fileCount=uploadFiles?toImport.reduce((sum,d)=>sum+(d.files?.length||0),0):0;
+  if(state.errors?.length){box.innerHTML=`<div style="padding:14px;color:#ef4444;font-size:13px">${state.errors.map(esc).join('<br>')}</div>`;return;}
+  if(!drafts.length){box.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Nenhum lançamento encontrado para importar.</div>';return;}
+  const sample=toImport.slice(0,80).map((d,idx)=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--text3);font-size:11px">${d.sourceRow}</td><td style="padding:8px 10px;white-space:nowrap">${fmtD(d.data)}</td><td style="padding:8px 10px;min-width:220px">${esc(d.descricao)}</td><td style="padding:8px 10px">${esc(d.loja||'')}</td><td style="padding:8px 10px;text-align:right;white-space:nowrap">${d.tipo==='Adiantamento'?fmtV(d.importCredit||d.valor_adiantamento):fmtV(d.valor_conta)}</td><td style="padding:8px 10px;text-align:right;white-space:nowrap">${fmtV(d.valor_adiantamento)}</td><td style="padding:8px 10px;text-align:center">${d.files?.length||0}</td><td style="padding:8px 10px"><span class="tag" style="color:${d.duplicate?'#f59e0b':'#22c55e'}">${d.duplicate?'Duplicado':'Novo'}</span></td></tr>`).join('');
+  box.innerHTML=`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap"><span class="tag">${drafts.length} lido(s)</span><span class="tag" style="color:#22c55e">${toImport.length} para importar</span><span class="tag" style="color:#f59e0b">${dup} duplicado(s)</span><span class="tag" style="color:#60a5fa">${fileCount} anexo(s)</span></div><table style="width:100%;border-collapse:collapse;min-width:860px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;text-align:left">Linha</th><th style="padding:8px 10px;text-align:left">Data</th><th style="padding:8px 10px;text-align:left">Descrição</th><th style="padding:8px 10px;text-align:left">Loja</th><th style="padding:8px 10px;text-align:right">Valor</th><th style="padding:8px 10px;text-align:right">Saldo</th><th style="padding:8px 10px;text-align:center">Anexos</th><th style="padding:8px 10px;text-align:left">Status</th></tr></thead><tbody>${sample}</tbody></table>${toImport.length>80?`<div style="padding:10px;color:var(--text3);font-size:12px">Mostrando 80 de ${toImport.length} lançamentos.</div>`:''}`;
+}
+window._refreshDespesaImportPreview=()=>{
+  const state=window._despesaImportState;
+  const obra=document.getElementById('m-desp-import-obra')?.value?.trim()||S.obra||'';
+  state.drafts=despImportMarkDuplicates(state.rawDrafts||[],obra);
+  despImportPreviewHtml(state);
+};
+window._previewDespesaImportFile=async(file)=>{
+  const state=window._despesaImportState={file:null,rawDrafts:[],drafts:[],zipFiles:new Map(),fileName:file?.name||'',errors:[]};
+  const box=document.getElementById('m-desp-import-preview');
+  if(box)box.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Lendo planilha e anexos...</div>';
+  try{
+    const obra=document.getElementById('m-desp-import-obra')?.value?.trim()||S.obra||'';
+    const responsavel=document.getElementById('m-desp-import-resp')?.value?.trim()||despesaExportResponsible();
+    const pack=await despImportReadPackage(file);
+    const parsed=despImportBuildDrafts(pack.workbook,pack.zipFiles,obra,responsavel);
+    state.file=file;state.rawDrafts=parsed.drafts;state.zipFiles=pack.zipFiles;state.fileName=pack.fileName;state.mainName=parsed.mainName;state.attachments=parsed.attachments;
+    window._despesaImportState=state;
+    window._refreshDespesaImportPreview();
+  }catch(err){
+    console.error('[JET] Falha na importação de despesas:',err);
+    state.errors=[err?.message||'Erro ao ler a prestação.'];
+    despImportPreviewHtml(state);
+  }
+};
+window._importDespesasPrestacao=async(event)=>{
+  if(event?.preventDefault)event.preventDefault();
+  const file=document.getElementById('m-desp-import-file')?.files?.[0]||window._despesaImportState?.file;
+  if(!file){toast('Selecione a planilha ou o ZIP da prestação.','#ef4444');return;}
+  if(!window._despesaImportState?.rawDrafts?.length)await window._previewDespesaImportFile(file);
+  window._refreshDespesaImportPreview();
+  const skipDup=document.getElementById('m-desp-import-skip-duplicates')?.checked!==false;
+  const uploadFiles=document.getElementById('m-desp-import-upload-files')?.checked!==false;
+  const rows=(window._despesaImportState.drafts||[]).filter(d=>!(skipDup&&d.duplicate));
+  if(!rows.length){toast('Nada novo para importar. Os lançamentos parecem duplicados.','#f59e0b');return;}
+  const payload=rows.map(d=>({id:d.id,obra:d.obra,data:d.data,descricao:d.descricao,nfe:d.nfe||'',loja:d.loja||'',valor_conta:d.valor_conta==null?null:Number(d.valor_conta),valor_adiantamento:Number(d.valor_adiantamento)||0,tipo:d.tipo||'Despesa',responsavel:d.responsavel||''}));
+  toast(`Importando ${payload.length} lançamento(s)...`,'#3b82f6');
+  const{error}=await sb.from('despesas').insert(payload);
+  if(error){toast('Erro ao importar: '+error.message,'#ef4444');return;}
+  DB.despesas.push(...payload);
+  DB.despesas.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  let attached=0;
+  if(uploadFiles){
+    for(const draft of rows){
+      if(draft.files?.length){await saveDespesaFilesForId(draft.id,draft.files);attached+=draft.files.length;}
+    }
+  }
+  toast(`Prestação importada: ${payload.length} lançamento(s)${attached?` e ${attached} anexo(s)`:''}.`,'#22c55e');
+  _closeModal();
+};
 window._despExportXLSX=(obra,dt)=>{
   const items=dt==='all'?DB.despesas.filter(d=>d.obra===obra):DB.despesas.filter(d=>d.obra===obra&&d.data===dt);
   const totalConta=items.reduce((s,d)=>s+(Number(d.valor_conta)||0),0);
@@ -4249,7 +4500,7 @@ function renderDespesas(despesas,obra){
 ${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:820px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Conta Bancária</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="width:40px"></th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--text)">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#14956b">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
 </div>`;
   }).join('');
-  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Despesas</div><div class="stat-value" style="color:#34d399">${fmtV(totalConta)}</div><div class="stat-sub">Saídas lançadas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Adiantado</div><div class="stat-value" style="color:#fbbf24">${fmtV(totalAdiant)}</div><div class="stat-sub">Aportes no período</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:#c084fc">${fmtV(saldoAtual)}</div><div class="stat-sub">Disponível para prestação</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · controle em formato de prestação com saldo acumulado por mês</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
+  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Despesas</div><div class="stat-value" style="color:#34d399">${fmtV(totalConta)}</div><div class="stat-sub">Saídas lançadas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Adiantado</div><div class="stat-value" style="color:#fbbf24">${fmtV(totalAdiant)}</div><div class="stat-sub">Aportes no período</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:#c084fc">${fmtV(saldoAtual)}</div><div class="stat-sub">Disponível para prestação</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · controle em formato de prestação com saldo acumulado por mês</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
 }
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
@@ -5891,6 +6142,20 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     body=desp?renderDespesaFilesPanel(desp):`<div class="empty-state"><p>Lancamento nao encontrado.</p></div>`;
     onSave=`_closeModal()`;
   }
+  else if(m==='import-despesas'){
+    title='Importar prestação de despesas';
+    saveLabel='Importar lançamentos';
+    const obrasOptions=[...new Set([S.obra,...(DB.obras||[]).map(o=>o.nome||o.codigo||'')].filter(Boolean))].map(o=>`<option value="${esc(o)}">`).join('');
+    body=`<div class="form-grid-2">
+<div class="form-group" style="margin-bottom:0"><label>Obra destino *</label><input id="m-desp-import-obra" value="${esc(S.obra||'')}" list="m-desp-import-obras"><datalist id="m-desp-import-obras">${obrasOptions}</datalist></div>
+<div class="form-group" style="margin-bottom:0"><label>Responsável padrão</label><input id="m-desp-import-resp" value="${esc(despesaExportResponsible())}"></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Arquivo da prestação *</label><input id="m-desp-import-file" type="file" accept=".zip,.xlsx,.xls" onchange="window._previewDespesaImportFile(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Aceita a planilha .xlsx ou o pacote .zip com a pasta anexos. O sistema mostra uma prévia antes de salvar.</div></div>
+<div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end"><label class="landing-notice-pin" style="width:100%;justify-content:center"><input type="checkbox" id="m-desp-import-upload-files" checked onchange="window._refreshDespesaImportPreview&&window._refreshDespesaImportPreview()"> Importar anexos do ZIP</label></div>
+<div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end"><label class="landing-notice-pin" style="width:100%;justify-content:center"><input type="checkbox" id="m-desp-import-skip-duplicates" checked onchange="window._refreshDespesaImportPreview&&window._refreshDespesaImportPreview()"> Pular duplicados</label></div>
+<div id="m-desp-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:360px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a prestação para ver lançamentos, anexos e possíveis duplicidades.</div></div>
+</div>`;
+    onSave=`window._importDespesasPrestacao(event)`;
+  }
   else if(m==='import-rdo'){
     const latest=(DB.rdo||[]).filter(r=>r.obra===S.obra&&r.data).map(r=>String(r.data).slice(0,10)).sort().pop();
     const startDefault=latest?addISODate(latest,1):'2026-04-09';
@@ -6251,7 +6516,7 @@ ${commercialItemsHeaderHtml()}
   }
 
   return`<div class="modal-overlay" onclick="if(event.target===this)_closeModal()">
-<div class="modal${m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
+<div class="modal${m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -8373,8 +8638,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427105309",
-  id: "/?build=20260427105309",
+  start_url: "/?build=20260427124000",
+  id: "/?build=20260427124000",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
