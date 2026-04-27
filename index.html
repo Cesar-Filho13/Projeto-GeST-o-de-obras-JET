@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427023751">
+<meta name="jet-build" content="20260427105309">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -27,6 +27,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/pt.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -3929,80 +3930,220 @@ function despesaMonthLabel(ym){
   const names=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   return `${names[Math.max(0,Number(month)-1)]} ${year}`;
 }
-async function exportDespesaWorkbook(obra,month='all'){
+function despesaExportResponsible(){
+  const raw=String(currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||getCurrentUserHandle()||'Responsável').replace(/[._-]+/g,' ');
+  return raw.split(/\s+/).filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1).toLowerCase()).join(' ')||'Responsável';
+}
+function despesaRowsForExport(obra,month='all'){
   const ledger=buildDespesaLedger(DB.despesas.filter(d=>d.obra===obra));
-  const grouped={};
-  const target=month==='all'?ledger:ledger.filter(item=>(item.data||'').slice(0,7)===month);
-  target.forEach(item=>{
-    const ym=(item.data||'9999-99').slice(0,7);
-    if(!grouped[ym])grouped[ym]=[];
-    grouped[ym].push(item);
+  return month==='all'?ledger:ledger.filter(item=>(item.data||'').slice(0,7)===month);
+}
+function despesaExportBaseName(obra,month='all'){
+  const scope=month==='all'?'completo':month;
+  return xlsxFileName(`prestacao_contas_${obra}_${scope}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_').toLowerCase());
+}
+function despesaAttachmentEntries(rows=[]){
+  const used=new Set();
+  const entries=[];
+  let seq=1;
+  rows.forEach(row=>{
+    getDespesaFiles(row.id).forEach(file=>{
+      const base=sanitizeStorageName(file.name||`anexo_${seq}`);
+      let name=`${String(seq).padStart(3,'0')}_${base}`;
+      let guard=1;
+      while(used.has(name.toLowerCase()))name=`${String(seq).padStart(3,'0')}_${guard++}_${base}`;
+      used.add(name.toLowerCase());
+      entries.push({seq:seq++,row,file,name,packagePath:`anexos/${name}`,url:file.url||''});
+    });
   });
-  const keys=Object.keys(grouped).sort((a,b)=>a.localeCompare(b));
-  if(!keys.length){toast('Nenhum lançamento para gerar a planilha.','#f59e0b');return;}
-  if(!window.ExcelJS){return window._exportDespXLSX(obra);}
+  return entries;
+}
+function downloadBinaryBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function buildDespesaPrestacaoWorkbookBuffer(obra,rows=[],{month='all',attachments=[]}={}){
+  if(!window.ExcelJS)throw new Error('ExcelJS indisponível');
   const workbook=new window.ExcelJS.Workbook();
   workbook.creator='JET Gestão de Obras';
   workbook.created=new Date();
-  keys.forEach(ym=>{
-    const rows=grouped[ym];
-    const totalConta=rows.reduce((sum,row)=>sum+(Number(row.valor_conta)||0),0);
-    const totalAdiant=rows.reduce((sum,row)=>sum+(Number(row.movimento_adiantamento)||0),0);
-    const saldoFinal=rows.length?rows[rows.length-1].saldo:0;
-    const ws=workbook.addWorksheet(xlsxSheetName(month==='all'?despesaMonthLabel(ym):`Prestação ${despesaMonthLabel(ym)}`));
-    ws.views=[{state:'frozen',ySplit:4}];
-    ws.columns=[{width:13},{width:38},{width:16},{width:24},{width:16},{width:16},{width:18}];
-    ws.mergeCells('A1:G1');
-    ws.mergeCells('A2:G2');
-    ws.getCell('A1').value=`Adiantamento de despesas — ${obra}`;
-    ws.getCell('A1').fill=xlsxFill('#1A2E6B');
-    ws.getCell('A1').font={name:'Aptos',size:16,bold:true,color:{argb:'FFFFFFFF'}};
-    ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
-    ws.getRow(1).height=24;
-    ws.getCell('A2').value=`${despesaMonthLabel(ym)} · Responsável: ${currentUser?.email?.split('@')[0]||''} · Saldo final ${fmtV(saldoFinal)}`;
-    ws.getCell('A2').font={name:'Aptos',size:10,color:{argb:'FF5E6B83'}};
-    ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'};
-    ws.mergeCells('A3:A4');ws.mergeCells('B3:B4');ws.mergeCells('C3:C4');ws.mergeCells('D3:D4');ws.mergeCells('E3:F3');ws.mergeCells('G3:G4');
-    [['A3','Data'],['B3','Descrição'],['C3','NFe Nº'],['D3','Loja / Fornecedor'],['E3','Valores'],['E4','Conta Bancária'],['F4','Saldo / Adiantamento'],['G3','Responsável']].forEach(([cell,value])=>{ws.getCell(cell).value=value;});
-    ['A3','B3','C3','D3','E3','E4','F4','G3'].forEach(cell=>{ws.getCell(cell).fill=xlsxFill('#EDF3FF');ws.getCell(cell).font={name:'Aptos',size:10,bold:true,color:{argb:'FF1A2E6B'}};ws.getCell(cell).alignment={horizontal:'center',vertical:'middle'};ws.getCell(cell).border=xlsxBorder('D7E0EE');});
-    let rowNumber=5;
-    rows.forEach((row,index)=>{
-      const excelRow=ws.getRow(rowNumber);
-      excelRow.getCell(1).value=row.data?new Date(row.data+'T12:00:00'):null;
-      excelRow.getCell(1).numFmt='dd/mm/yyyy';
-      excelRow.getCell(2).value=row.descricao||'';
-      excelRow.getCell(3).value=row.nfe||'';
-      excelRow.getCell(4).value=row.loja||'';
-      excelRow.getCell(5).value=row.valor_conta||'';
-      excelRow.getCell(6).value=row.saldo||'';
-      excelRow.getCell(7).value=row.responsavel||'';
-      [1,2,3,4,5,6,7].forEach(col=>{
-        const cell=excelRow.getCell(col);
-        cell.font={name:'Aptos',size:10,color:{argb:'FF23344D'},bold:col===6};
-        cell.alignment={vertical:'middle',horizontal:col===1?'center':(col>=5&&col<=6?'right':'left'),wrapText:col===2||col===4};
-        cell.border=xlsxBorder('DEE7F2');
-        cell.fill=xlsxFill(index%2===0?'#FFFFFF':'#F7FAFF');
-      });
-      if(row.valor_conta)excelRow.getCell(5).numFmt='"R$" #,##0.00';
-      if(row.saldo!=null&&row.saldo!==''){excelRow.getCell(6).numFmt='"R$" #,##0.00';excelRow.getCell(6).font={name:'Aptos',size:10,bold:true,color:{argb:row.tipo==='Adiantamento'?'FFB7791F':'FF14956B'}};}
-      rowNumber++;
-    });
-    const totalRow=ws.getRow(rowNumber);
-    totalRow.getCell(1).value='TOTAL';
-    totalRow.getCell(1).font={name:'Aptos',size:10,bold:true,color:{argb:'FF1A2E6B'}};
-    totalRow.getCell(5).value=totalConta;
-    totalRow.getCell(5).numFmt='"R$" #,##0.00';
-    totalRow.getCell(6).value=saldoFinal;
-    totalRow.getCell(6).numFmt='"R$" #,##0.00';
-    totalRow.getCell(7).value=`Adiantado ${fmtV(totalAdiant)}`;
-    [1,2,3,4,5,6,7].forEach(col=>{const cell=totalRow.getCell(col);cell.border=xlsxBorder('C8D5E8');cell.fill=xlsxFill('#EDF3FF');});
-    ws.getCell(`A${rowNumber+2}`).value=`Gerado em ${new Date().toLocaleString('pt-BR')} · Padrão JET Gestão de Obras`;
-    ws.getCell(`A${rowNumber+2}`).font={name:'Aptos',size:9,color:{argb:'FF6B7C93'}};
+  workbook.modified=new Date();
+  const periodo=month==='all'?'Prestação completa':despesaMonthLabel(month);
+  const responsavel=despesaExportResponsible();
+  const totalDespesas=rows.reduce((sum,row)=>sum+(Number(row.valor_conta)||0),0);
+  const totalCreditos=rows.reduce((sum,row)=>sum+(Number(row.movimento_adiantamento)||0),0);
+  const tarifa=0;
+  const saldoFinal=rows.length?Number(rows[rows.length-1].saldo)||0:0;
+  const filename=`${despesaExportBaseName(obra,month)}.xlsx`;
+  const ws=workbook.addWorksheet(xlsxSheetName(month==='all'?'Prestação de Contas':`Prestação ${despesaMonthLabel(month)}`));
+  ws.views=[{state:'frozen',ySplit:5}];
+  ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.35,right:.35,top:.55,bottom:.45,header:.2,footer:.2}};
+  ws.columns=[{width:12},{width:40},{width:15},{width:34},{width:15},{width:16},{width:26},{width:10},{width:10},{width:10}];
+  ws.mergeCells('A1:F2');
+  ws.getCell('A1').value=responsavel;
+  ws.getCell('A1').fill=xlsxFill('#1A2E6B');
+  ws.getCell('A1').font={name:'Aptos Display',size:18,bold:true,color:{argb:'FFFFFFFF'}};
+  ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
+  ws.mergeCells('G1:J1');
+  ws.getCell('G1').value='FOTOS DAS NFs / COMPROVANTES';
+  ws.getCell('G1').fill=xlsxFill('#EDF3FF');
+  ws.getCell('G1').font={name:'Aptos',size:12,bold:true,color:{argb:'FF1A2E6B'}};
+  ws.getCell('G1').alignment={horizontal:'center',vertical:'middle'};
+  ws.mergeCells('G2:J2');
+  ws.getCell('G2').value={text:'Ir para a aba FOTOS NFs',hyperlink:"#'FOTOS NFs'!A1"};
+  ws.getCell('G2').font={name:'Aptos',size:10,bold:true,color:{argb:'FF2563EB'},underline:true};
+  ws.getCell('G2').alignment={horizontal:'center',vertical:'middle'};
+  ws.mergeCells('G3:J4');
+  ws.getCell('G3').value=`${periodo} - ${obra} - ${attachments.length} anexo(s).`;
+  ws.getCell('G3').font={name:'Aptos',size:9,color:{argb:'FF5E6B83'}};
+  ws.getCell('G3').alignment={horizontal:'center',vertical:'middle',wrapText:true};
+  ws.mergeCells('A3:A4');ws.mergeCells('B3:B4');ws.mergeCells('C3:C4');ws.mergeCells('D3:D4');ws.mergeCells('E3:F3');
+  [['A3','Data'],['B3','Descrição'],['C3','NFe N°'],['D3','Loja'],['E3','Valor'],['E4','Conta Bancária'],['F4','Adiantamento / Saldo']].forEach(([cell,value])=>{ws.getCell(cell).value=value;});
+  ['A3','B3','C3','D3','E3','E4','F4'].forEach(cell=>{
+    ws.getCell(cell).fill=xlsxFill('#1A2E6B');
+    ws.getCell(cell).font={name:'Aptos',size:10,bold:true,color:{argb:'FFFFFFFF'}};
+    ws.getCell(cell).alignment={horizontal:'center',vertical:'middle',wrapText:true};
+    ws.getCell(cell).border=xlsxBorder('1A2E6B');
   });
+  [1,2].forEach(r=>ws.getRow(r).height=24);
+  [3,4].forEach(r=>ws.getRow(r).height=19);
+  const firstDataRow=6;
+  let rowNumber=firstDataRow;
+  rows.forEach((row,index)=>{
+    const isAdiant=row.tipo==='Adiantamento';
+    const ex=ws.getRow(rowNumber);
+    ex.getCell(1).value=row.data?new Date(row.data+'T12:00:00'):null;
+    ex.getCell(1).numFmt='dd/mm/yyyy';
+    ex.getCell(2).value=row.descricao||'';
+    ex.getCell(3).value=row.nfe||'';
+    ex.getCell(4).value=row.loja||'';
+    ex.getCell(5).value=isAdiant?'':(Number(row.valor_conta)||0);
+    if(rowNumber===firstDataRow){
+      ex.getCell(6).value=Number(row.saldo)||0;
+    }else if(isAdiant){
+      const credit=Number(row.movimento_adiantamento)||0;
+      ex.getCell(6).value={formula:`F${rowNumber-1}+${credit.toFixed(2).replace(',','.')}`,result:Number(row.saldo)||0};
+    }else{
+      ex.getCell(6).value={formula:`F${rowNumber-1}-E${rowNumber}`,result:Number(row.saldo)||0};
+    }
+    [1,2,3,4,5,6].forEach(col=>{
+      const cell=ex.getCell(col);
+      cell.font={name:'Aptos',size:10,color:{argb:isAdiant?'FF7A4D00':'FF18243A'},bold:isAdiant||col===6};
+      cell.alignment={vertical:'middle',horizontal:col===1?'center':(col>=5?'right':'left'),wrapText:col===2||col===4};
+      cell.border=xlsxBorder('DEE7F2');
+      cell.fill=xlsxFill(index%2===0?'#FFFFFF':'#F5F7FB');
+    });
+    ex.getCell(5).numFmt='"R$" #,##0.00';
+    ex.getCell(6).numFmt='"R$" #,##0.00';
+    rowNumber++;
+  });
+  const lastDataRow=Math.max(firstDataRow,rowNumber-1);
+  const summaryRows=[
+    ['TOTAL DE DESPESAS',totalDespesas,`SUM(E${firstDataRow}:E${lastDataRow})`],
+    ['TOTAL DE CRÉDITOS',totalCreditos,null],
+    ['TARIFA / ABATIMENTO',tarifa,null],
+    ['SALDO',saldoFinal,null]
+  ];
+  rowNumber++;
+  summaryRows.forEach(([label,value,formula],idx)=>{
+    const rr=rowNumber+idx;
+    ws.mergeCells(`A${rr}:D${rr}`);
+    ws.getCell(`A${rr}`).value=label;
+    ws.getCell(`E${rr}`).value=formula?{formula,result:value}:value;
+    ws.getCell(`F${rr}`).value={formula:`E${rr}`,result:value};
+    ['A','E','F'].forEach(col=>{
+      const cell=ws.getCell(`${col}${rr}`);
+      cell.fill=xlsxFill(idx===3?'#EAF8F1':'#EDF3FF');
+      cell.border=xlsxBorder('C8D5E8');
+      cell.font={name:'Aptos',size:10,bold:true,color:{argb:idx===3?'FF047857':'FF1A2E6B'}};
+      cell.alignment={horizontal:col==='A'?'left':'right',vertical:'middle'};
+      if(col!=='A')cell.numFmt='"R$" #,##0.00';
+    });
+  });
+  ws.getCell(`A${rowNumber+6}`).value=`Documento gerado pelo sistema JET Gestão de Obras em ${new Date().toLocaleString('pt-BR')}.`;
+  ws.getCell(`A${rowNumber+6}`).font={name:'Aptos',size:9,color:{argb:'FF6B7C93'}};
+  const ws2=workbook.addWorksheet('FOTOS NFs');
+  ws2.views=[{state:'frozen',ySplit:2}];
+  ws2.columns=[{width:52},{width:14},{width:45},{width:14},{width:16}];
+  ws2.mergeCells('A1:E1');
+  ws2.getCell('A1').value='Arquivos de suporte (notas, recibos e comprovantes)';
+  ws2.getCell('A1').fill=xlsxFill('#1A2E6B');
+  ws2.getCell('A1').font={name:'Aptos Display',size:15,bold:true,color:{argb:'FFFFFFFF'}};
+  ws2.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
+  ['Arquivo','Data','Descrição','Valor (R$)','Tipo'].forEach((h,i)=>{
+    const c=ws2.getCell(2,i+1);
+    c.value=h;c.fill=xlsxFill('#EDF3FF');c.font={name:'Aptos',size:10,bold:true,color:{argb:'FF1A2E6B'}};c.border=xlsxBorder('C8D5E8');
+  });
+  if(attachments.length){
+    attachments.forEach((entry,index)=>{
+      const r=ws2.getRow(index+3);
+      r.getCell(1).value={text:entry.name,hyperlink:entry.url||entry.packagePath};
+      r.getCell(2).value=entry.row.data?new Date(entry.row.data+'T12:00:00'):null;
+      r.getCell(2).numFmt='dd/mm/yyyy';
+      r.getCell(3).value=entry.row.descricao||'';
+      r.getCell(4).value=entry.row.tipo==='Adiantamento'?(Number(entry.row.movimento_adiantamento)||Number(entry.row.saldo)||0):(Number(entry.row.valor_conta)||0);
+      r.getCell(4).numFmt='"R$" #,##0.00';
+      r.getCell(5).value=entry.row.tipo||'Despesa';
+      [1,2,3,4,5].forEach(col=>{const cell=r.getCell(col);cell.border=xlsxBorder('DEE7F2');cell.fill=xlsxFill(index%2===0?'#FFFFFF':'#F7FAFF');cell.font={name:'Aptos',size:10,color:{argb:col===1?'FF2563EB':'FF23344D'},underline:col===1};cell.alignment={vertical:'middle',wrapText:col===1||col===3,horizontal:col===4?'right':'left'};});
+    });
+  }else{
+    ws2.getCell('A3').value='Nenhum anexo vinculado aos lançamentos deste período.';
+    ws2.mergeCells('A3:E3');
+    ws2.getCell('A3').font={name:'Aptos',size:10,color:{argb:'FF6B7C93'},italic:true};
+  }
   const buffer=await workbook.xlsx.writeBuffer();
-  xlsxDownload(buffer,`${xlsxFileName(`Adiantamento_${obra}_${month==='all'?'completo':month}`)}.xlsx`);
-  toast('Planilha gerada!');
+  return{buffer,filename,totalDespesas,totalCreditos,saldoFinal,attachments};
 }
+async function exportDespesaWorkbook(obra,month='all'){
+  const rows=despesaRowsForExport(obra,month);
+  if(!rows.length){toast('Nenhum lançamento para gerar a planilha.','#f59e0b');return;}
+  if(!window.ExcelJS){return window._despExportXLSX(obra,month==='all'?'all':rows[0]?.data||'all');}
+  const attachments=despesaAttachmentEntries(rows);
+  const result=await buildDespesaPrestacaoWorkbookBuffer(obra,rows,{month,attachments});
+  xlsxDownload(result.buffer,result.filename);
+  toast(`Planilha gerada com aba de anexos (${attachments.length} arquivo(s)).`);
+}
+window._exportDespesaPackage=async(obra,month='all')=>{
+  const rows=despesaRowsForExport(obra,month);
+  if(!rows.length){toast('Nenhum lançamento para gerar a prestação.','#f59e0b');return;}
+  const attachments=despesaAttachmentEntries(rows);
+  if(!window.ExcelJS){return exportDespesaWorkbook(obra,month);}
+  toast('Montando pacote de prestação...','#3b82f6');
+  const result=await buildDespesaPrestacaoWorkbookBuffer(obra,rows,{month,attachments});
+  if(!window.JSZip){xlsxDownload(result.buffer,result.filename);toast('Planilha gerada. Atualize a página se quiser o pacote ZIP.','#f59e0b');return;}
+  const base=result.filename.replace(/\.xlsx$/,'');
+  const zip=new window.JSZip();
+  const root=zip.folder(base);
+  root.file(result.filename,result.buffer);
+  const anexos=root.folder('anexos');
+  const indexLines=['Arquivo\tData\tDescrição\tValor\tTipo\tLink'];
+  let ok=0;
+  const failed=[];
+  for(const entry of attachments){
+    const valor=entry.row.tipo==='Adiantamento'?(Number(entry.row.movimento_adiantamento)||Number(entry.row.saldo)||0):(Number(entry.row.valor_conta)||0);
+    indexLines.push([entry.name,fmtD(entry.row.data),entry.row.descricao||'',fmtV(valor),entry.row.tipo||'Despesa',entry.url||''].join('\t'));
+    if(!entry.url)continue;
+    try{
+      const resp=await fetch(entry.url,{mode:'cors',credentials:'omit',cache:'no-store'});
+      if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+      const blob=await resp.blob();
+      anexos.file(entry.name,blob);
+      ok++;
+    }catch(err){
+      console.warn('[JET] Anexo não incluído no ZIP:',entry.name,err);
+      failed.push(entry);
+    }
+  }
+  root.file('indice_anexos.txt','\uFEFF'+indexLines.join('\n'));
+  if(failed.length)root.file('links_anexos_nao_baixados.txt','\uFEFF'+failed.map(a=>`${a.name}\n${a.url}`).join('\n\n'));
+  const blob=await zip.generateAsync({type:'blob'});
+  downloadBinaryBlob(blob,`${base}.zip`);
+  toast(`Pacote ZIP gerado: ${ok}/${attachments.length} anexo(s) incluído(s).`,'#22c55e');
+};
 window._despExportXLSX=(obra,dt)=>{
   const items=dt==='all'?DB.despesas.filter(d=>d.obra===obra):DB.despesas.filter(d=>d.obra===obra&&d.data===dt);
   const totalConta=items.reduce((s,d)=>s+(Number(d.valor_conta)||0),0);
@@ -4103,12 +4244,12 @@ function renderDespesas(despesas,obra){
   <span class="quote-metric">Conta ${fmtV(mTotalConta)}</span>
   <span class="quote-metric">Adiantado ${fmtV(mAdiant)}</span>
   <span class="quote-metric">Saldo ${fmtV(mSaldo)}</span>
-  <span style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();exportDespesaWorkbook('${escJs(obra)}','${month}')" title="Planilha mensal">📘 Planilha</button></span>
+  <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();exportDespesaWorkbook('${escJs(obra)}','${month}')" title="Planilha mensal">📘 Planilha</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._exportDespesaPackage('${escJs(obra)}','${month}')" title="Pacote com planilha e anexos">📦 ZIP</button></span>
 </div>
 ${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:820px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Conta Bancária</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="width:40px"></th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--text)">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#14956b">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
 </div>`;
   }).join('');
-  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Despesas</div><div class="stat-value" style="color:#34d399">${fmtV(totalConta)}</div><div class="stat-sub">Saídas lançadas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Adiantado</div><div class="stat-value" style="color:#fbbf24">${fmtV(totalAdiant)}</div><div class="stat-sub">Aportes no período</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:#c084fc">${fmtV(saldoAtual)}</div><div class="stat-sub">Disponível para prestação</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · controle em formato de prestação com saldo acumulado por mês</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
+  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Despesas</div><div class="stat-value" style="color:#34d399">${fmtV(totalConta)}</div><div class="stat-sub">Saídas lançadas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Adiantado</div><div class="stat-value" style="color:#fbbf24">${fmtV(totalAdiant)}</div><div class="stat-sub">Aportes no período</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:#c084fc">${fmtV(saldoAtual)}</div><div class="stat-sub">Disponível para prestação</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · controle em formato de prestação com saldo acumulado por mês</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
 }
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
@@ -8232,8 +8373,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427023751",
-  id: "/?build=20260427023751",
+  start_url: "/?build=20260427105309",
+  id: "/?build=20260427105309",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
