@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427133715">
+<meta name="jet-build" content="20260427135107">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -4294,8 +4294,22 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     const tipo=(valorConta!=null&&Math.abs(valorConta)>0.0001)?'Despesa':'Adiantamento';
     let importCredit=null;
     if(tipo==='Adiantamento'){
-      importCredit=rawSaldo!=null?Number(rawSaldo):0;
-      running=running+importCredit;
+      const prevRunning=Number(running)||0;
+      const nextRow=rows[i+1]||[];
+      const nextSaldo=despImportMoney(despImportCell(nextRow,5));
+      const nextHasCore=!!(despImportCell(nextRow,0)||String(despImportCell(nextRow,1)||'').trim()||String(despImportCell(nextRow,2)||'').trim()||String(despImportCell(nextRow,3)||'').trim()||despImportMoney(despImportCell(nextRow,4))!=null);
+      const hasBridgeSaldo=!nextHasCore&&nextSaldo!=null;
+      if(hasBridgeSaldo){
+        // Modelo antigo: a linha do adiantamento traz o crédito e a linha seguinte em branco traz o saldo.
+        importCredit=rawSaldo!=null?Number(rawSaldo):Math.max(0,Number(nextSaldo)-prevRunning);
+        running=Number(nextSaldo)||prevRunning+importCredit;
+        i++;
+      }else{
+        // Exportação atual do sistema: a coluna F já é o saldo acumulado.
+        const saldoAtual=rawSaldo!=null?Number(rawSaldo):prevRunning;
+        importCredit=Math.max(0,saldoAtual-prevRunning);
+        running=saldoAtual;
+      }
     }else{
       running=rawSaldo!=null?Number(rawSaldo):(running-(Number(valorConta)||0));
     }
@@ -8677,8 +8691,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427133715",
-  id: "/?build=20260427133715",
+  start_url: "/?build=20260427135107",
+  id: "/?build=20260427135107",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
