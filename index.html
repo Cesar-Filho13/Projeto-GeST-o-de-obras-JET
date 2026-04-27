@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427013232">
+<meta name="jet-build" content="20260427023307">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -749,6 +749,11 @@ html[data-theme="light"] .proposal-meta span,html[data-theme="light"] .proposal-
 .rdo-activity-hint{font-size:11px;color:var(--text3);font-weight:700;text-transform:none;letter-spacing:0}
 .rdo-preview{font-size:13px;color:var(--text2);line-height:1.55;white-space:pre-line;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical}
 html[data-theme="light"] .rdo-activity-card{background:linear-gradient(180deg,#f7fbff,#eef5ff);border-color:#d8e6ff}
+.rdo-status-slot{min-width:170px;display:grid;gap:5px;margin-left:auto}
+.rdo-status-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.rdo-status-slot .cd-trigger{height:30px;border-radius:999px;justify-content:flex-start;width:auto;min-width:138px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.rdo-status-slot .cd-val::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:7px;opacity:.75}
+html[data-theme="light"] .rdo-status-slot .cd-trigger{box-shadow:inset 0 0 0 1px rgba(37,99,235,.12)}
 .weather-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .weather-opt{padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;transition:all .15s}
 .weather-opt.active{border-color:var(--blue);background:rgba(79,140,255,.12);color:#60a5fa}
@@ -1013,6 +1018,7 @@ const SL=['Em Elaboração','Aguardando Aprovação','Aprovado','Executando','Co
 const PL=['EM ANÁLISE','APROVADO','NÃO APROVADO'];
 const MAT_STATUS=['Pendente','Em Análise','Aprovado','Comprado','Entregue','Cancelado'];
 const FUNC_STATUS=['Ativo','Ausente','Afastado','Desligado'];
+const RDO_STATUS_LIST=['Elaboração','Enviado','Concluído','Cancelado'];
 const URGENCIA=['Normal','Urgente','Crítico'];
 const TEMPO=['Bom','Nublado','Chuva Leve','Chuva Forte','Vento Forte','Parcialmente Nublado'];
 
@@ -1027,6 +1033,7 @@ const MS={
   'Cancelado':{bg:'#200c0c',c:'#f87171',d:'#ef4444',group:'Encerramento'}
 };
 const FS={'Ativo':{bg:'#062018',c:'#34d399',d:'#10b981'},'Ausente':{bg:'#1a0f3d',c:'#a78bfa',d:'#8b5cf6'},'Afastado':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Desligado':{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
+const RDO_STATUS_MAP={'Elaboração':{bg:'#2f2f2f',c:'#e5e7eb',d:'#a3a3a3',group:'A fazer'},'Enviado':{bg:'#06351f',c:'#86efac',d:'#22c55e',group:'Em andamento'},'Concluído':{bg:'#0e2a4f',c:'#93c5fd',d:'#3b82f6',group:'Concluídos'},'Cancelado':{bg:'#3a1515',c:'#fca5a5',d:'#ef4444',group:'Concluídos'}};
 const US={'Normal':{bg:'#161616',c:'#888',d:'#555'},'Urgente':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Crítico':{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
 const BS={'Solicitado':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Programado':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Aceito':{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},'Em baixada':{bg:'#1a0f3d',c:'#c084fc',d:'#8b5cf6'}};
 const COTACAO_STATUS_LIST=['Solicitada','Em análise','Negociando','Fechada','Cancelada'];
@@ -3557,6 +3564,34 @@ function renderFuncionarios(func,obra){
 }
 
 // ─── RDO ──────────────────────────────────────────────────────────────────
+function getLocalRDOStatuses(){
+  try{return JSON.parse(localStorage.getItem('jet-rdo-status')||'{}')||{};}catch(_){return{};}
+}
+function setLocalRDOStatus(id,status){
+  const map=getLocalRDOStatuses();
+  map[id]=status;
+  localStorage.setItem('jet-rdo-status',JSON.stringify(map));
+}
+function getRDOStatus(rdo){
+  if(!rdo)return'Elaboração';
+  return rdo.status||getLocalRDOStatuses()[rdo.id]||'Elaboração';
+}
+window._setRDOStatus=async(id,status)=>{
+  const rdo=(DB.rdo||[]).find(r=>r.id===id);
+  if(!rdo)return;
+  const oldStatus=rdo.status;
+  rdo.status=status;
+  setLocalRDOStatus(id,status);
+  const{error}=await sb.from('rdo').update({status}).eq('id',id);
+  if(error){
+    console.warn('[JET] Não foi possível sincronizar status do RDO:',error);
+    rdo.status=oldStatus;
+    toast('Status salvo neste dispositivo. Se quiser sincronizar entre todos, precisamos liberar a coluna status no Supabase.','#f59e0b');
+    return false;
+  }
+  toast('Status do RDO atualizado.','#22c55e');
+  return true;
+};
 function renderRDO(rdos,obra){
   return`<div>
 <div class="section-header">
@@ -3582,6 +3617,7 @@ ${rdos.length===0?`<div class="empty-state"><p>Nenhum RDO registrado.</p><button
     </div>
   </div>
   <div style="display:flex;gap:6px;flex-shrink:0">
+    <div class="rdo-status-slot" onclick="event.stopPropagation()"><span class="rdo-status-label">Status</span>${makeCd(RDO_STATUS_LIST,RDO_STATUS_MAP,getRDOStatus(r),`window._setRDOStatus('${escJs(r.id)}',VAL)`)}</div>
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();exportRDOPDF('${escJs(obra)}','${r.id}')" title="Baixar PDF deste RDO">📑 PDF</button>
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-rdo',{id:'${r.id}'})">✎</button>
     <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteRdo('${r.id}')">×</button>
@@ -4943,9 +4979,10 @@ function exportRDOPDF(obra,rdoId){
       doc.text(`Anexos (fotos) - ${fmtD(r.data)} - RDO Nº ${r.rdo_numero||''}`,M,14);
       doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
       doc.text(`${fotos.length} registro(s) fotográfico(s). Se alguma imagem não aparecer, use o link do Drive no quadro correspondente.`,M,20);
-      let fx=M,fy=28,maxH=0,col=0;
+      let fx=M,fy=28,maxH=0,col=0,photoSeq=1;
       for(const foto of fotos){
-        const imgW=85,imgH=58,cellH=76;
+        const imgW=85,imgH=58,cellH=84;
+        const fotoLabel=`FOTO ${String(photoSeq++).padStart(2,'0')}`;
         if(fx+imgW>W-M){fx=M;fy+=maxH+6;maxH=0;col=0;}
         if(fy+cellH>286){doc.addPage();fy=14;doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);doc.text(`Anexos (fotos) - ${fmtD(r.data)}`,M,fy);fy+=8;}
         try{
@@ -4960,10 +4997,15 @@ function exportRDOPDF(obra,rdoId){
         const name=typeof foto==='string'?'':(foto.name||'');
         const desc=typeof foto==='string'?'':(foto.desc||foto.descricao||'');
         const caption=[name,desc].filter(Boolean).join(' - ');
+        let labelY=fy+imgH+5;
         if(caption){
           doc.setFontSize(6.8);doc.setFont('helvetica','normal');doc.setTextColor(90,90,90);
-          doc.text(doc.splitTextToSize(caption,imgW).slice(0,2),fx,fy+imgH+4);
+          const capLines=doc.splitTextToSize(caption,imgW).slice(0,2);
+          doc.text(capLines,fx,fy+imgH+4);
+          labelY=fy+imgH+5+(capLines.length*3.4);
         }
+        doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(26,46,107);
+        doc.text(fotoLabel,fx,labelY);
         fx+=imgW+6;col++;maxH=Math.max(maxH,cellH);
         if(col>=2){fx=M;fy+=maxH+6;maxH=0;col=0;}
       }
@@ -8190,8 +8232,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427013232",
-  id: "/?build=20260427013232",
+  start_url: "/?build=20260427023307",
+  id: "/?build=20260427023307",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
