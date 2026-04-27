@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427192652">
+<meta name="jet-build" content="20260427194625">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1201,36 +1201,42 @@ const MATERIAL_UNIT_ALIASES={
 };
 const PROPOSTA_STATUS_LIST=['Rascunho','Enviada','Aprovada','Recusada','Vencida'];
 const PROPOSTA_STATUS_MAP={Rascunho:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Enviada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Recusada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'},Vencida:{bg:'#27150a',c:'#fb923c',d:'#f97316'}};
-const COMMERCIAL_COMPANIES=[
-  {
-    id:'jet-servicos',
-    short:'JET',
-    nome:'JET SERVIÇOS, COMÉRCIO E INSTALAÇÕES LTDA',
-    cnpj:'43.274.544/0001-54',
-    inscricao_estadual:'0004131934.00-83',
-    rua:'Rua Raul Corrêa, 370 - B',
-    bairro:'',
-    cidade:'Montes Claros - Minas Gerais',
-    cep:'39401-029',
-    email:'fabio@jetmanutencoes.com',
-    telefone:'(38) 99944-2157',
-    contato:'Fabio'
-  },
-  {
-    id:'sdai',
-    short:'SDAI',
-    nome:'SDAI - SISTEMAS DE DETECÇÃO E ALARME DE INCÊNDIO MINAS GERAIS LTDA',
-    cnpj:'03.709.370/0001-90',
-    inscricao_estadual:'ISENTA',
-    rua:'RUA RAUL CORREA, 370 - LETRA C',
-    bairro:'FUNCIONÁRIOS',
-    cidade:'MONTES CLAROS - MG',
-    cep:'39.401-029',
-    email:'claraadm@jetmanutencoes.com',
-    telefone:'(38) 9 9944-2157 / (38) 3220-8607',
-    contato:'Clara ADM'
+let COMMERCIAL_COMPANIES=[];
+function cleanCommercialCompany(row={}){
+  const endereco=row?.endereco&&typeof row.endereco==='object'?row.endereco:{};
+  const contato=row?.contato_json&&typeof row.contato_json==='object'?row.contato_json:{};
+  const company={
+    id:String(row?.id||row?.slug||'').trim(),
+    short:String(row?.short||row?.sigla||'').trim(),
+    nome:String(row?.nome||row?.razao_social||row?.name||'').trim(),
+    cnpj:formatCNPJ(row?.cnpj||''),
+    inscricao_estadual:String(row?.inscricao_estadual||row?.ie||'').trim(),
+    rua:String(row?.rua||endereco.rua||endereco.logradouro||'').trim(),
+    bairro:String(row?.bairro||endereco.bairro||'').trim(),
+    cidade:String(row?.cidade||endereco.cidade||'').trim(),
+    cep:String(row?.cep||endereco.cep||'').trim(),
+    email:String(row?.email||contato.email||'').trim(),
+    telefone:String(row?.telefone||contato.telefone||'').trim(),
+    contato:String(row?.contato||contato.nome||'').trim(),
+    active:row?.active!==false
+  };
+  if(!company.id)company.id=normalizeMentionToken(company.short||company.nome||company.cnpj);
+  if(!company.short)company.short=(company.nome||company.id).split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+  return company.id&&company.nome&&company.active?company:null;
+}
+function setCommercialCompanies(list=[]){
+  COMMERCIAL_COMPANIES=(Array.isArray(list)?list:[]).map(cleanCommercialCompany).filter(Boolean).sort((a,b)=>(a.short||a.nome).localeCompare(b.short||b.nome));
+}
+async function loadRemoteCommercialCompanies(){
+  try{
+    const {data,error}=await sb.from('companies').select('*').eq('active',true).order('short',{ascending:true});
+    if(error)throw error;
+    setCommercialCompanies(data||[]);
+  }catch(err){
+    setCommercialCompanies([]);
+    console.warn('[JET] Empresas comerciais nao carregadas:',err?.message||err);
   }
-];
+}
 function formatCommercialCompanyAddress(company={}){
   const base=[company.rua,company.bairro?`Bairro ${company.bairro}`:'',company.cidade].filter(Boolean).join(' - ');
   return company.cep?`${base}, ${company.cep}`:base;
@@ -1239,7 +1245,7 @@ function getCommercialCompany(idOrName=''){
   const key=String(idOrName||'').trim();
   if(!key)return null;
   const clean=key.replace(/\D/g,'');
-  return COMMERCIAL_COMPANIES.find(c=>c.id===key||c.short===key||c.nome===key||c.cnpj.replace(/\D/g,'')===clean)||null;
+  return COMMERCIAL_COMPANIES.find(c=>c.id===key||c.short===key||c.nome===key||String(c.cnpj||'').replace(/\D/g,'')===clean)||null;
 }
 function normalizeCommercialCompany(raw=null){
   if(!raw)return null;
@@ -1249,7 +1255,7 @@ function normalizeCommercialCompany(raw=null){
   return {...merged,endereco:merged.endereco||formatCommercialCompanyAddress(merged)};
 }
 function commercialCompanyOptions(selected=''){
-  return `<option value="">Preencher manualmente</option>${COMMERCIAL_COMPANIES.map(c=>`<option value="${esc(c.id)}"${selected===c.id?' selected':''}>${esc(c.short)} - ${esc(c.nome)}</option>`).join('')}`;
+  return `<option value="">${COMMERCIAL_COMPANIES.length?'Preencher manualmente':'Cadastre empresas no Supabase'}</option>${COMMERCIAL_COMPANIES.map(c=>`<option value="${esc(c.id)}"${selected===c.id?' selected':''}>${esc(c.short)} - ${esc(c.nome)}</option>`).join('')}`;
 }
 function renderCommercialCompanyPreview(company){
   const c=normalizeCommercialCompany(company);
@@ -2032,7 +2038,6 @@ function normalizeCotacaoItem(entry={}){
     observacao:String(raw.observacao||raw.obs||'').trim(),
     itens,
     empresa_id:String(raw.empresa_id||raw.empresaId||empresa?.id||'').trim(),
-    empresa,
     escolhido:!!raw.escolhido
   };
 }
@@ -2200,6 +2205,7 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   await syncObraRegistry();
   await loadRemoteBaixadas();
   await loadRemoteHomeNotices();
+  await loadRemoteCommercialCompanies();
   await loadRemotePropostas();
   await loadRemoteDespesaFiles();
   await loadRemoteMaterialReqFiles();
@@ -8023,7 +8029,7 @@ window._saveCotacao=async()=>{
   const fornecedores=[...new Set([...fornSelecionados,...avulsos])];
   const empresa=normalizeCommercialCompany(document.getElementById('m-cempresa')?.value||null);
   if(!obra||!item||fornecedores.length===0||itensBase.length===0){toast('Selecione obra, escopo, fornecedores e pelo menos um item.','#ef4444');return;}
-  const obj={id:uid(),obra,item,cotacoes:fornecedores.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',itens:itensBase,empresa_id:empresa?.id||'',empresa,escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||todayISO(),created_at:new Date().toISOString()};
+  const obj={id:uid(),obra,item,empresa_id:empresa?.id||'',cotacoes:fornecedores.map(f=>({fornecedor:f,preco:null,prazo:'',observacao:'',itens:itensBase,empresa_id:empresa?.id||'',escolhido:false})),status:'Solicitada',data:document.getElementById('m-cdata')?.value||todayISO(),created_at:new Date().toISOString()};
   const{error}=await sb.from('cotacoes').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   if(!DB.cotacoes.find(c=>c.id===obj.id))DB.cotacoes.unshift(obj);
@@ -8076,7 +8082,7 @@ window._addCotacaoFornecedor=async(id,fornecedor)=>{
   if(!cot||!fornecedor)return;
   const itens=normalizeCotacaoItems(cot.cotacoes||[]);
   if(itens.some(item=>item.fornecedor===fornecedor)){toast('Fornecedor já está nesta cotação.','#f59e0b');return;}
-  itens.push({fornecedor,preco:null,prazo:'',observacao:'',itens:getCotacaoBaseItems(cot),empresa_id:getCotacaoCompany(cot)?.id||'',empresa:getCotacaoCompany(cot),escolhido:false});
+  itens.push({fornecedor,preco:null,prazo:'',observacao:'',itens:getCotacaoBaseItems(cot),empresa_id:getCotacaoCompany(cot)?.id||'',escolhido:false});
   const ok=await saveCotacaoPatch(id,{cotacoes:itens});
   if(ok)renderApp();
 };
@@ -8983,8 +8989,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427192652",
-  id: "/?build=20260427192652",
+  start_url: "/?build=20260427194625",
+  id: "/?build=20260427194625",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
@@ -9079,6 +9085,7 @@ window.addEventListener('appinstalled', () => {
 </script>
 </body>
 </html>
+
 
 
 
