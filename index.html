@@ -11,10 +11,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07111f">
 <meta name="description" content="Sistema de Gestão de Obras — JET Serviços de Engenharia">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://drive.google.com https://lh3.googleusercontent.com; worker-src 'self' blob:; manifest-src 'self' data: blob:;">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427190704">
+<meta name="jet-build" content="20260427192652">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1084,7 +1085,21 @@ function formatCPF(value=''){
   if(d.length<=9)return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6)}`;
   return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9,11)}`;
 }
-function validateCNPJLength(value=''){const d=onlyDigits(value,14);return !d||d.length===14;}
+function validateCNPJ(value=''){
+  const d=onlyDigits(value,14);
+  if(!d)return true;
+  if(d.length!==14)return false;
+  if(/^(\d)\1{13}$/.test(d))return false;
+  const calc=(slice,weights)=>{
+    const sum=slice.split('').reduce((acc,n,i)=>acc+(Number(n)||0)*weights[i],0);
+    const mod=sum%11;
+    return mod<2?0:11-mod;
+  };
+  const w1=[5,4,3,2,9,8,7,6,5,4,3,2];
+  const w2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
+  return calc(d.slice(0,12),w1)===Number(d[12])&&calc(d.slice(0,13),w2)===Number(d[13]);
+}
+const validateCNPJLength=validateCNPJ;
 const todayISO=()=>new Date().toISOString().slice(0,10);
 const getCurrentUserHandle=()=>currentUser?String(currentUser.email||'').split('@')[0]:'Anonimo';
 function normalizeMentionToken(raw){
@@ -1267,21 +1282,8 @@ function commercialCompanyMetaLines(company){
 function proposalLogoPreviewHtml(data=''){
   return data?`<img src="${esc(data)}" alt="Logo do cliente">`:'<span>Sem<br>logo</span>';
 }
-// Lista espelho dos usuarios ativos cadastrados no Supabase para mencoes/notificacoes.
-const SUPABASE_MENTION_EMAILS=Object.freeze([
-  'caio@jetmanutencoes.com',
-  'cesar@jetmanutencoes.com',
-  'claraadm@jetmanutencoes.com',
-  'douglas.assis@jetmanutencoes.com',
-  'eduardo.freitas@jetmanutencoes.com',
-  'emille@jetmanutencoes.com',
-  'fabio@jetmanutencoes.com',
-  'felippe@jetmanutencoes.com',
-  'gustavo@jetmanutencoes.com',
-  'jp.gasparini@jetmanutencoes.com',
-  'mariaclara@jetmanutencoes.com',
-  'vanuza@jetmanutencoes.com'
-].map(email=>email.trim().toLowerCase()));
+// Fallback somente com identificadores curtos; e-mails reais vêm do Supabase quando existirem no cadastro.
+const MENTION_FALLBACK_HANDLES=Object.freeze(['caio','cesar','claraadm','douglas.assis','eduardo.freitas','emille','fabio','felippe','gustavo','jp.gasparini','mariaclara','vanuza']);
 const ALMOX_TRANSFER_MAP={Separado:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em transito':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'}};
 const ALMOX_MOVEMENT_MAP={
   Entrada:{bg:'rgba(16,185,129,.14)',c:'#34d399',d:'#10b981'},
@@ -1295,7 +1297,9 @@ const cleanObraData=list=>(Array.isArray(list)?list:[]).filter(o=>!LEGACY_OBRA_R
 function getCustomObras(){try{return cleanObraList(JSON.parse(localStorage.getItem('jet-obras')||'[]'));}catch{return[];}}
 function saveCustomObras(d){localStorage.setItem('jet-obras',JSON.stringify(d));}
 function getHiddenObras(){try{return cleanObraList(JSON.parse(localStorage.getItem('jet-obras-hidden')||'[]'));}catch{return[];}}
-function saveHiddenObras(d){localStorage.setItem('jet-obras-hidden',JSON.stringify(d));}
+function saveHiddenObras(d){localStorage.setItem('jet-obras-hidden',JSON.stringify(cleanObraList(d)));}
+function getArchivedObras(){try{return cleanObraList(JSON.parse(localStorage.getItem('jet-archived-obras')||'[]'));}catch{return[];}}
+function saveArchivedObras(d){localStorage.setItem('jet-archived-obras',JSON.stringify(cleanObraList(d)));}
 function getObrasData(){try{return cleanObraData(JSON.parse(localStorage.getItem('jet-obras-data')||'[]'));}catch{return[];}}
 function saveObrasData(d){localStorage.setItem('jet-obras-data',JSON.stringify(d));}
 function getObraData(nome){return getObrasData().find(o=>o.nome===nome)||{nome,engenheiro:'',gerente:'',outros:''};}
@@ -1952,12 +1956,10 @@ function syncBaixadasWithFuncionarios(obra){
   return{rows:getActiveBaixadaRows(obra),changed};
 }
 
-const BASE_OBRAS=['APL- Paulista'];
 function getAllObras(){
   const obraDataNames=getObrasData().map(o=>o?.nome).filter(Boolean);
-  const pinned=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]);
-  const hidden=new Set(getHiddenObras().filter(o=>!pinned.includes(o)));
-  return uniqObras([...BASE_OBRAS,...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o));
+  const hidden=new Set([...getHiddenObras(),...getArchivedObras()]);
+  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o));
 }
 function getTrailingNumber(value){const nums=String(value||'').match(/\d+/g)||[];return nums.length?Number(nums[nums.length-1]):null;}
 function sortAditivosDisplay(list=[]){return[...(Array.isArray(list)?list:[])].sort((a,b)=>{const na=getTrailingNumber(a?.numero||a?.nome||a?.id);const nb=getTrailingNumber(b?.numero||b?.nome||b?.id);if(na!=null||nb!=null){const diff=(nb??-1)-(na??-1);if(diff!==0)return diff;}const da=String(b?.data||b?.created_at||'');const db=String(a?.data||a?.created_at||'');if(da!==db)return da.localeCompare(db);return String(b?.created_at||b?.id||'').localeCompare(String(a?.created_at||a?.id||''));});}
@@ -2099,7 +2101,7 @@ document.addEventListener('click',resetSessionTimeout);document.addEventListener
 // ─── UNDO DELETION (10 segundos) ──────────────────────────────────────────
 let deletionHistory=[];
 function scheduleUndo(type,data,timeout=10000){const id=uid();const undoItem={id,type,data,createdAt:Date.now(),timeout};deletionHistory.push(undoItem);const undoToast=document.createElement('div');undoToast.id='undo-'+id;undoToast.className='toast';undoToast.style.cssText='bottom:100px;left:50%;transform:translateX(-50%);min-width:300px;gap:12px';let remaining=Math.ceil(timeout/1000);const updateCountdown=()=>{undoToast.innerHTML=`<span>${type==='obra'?'🏗️':'👤'} ${type==='obra'?'Obra':'Funcionário'} excluído</span><div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px;color:var(--text3)">${remaining}s</span><button onclick="window._performUndo('${id}')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;white-space:nowrap">↩ Desfazer</button></div>`;};updateCountdown();document.body.appendChild(undoToast);const countdownInterval=setInterval(()=>{remaining--;if(remaining<=0){clearInterval(countdownInterval);undoToast.remove();deletionHistory=deletionHistory.filter(u=>u.id!==id);}else{updateCountdown();}},1000);}
-window._performUndo=async(id)=>{const item=deletionHistory.find(u=>u.id===id);if(!item)return;const {type,data}=item;deletionHistory=deletionHistory.filter(u=>u.id!==id);document.getElementById('undo-'+id)?.remove();try{if(type==='obra'){saveCustomObras(uniqObras([...getCustomObras(),data.nome]));saveHiddenObras(getHiddenObras().filter(o=>o!==data.nome));saveObrasData([...getObrasData().filter(o=>o?.nome!==data.nome),data]);await saveRemoteObras([...(DB.obraRegistry||[]),data.nome]);toast('✓ Obra restaurada!','#22c55e');}else if(type==='funcionario'){await sb.from('funcionarios').insert([data]);toast('✓ Funcionário restaurado!','#22c55e');}await loadAll();renderApp();}catch(e){toast('Erro ao desfazer: '+e.message,'#ef4444');}};
+window._performUndo=async(id)=>{const item=deletionHistory.find(u=>u.id===id);if(!item)return;const {type,data}=item;deletionHistory=deletionHistory.filter(u=>u.id!==id);document.getElementById('undo-'+id)?.remove();try{if(type==='obra'){saveCustomObras(uniqObras([...getCustomObras(),data.nome]));saveHiddenObras(getHiddenObras().filter(o=>o!==data.nome));saveArchivedObras(getArchivedObras().filter(o=>o!==data.nome));saveObrasData([...getObrasData().filter(o=>o?.nome!==data.nome),data]);await saveRemoteObras([...(DB.obraRegistry||[]),data.nome]);toast('✓ Obra restaurada!','#22c55e');}else if(type==='funcionario'){await sb.from('funcionarios').insert([data]);toast('✓ Funcionário restaurado!','#22c55e');}await loadAll();renderApp();}catch(e){toast('Erro ao desfazer: '+e.message,'#ef4444');}};
 
 // ─── CUSTOM DROPDOWN (store-based, avoids JSON in HTML attrs) ─────────────
 const _cdStore={};
@@ -2381,10 +2383,21 @@ function renderPageHero(icon,title,subtitle,actionsHtml){
 
 // ─── HOME ─────────────────────────────────────────────────────────────────
 function getMentionDirectory(){
-  return SUPABASE_MENTION_EMAILS.map(email=>{
-    const label=String(email).split('@')[0].trim();
-    return {token:normalizeMentionToken(label),label,email};
-  }).filter(item=>item.token);
+  const fromFuncionarios=(DB.funcionarios||[]).flatMap(f=>[f.email,f.usuario,f.user,f.nome]).filter(Boolean);
+  const seen=new Set();
+  return [...fromFuncionarios,...MENTION_FALLBACK_HANDLES]
+    .map(value=>{
+      const raw=String(value||'').trim().toLowerCase();
+      if(!raw)return null;
+      const email=raw.includes('@')?raw:'';
+      const label=(email?email.split('@')[0]:raw).trim();
+      const token=normalizeMentionToken(label);
+      if(!token||seen.has(token))return null;
+      seen.add(token);
+      return {token,label,email};
+    })
+    .filter(Boolean)
+    .sort((a,b)=>a.label.localeCompare(b.label));
 }
 function getTeamMembers(){return getMentionDirectory().map(item=>item.label);}
 function getMentionSuggestions(query=''){
@@ -4811,13 +4824,21 @@ function renderGerenciarObras(){
     const val=DB.aditivos.filter(a=>a.obra===obra).reduce((s,a)=>s+(Number(a.valor)||0),0);
     const col=obraColor(obra);
     const totalAditivos=DB.aditivos.filter(a=>a.obra===obra).length;
-    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="if(confirm('Arquivar obra ${escJs(obra)}?')) { DB.archivedObras = DB.archivedObras || []; if(!DB.archivedObras.includes('${escJs(obra)}')) DB.archivedObras.push('${escJs(obra)}'); localStorage.setItem('jet-archived-obras', JSON.stringify(DB.archivedObras)); toast('Obra arquivada'); renderApp(); }" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div></div></div>`;
+    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div></div></div>`;
   }).join('');
 
   return`<div class="page"><button class="btn btn-secondary btn-sm" onclick="S.page='dashboard';renderApp()" style="margin-bottom:20px">← Voltar ao Painel</button><div class="section-header"><div><div class="section-title">Gerenciar Obras</div><div class="section-sub">Clique no nome para renomear. Salvo automaticamente.</div></div></div>${cards}<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(39,87,217,.16) 0%,rgba(23,60,141,.14) 100%);border:1px solid rgba(79,140,255,.28)"><div class="card-title" style="color:#60a5fa">➕ NOVA OBRA</div><div style="display:flex;gap:8px"><input id="new-obra-input" placeholder="Nome da nova obra..." style="flex:1" onkeydown="if(event.key==='Enter')window._addObra()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addObra()">+ Adicionar</button></div></div></div>`;
 }
 
-window._addObra=async()=>{const i=document.getElementById('new-obra-input');if(!i)return;const v=i.value.trim();if(!v)return;const cur=getCustomObras();if(getAllObras().includes(v)){toast('Obra já existe.','#f59e0b');return;}saveCustomObras([...cur,v]);saveHiddenObras(getHiddenObras().filter(o=>o!==v));await saveRemoteObras([...(DB.obraRegistry||[]),v]);i.value='';renderApp();toast(`Obra "${v}" adicionada!`);};
+window._archiveObra=async obra=>{
+  if(!obra)return;
+  if(!confirm(`Arquivar obra ${obra}? Ela sairá da tela inicial deste navegador.`))return;
+  saveArchivedObras(uniqObras([...getArchivedObras(),obra]));
+  saveHiddenObras(uniqObras([...getHiddenObras(),obra]));
+  toast('Obra arquivada. Para restaurar, adicione a obra novamente pelo gerenciamento.','#f59e0b');
+  renderApp();
+};
+window._addObra=async()=>{const i=document.getElementById('new-obra-input');if(!i)return;const v=i.value.trim();if(!v)return;const cur=getCustomObras();if(getAllObras().includes(v)){toast('Obra já existe.','#f59e0b');return;}saveCustomObras([...cur,v]);saveHiddenObras(getHiddenObras().filter(o=>o!==v));saveArchivedObras(getArchivedObras().filter(o=>o!==v));await saveRemoteObras([...(DB.obraRegistry||[]),v]);i.value='';renderApp();toast(`Obra "${v}" adicionada!`);};
 window._saveObraField=el=>{setObraField(el.dataset.obra,el.dataset.field,el.value);};
 window._renameObra=async el=>{
   const orig=el.dataset.orig,novo=el.value.trim();
@@ -4827,9 +4848,11 @@ window._renameObra=async el=>{
   OBRA_LINKED_TABLES.forEach(table=>{DB[table]=DB[table].map(row=>row?.obra===orig?{...row,obra:novo}:row);});
   const custom=getCustomObras().map(o=>o===orig?novo:o);
   const hidden=getHiddenObras().map(o=>o===orig?novo:o);
+  const archived=getArchivedObras().map(o=>o===orig?novo:o);
   const obraData=getObrasData().map(o=>o?.nome===orig?{...o,nome:novo}:o);
   saveCustomObras(custom);
   saveHiddenObras(hidden);
+  saveArchivedObras(archived);
   saveObrasData(obraData);
   await saveRemoteObras((DB.obraRegistry||[]).map(o=>o===orig?novo:o));
   el.dataset.orig=novo;
@@ -4871,14 +4894,14 @@ function _showDelDialog(obra){
     num.style.color='#22c55e';
     if(ring){ring.style.strokeDashoffset=188.5;ring.style.stroke='#22c55e';}
     if(label)label.textContent='Pronto para confirmar. Você ainda poderá desfazer.';
-    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmar exclusão';btn.onclick=_execDel;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmar exclusão';btn.onclick=()=>_execDel(obra,{linkedMap,total});}
   },1000);
 }
-async function _execDel(){
+async function _execDel(obraArg=null,metaArg=null){
   clearInterval(_delTimer);
   document.getElementById('del-dlg')?.remove();
-  const obra=_delPendObra;
-  const meta=_delPendMeta||{};
+  const obra=obraArg||_delPendObra;
+  const meta=metaArg||_delPendMeta||{};
   if(!obra)return;
   const linkedMap=meta.linkedMap||buildObraDeleteMap(obra);
   const affectedTables=OBRA_LINKED_TABLES.filter(table=>(linkedMap[table]||[]).length);
@@ -4914,6 +4937,7 @@ window._undoDel=async()=>{
   if(failed.length){toast('Não foi possível restaurar todos os vínculos da obra.','#ef4444');return;}
   OBRA_LINKED_TABLES.forEach(table=>{const ids=u.linkedMap?.[table]||[];if(ids.length)DB[table]=DB[table].map(row=>ids.includes(row.id)?{...row,obra:u.obra}:row);});
   saveHiddenObras(getHiddenObras().filter(o=>o!==u.obra));
+  saveArchivedObras(getArchivedObras().filter(o=>o!==u.obra));
   if(u.wasCustom)saveCustomObras(uniqObras([...getCustomObras(),u.obra]));
   if(u.data?.nome)saveObrasData([...getObrasData().filter(o=>o?.nome!==u.obra),u.data]);
   if(u.registryHad||u.wasCustom||linkedObraCount(u.linkedMap))await saveRemoteObras([...(DB.obraRegistry||[]),u.obra]);
@@ -6741,7 +6765,7 @@ ${m==='new-material'?`<button class="btn btn-secondary btn-sm" onclick="_preview
 window._closeModal=()=>{S.modal=null;S.modalData={};renderApp();};
 
 window._formatCNPJInput=(el)=>{if(el)el.value=formatCNPJ(el.value);};
-window._validateCNPJInput=(el)=>{if(el&&!validateCNPJLength(el.value))toast('CNPJ deve ter 14 números.','#ef4444');};
+window._validateCNPJInput=(el)=>{if(el&&!validateCNPJLength(el.value))toast('CNPJ inválido. Confira os 14 números e os dígitos verificadores.','#ef4444');};
 window._setPropostaLogo=(data='')=>{
   const hidden=document.getElementById('m-prop-logo-data');
   const preview=document.getElementById('m-prop-logo-preview');
@@ -6752,6 +6776,13 @@ window._clearPropostaLogo=()=>{window._setPropostaLogo('');const input=document.
 window._loadPropostaLogo=(file)=>{
   if(!file)return;
   if(!String(file.type||'').startsWith('image/')){toast('Selecione uma imagem PNG ou JPG.','#ef4444');return;}
+  const maxFile=10*1024*1024;
+  if(Number(file.size||0)>maxFile){
+    toast('Logo muito grande. Use imagem de até 10 MB.','#ef4444');
+    const input=document.getElementById('m-prop-logo-file');
+    if(input)input.value='';
+    return;
+  }
   const reader=new FileReader();
   reader.onload=()=>{
     const img=new Image();
@@ -7919,7 +7950,7 @@ window._saveFornecedor=async()=>{
   const nome=document.getElementById('m-fnome')?.value?.trim();
   if(!nome){toast('Nome obrigatório.','#ef4444');return;}
   const cnpj=document.getElementById('m-fcnpj')?.value||'';
-  if(!validateCNPJLength(cnpj)){toast('CNPJ deve ter 14 números.','#ef4444');return;}
+  if(!validateCNPJLength(cnpj)){toast('CNPJ inválido. Confira os 14 números e os dígitos verificadores.','#ef4444');return;}
   const obj={id:uid(),nome,telefone:document.getElementById('m-ftelefone')?.value||'',email:document.getElementById('m-femail')?.value||'',cnpj:formatCNPJ(cnpj),ativo:document.getElementById('m-fativo')?.checked??true,created_at:new Date().toISOString()};
   const{error}=await sb.from('fornecedores').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
@@ -7938,7 +7969,7 @@ window._saveProposta=async(id=null)=>{
   const old=id?DB.propostas.find(p=>p.id===id):null;
   const desconto=moneyNumber(document.getElementById('m-prop-desconto')?.value)||0;
   const cnpj=document.getElementById('m-prop-cnpj')?.value?.trim()||'';
-  if(!validateCNPJLength(cnpj)){toast('CNPJ deve ter 14 números.','#ef4444');return;}
+  if(!validateCNPJLength(cnpj)){toast('CNPJ inválido. Confira os 14 números e os dígitos verificadores.','#ef4444');return;}
   const obj=cleanProposta({
     ...(old||{}),
     id:id||('prop-'+uid()),
@@ -8001,7 +8032,7 @@ window._saveCotacao=async()=>{
 };
 window._saveFornecedorInline=async(id,field,value)=>{
   const val=field==='cnpj'?formatCNPJ(value):String(value||'').trim();
-  if(field==='cnpj'&&!validateCNPJLength(value)){toast('CNPJ deve ter 14 números.','#ef4444');renderApp();return;}
+  if(field==='cnpj'&&!validateCNPJLength(value)){toast('CNPJ inválido. Confira os 14 números e os dígitos verificadores.','#ef4444');renderApp();return;}
   if(field==='nome'&&!val){toast('O fornecedor precisa ter um nome.','#ef4444');renderApp();return;}
   await updateField('fornecedores',id,field,val);
   renderApp();
@@ -8952,8 +8983,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427190704",
-  id: "/?build=20260427190704",
+  start_url: "/?build=20260427192652",
+  id: "/?build=20260427192652",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
