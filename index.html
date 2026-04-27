@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427202954">
+<meta name="jet-build" content="20260427205244">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1034,6 +1034,12 @@ const BUCKET='aditivos-files';
 const {createClient}=supabase;
 const sb=createClient(SURL,SKEY);
 const APP_BUILD=(document.querySelector('meta[name="jet-build"]')?.getAttribute('content')||'dev-build').trim();
+const APP_BUILD_PLACEHOLDER='__APP'+'_BUILD__';
+const APP_UPDATE_CHECK_MS=2*60*1000;
+const APP_UPDATE_RETRY_MS=30*1000;
+let _appUpdateCheckInFlight=false;
+let _pendingAppBuild='';
+let _appUpdateScheduleTimer=null;
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────
 const SL=['Em Elaboração','Aguardando Aprovação','Aprovado','Executando','Concluído','Cancelado'];
@@ -9055,21 +9061,67 @@ function applyTheme(theme){
 }
 async function checkForAppUpdate(){
   if(!/^https?:$/i.test(location.protocol))return;
+  if(_appUpdateCheckInFlight)return;
+  _appUpdateCheckInFlight=true;
   try{
-    const probeUrl=`${window.location.pathname}?jet_build_probe=${Date.now()}`;
-    const res=await fetch(probeUrl,{cache:'no-store',headers:{'cache-control':'no-cache'}});
+    const probeUrl=new URL(location.href);
+    probeUrl.searchParams.set('jet_build_probe',Date.now());
+    probeUrl.searchParams.delete('build');
+    probeUrl.searchParams.delete('_refresh');
+    const res=await fetch(probeUrl.toString(),{cache:'no-store',headers:{'cache-control':'no-cache','pragma':'no-cache'}});
     const html=await res.text();
     const match=html.match(/<meta name="jet-build" content="([^"]+)"/i);
     const remoteBuild=(match?.[1]||'').trim();
-    if(!remoteBuild||remoteBuild===APP_BUILD)return;
-    const reloadKey=`jet-build-reload:${remoteBuild}`;
-    if(sessionStorage.getItem(reloadKey))return;
-    sessionStorage.setItem(reloadKey,'1');
-    toast('Nova versão encontrada. Atualizando...','#60a5fa');
-    setTimeout(()=>window.location.replace(`${window.location.pathname}?build=${encodeURIComponent(remoteBuild)}`),900);
+    if(!remoteBuild||remoteBuild===APP_BUILD_PLACEHOLDER||remoteBuild===APP_BUILD)return;
+    requestAppUpdateReload(remoteBuild);
   }catch(err){
     console.warn('[JET] Verificação de atualização falhou:',err?.message||err);
+  }finally{
+    _appUpdateCheckInFlight=false;
   }
+}
+
+function isAppUpdateReloadSafe(){
+  const active=document.activeElement;
+  const isEditing=active&&['INPUT','TEXTAREA','SELECT'].includes(active.tagName);
+  const hasModal=!!document.querySelector('.modal,.modal-backdrop,.modal-overlay,[role="dialog"]');
+  return !isEditing&&!hasModal;
+}
+async function clearAppRuntimeCaches(){
+  try{
+    if(!('caches' in window))return;
+    const keys=await caches.keys();
+    await Promise.all(keys.map(k=>caches.delete(k)));
+  }catch(err){
+    console.warn('[JET] Limpeza de cache do app falhou:',err?.message||err);
+  }
+}
+async function applyAppUpdateReload(remoteBuild){
+  const reloadKey=`jet-build-reload:${remoteBuild}`;
+  if(sessionStorage.getItem(reloadKey))return;
+  sessionStorage.setItem(reloadKey,'1');
+  await clearAppRuntimeCaches();
+  const nextUrl=new URL(location.href);
+  nextUrl.searchParams.set('build',remoteBuild);
+  nextUrl.searchParams.set('_refresh',Date.now());
+  toast('Nova versão encontrada. Atualizando automaticamente...','#60a5fa');
+  setTimeout(()=>location.replace(nextUrl.pathname+nextUrl.search+nextUrl.hash),700);
+}
+function requestAppUpdateReload(remoteBuild){
+  _pendingAppBuild=remoteBuild;
+  if(isAppUpdateReloadSafe()){
+    applyAppUpdateReload(remoteBuild);
+    return;
+  }
+  toast('Nova versão pronta. Atualizo assim que você fechar o formulário.','#60a5fa');
+  scheduleAppUpdateCheck(APP_UPDATE_RETRY_MS);
+}
+function tryPendingAppUpdateReload(){
+  if(_pendingAppBuild&&isAppUpdateReloadSafe())applyAppUpdateReload(_pendingAppBuild);
+}
+function scheduleAppUpdateCheck(delay=800){
+  clearTimeout(_appUpdateScheduleTimer);
+  _appUpdateScheduleTimer=setTimeout(()=>checkForAppUpdate(),delay);
 }
 
 window._toggleTheme = () => {
@@ -9083,7 +9135,15 @@ window._toggleTheme = () => {
 // Carregar tema salvo ao iniciar
 const savedTheme = localStorage.getItem('jet-theme') || 'dark';
 applyTheme(savedTheme);
-setTimeout(checkForAppUpdate,1200);
+scheduleAppUpdateCheck(1200);
+setInterval(()=>checkForAppUpdate(),APP_UPDATE_CHECK_MS);
+window.addEventListener('focus',()=>scheduleAppUpdateCheck(500));
+window.addEventListener('online',()=>scheduleAppUpdateCheck(500));
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)scheduleAppUpdateCheck(500);
+});
+document.addEventListener('focusout',()=>setTimeout(tryPendingAppUpdateReload,500),true);
+document.addEventListener('click',()=>setTimeout(tryPendingAppUpdateReload,500),true);
 
 window.addEventListener('appinstalled', () => {
   toast('✓ App instalado com sucesso!', '#22c55e');
