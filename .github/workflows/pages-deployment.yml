@@ -23,6 +23,9 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/index.html
+          if [ -d icons ]; then
+            cp -R icons dist/icons
+          fi
 
       - name: Deploy
         run: npx wrangler pages deploy dist --project-name=jet-gestao-obras --branch=main
