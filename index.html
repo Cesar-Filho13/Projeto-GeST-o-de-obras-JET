@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427184615">
+<meta name="jet-build" content="20260427190704">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -4027,26 +4027,53 @@ function sortDespesaItems(items=[]){
     return String(a.created_at||a.id||'').localeCompare(String(b.created_at||b.id||''));
   });
 }
+function isGenericAdiantamentoDesc(value=''){
+  const key=stripAccents(String(value||'')).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  return /^adiantamento de despesas/.test(key)||key==='adiantamento pix'||key==='pix adiantamento';
+}
+function despesaDisplayDesc(item={}){
+  const desc=String(item.descricao||'').trim();
+  if(String(item.tipo||'')==='Despesa'&&isGenericAdiantamentoDesc(desc)&&(item.loja||item.nfe)){
+    return `Despesa - ${item.loja||item.nfe}`;
+  }
+  return desc;
+}
 function buildDespesaLedger(items=[]){
   let saldoAnterior=0;
-  return sortDespesaItems(items).map(item=>{
-    const isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
+  const rows=[];
+  sortDespesaItems(items).forEach(item=>{
+    let isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
     const saldoInformado=item.valor_adiantamento!=null&&item.valor_adiantamento!==''?Number(item.valor_adiantamento):null;
-    const conta=moneyNumber(item.valor_conta)||0;
+    let conta=moneyNumber(item.valor_conta)||0;
     let movimentoAdiant=0;
     let saldoAtual=saldoAnterior;
     if(isAdiant){
+      const hasOnlySaldo=conta===0&&saldoInformado!=null;
+      const hasEvidenceOfExpense=!!(String(item.loja||'').trim()||String(item.nfe||'').trim());
       saldoAtual=saldoInformado!=null?saldoInformado:saldoAnterior;
-      movimentoAdiant=saldoAtual-saldoAnterior;
-      if(saldoAnterior===0&&saldoAtual>0&&movimentoAdiant<=0)movimentoAdiant=saldoAtual;
-      if(movimentoAdiant<0)movimentoAdiant=0;
+      const diff=saldoAtual-saldoAnterior;
+      if(hasOnlySaldo&&diff<-.005){
+        // Algumas planilhas trazem uma linha só com o saldo após o gasto.
+        // Ela não é um novo adiantamento; é uma despesa cujo valor é a queda do saldo.
+        isAdiant=false;
+        conta=Math.abs(diff);
+      }else{
+        movimentoAdiant=diff;
+        if(saldoAnterior===0&&saldoAtual>0&&movimentoAdiant<=0)movimentoAdiant=saldoAtual;
+        if(movimentoAdiant<=.005&&hasOnlySaldo&&(hasEvidenceOfExpense||isGenericAdiantamentoDesc(item.descricao))){
+          return; // linha espelho/sem movimento importada por engano
+        }
+        if(movimentoAdiant<0)movimentoAdiant=0;
+      }
     }else{
       saldoAtual=saldoInformado!=null?saldoInformado:(saldoAnterior-conta);
     }
     const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:movimentoAdiant||0,saldo:saldoAtual||0};
+    row.descricao=despesaDisplayDesc(row)||row.descricao;
     saldoAnterior=row.saldo;
-    return row;
+    rows.push(row);
   });
+  return rows;
 }
 function despesaMonthLabel(ym){
   if(!ym||ym==='9999-99')return'Sem data';
@@ -4397,7 +4424,8 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     let data=despImportISO(rawDate)||lastDate;
     if(!data)continue;
     lastDate=data;
-    const tipo=(valorConta!=null&&Math.abs(valorConta)>0.0001)?'Despesa':'Adiantamento';
+    let tipo=(valorConta!=null&&Math.abs(valorConta)>0.0001)?'Despesa':'Adiantamento';
+    let derivedValorConta=valorConta;
     let importCredit=null;
     if(tipo==='Adiantamento'){
       const prevRunning=Number(running)||0;
@@ -4407,21 +4435,44 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
       const hasBridgeSaldo=!nextHasCore&&nextSaldo!=null;
       if(hasBridgeSaldo){
         // Modelo antigo: a linha do adiantamento traz o crédito e a linha seguinte em branco traz o saldo.
-        importCredit=rawSaldo!=null?Number(rawSaldo):Math.max(0,Number(nextSaldo)-prevRunning);
-        running=Number(nextSaldo)||prevRunning+importCredit;
+        const saldoAtual=Number(nextSaldo);
+        const diff=saldoAtual-prevRunning;
+        if(diff<-.005){
+          tipo='Despesa';
+          derivedValorConta=Math.abs(diff);
+          importCredit=null;
+          running=saldoAtual;
+        }else if(Math.abs(diff)<=.005&&(loja||nfe||isGenericAdiantamentoDesc(desc))){
+          i++;
+          continue;
+        }else{
+          importCredit=rawSaldo!=null?Number(rawSaldo):Math.max(0,diff);
+          running=saldoAtual||prevRunning+importCredit;
+        }
         i++;
       }else{
         // Exportação atual do sistema: a coluna F já é o saldo acumulado.
         const saldoAtual=rawSaldo!=null?Number(rawSaldo):prevRunning;
-        importCredit=Math.max(0,saldoAtual-prevRunning);
-        running=saldoAtual;
+        const diff=saldoAtual-prevRunning;
+        if(diff<-.005){
+          tipo='Despesa';
+          derivedValorConta=Math.abs(diff);
+          importCredit=null;
+          running=saldoAtual;
+        }else if(Math.abs(diff)<=.005&&(loja||nfe||isGenericAdiantamentoDesc(desc))){
+          continue;
+        }else{
+          importCredit=Math.max(0,diff);
+          running=saldoAtual;
+        }
       }
     }else{
       running=rawSaldo!=null?Number(rawSaldo):(running-(Number(valorConta)||0));
     }
+    const finalDesc=tipo==='Despesa'&&isGenericAdiantamentoDesc(desc)&&(loja||nfe)?`Despesa - ${loja||nfe}`:(desc||'Lançamento importado');
     const draft={
-      id:uid(),obra,data,descricao:desc||'Lançamento importado',nfe,loja,
-      valor_conta:tipo==='Despesa'?(Number(valorConta)||0):null,
+      id:uid(),obra,data,descricao:finalDesc,nfe,loja,
+      valor_conta:tipo==='Despesa'?(Number(derivedValorConta)||0):null,
       valor_adiantamento:Number(running)||0,tipo,responsavel:responsavel||despesaExportResponsible(),
       importCredit,sourceRow:i+1,files:[]
     };
@@ -8901,8 +8952,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427184615",
-  id: "/?build=20260427184615",
+  start_url: "/?build=20260427190704",
+  id: "/?build=20260427190704",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
