@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427135107">
+<meta name="jet-build" content="20260427183100">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -1158,12 +1158,32 @@ const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
 const ALMOX_META_PATH='meta/almox-meta.json';
 const HOME_NOTICES_PATH='meta/home-avisos.json';
 const PROPOSTAS_PATH='meta/propostas-comerciais.json';
+const MATERIAL_REQ_FILES_PATH='meta/materiais-requisicoes-arquivos.json';
 const BAIXADA_DIAS_PADRAO=10;
 const BAIXADA_STATUS=['Solicitado','Programado','Aceito','Em baixada'];
 const ALMOX_TAB_LIST=['inventario','expedicao','movimentacoes'];
 const ALMOX_LOW_STOCK_QTD=5;
 const ALMOX_TRANSFER_STATUS=['Separado','Em transito','Recebido'];
 const HOME_NOTICE_PRIORITIES=['Alta','Media','Baixa'];
+const MATERIAL_UNIT_OPTIONS=['un','m','cm','mm','m²','m³','kg','g','L','ml','pç','cx','rolo','barra','par','kit','saco'];
+const MATERIAL_UNIT_ALIASES={
+  'un':'un','und':'un','unid':'un','unidade':'un','unidades':'un','pc':'pç','pcs':'pç','peca':'pç','pecas':'pç','pç':'pç','pçs':'pç',
+  'm':'m','mt':'m','mts':'m','metro':'m','metros':'m',
+  'cm':'cm','centimetro':'cm','centimetros':'cm',
+  'mm':'mm','milimetro':'mm','milimetros':'mm',
+  'm2':'m²','m²':'m²','metroquadrado':'m²','metrosquadrados':'m²',
+  'm3':'m³','m³':'m³','metrocubico':'m³','metroscubicos':'m³',
+  'kg':'kg','kgs':'kg','quilo':'kg','quilos':'kg','quilograma':'kg','quilogramas':'kg',
+  'g':'g','gr':'g','grama':'g','gramas':'g',
+  'l':'L','lt':'L','lts':'L','litro':'L','litros':'L',
+  'ml':'ml','mililitro':'ml','mililitros':'ml',
+  'cx':'cx','caixa':'cx','caixas':'cx',
+  'rolo':'rolo','rolos':'rolo',
+  'barra':'barra','barras':'barra',
+  'par':'par','pares':'par',
+  'kit':'kit','kits':'kit',
+  'saco':'saco','sacos':'saco'
+};
 const PROPOSTA_STATUS_LIST=['Rascunho','Enviada','Aprovada','Recusada','Vencida'];
 const PROPOSTA_STATUS_MAP={Rascunho:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Enviada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Recusada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'},Vencida:{bg:'#27150a',c:'#fb923c',d:'#f97316'}};
 const COMMERCIAL_COMPANIES=[
@@ -1508,6 +1528,52 @@ function cleanDespesaFile(file={}){return{id:String(file?.id||uid()),name:String
 function cleanDespesaFileMap(map={}){const out={};Object.entries(map||{}).forEach(([despId,files])=>{const cleaned=(Array.isArray(files)?files:[]).map(cleanDespesaFile).filter(f=>f.name&&f.path&&f.url);if(cleaned.length)out[despId]=cleaned;});return out;}
 function getLocalDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem('jet-despesa-files')||'{}'));}catch{return{};}}
 function saveLocalDespesaFiles(map){localStorage.setItem('jet-despesa-files',JSON.stringify(cleanDespesaFileMap(map)));}
+function normalizeMaterialUnit(value='un'){
+  const raw=String(value||'un').trim();
+  const key=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,'');
+  const normalized=MATERIAL_UNIT_ALIASES[key]||MATERIAL_UNIT_ALIASES[raw]||raw;
+  return MATERIAL_UNIT_OPTIONS.includes(normalized)?normalized:'un';
+}
+function materialUnitOptions(value='un'){
+  const selected=normalizeMaterialUnit(value);
+  return MATERIAL_UNIT_OPTIONS.map(unit=>`<option value="${esc(unit)}"${unit===selected?' selected':''}>${esc(unit)}</option>`).join('');
+}
+function materialUnitSelect(className,value='un',style='',extra=''){
+  return `<select class="${className}" style="${style}" ${extra}>${materialUnitOptions(value)}</select>`;
+}
+function normalizeMaterialSpec(value=''){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').replace(/[^\w\s.-]/g,'').trim();
+}
+function findDuplicateMaterialSpecs(items=[]){
+  const seen=new Map(),dups=new Map();
+  items.forEach(item=>{
+    const label=String(item?.item||item?.desc||'').trim();
+    const key=normalizeMaterialSpec(label);
+    if(!key)return;
+    if(seen.has(key))dups.set(key,seen.get(key));
+    else seen.set(key,label);
+  });
+  return [...dups.values()];
+}
+function confirmMaterialDuplicates(items=[]){
+  const dups=findDuplicateMaterialSpecs(items);
+  if(!dups.length)return true;
+  return confirm(`Atenção: existe material duplicado na mesma requisição:\n\n${dups.map(v=>'• '+v).join('\n')}\n\nDeseja salvar mesmo assim?`);
+}
+function materialReqKeyPart(value=''){
+  return String(value||'sem-data').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'')||'sem-data';
+}
+function getMaterialReqKey(obra,date){
+  return `matreq_${materialReqKeyPart(obra||S?.obra||'sem-obra')}_${materialReqKeyPart(date||'sem-data')}`.slice(0,170);
+}
+function getMaterialReqKeyFromItems(items=[],fallbackObra=S?.obra){
+  const first=(Array.isArray(items)?items:[])[0]||{};
+  return getMaterialReqKey(first.obra||fallbackObra||'',first.data_solicitacao||'sem-data');
+}
+function cleanMaterialReqFile(file={}){return cleanDespesaFile(file);}
+function cleanMaterialReqFileMap(map={}){const out={};Object.entries(map||{}).forEach(([key,files])=>{const cleaned=(Array.isArray(files)?files:[]).map(cleanMaterialReqFile).filter(f=>f.name&&f.path&&f.url);if(cleaned.length)out[key]=cleaned;});return out;}
+function getLocalMaterialReqFiles(){try{return cleanMaterialReqFileMap(JSON.parse(localStorage.getItem('jet-material-req-files')||'{}'));}catch{return{};}}
+function saveLocalMaterialReqFiles(map){localStorage.setItem('jet-material-req-files',JSON.stringify(cleanMaterialReqFileMap(map)));}
 function cleanAlmoxMeta(meta={}){
   const itemMeta={};
   Object.entries(meta?.itemMeta||{}).forEach(([id,row])=>{
@@ -1673,6 +1739,36 @@ async function saveRemoteDespesaFiles(map,{silent=false}={}){
   }catch(err){
     console.warn('[JET] Arquivos de adiantamento não salvos:',err?.message||err);
     if(!silent)toast('Arquivos salvos apenas neste aparelho. A sincronização online falhou.','#f59e0b');
+    return false;
+  }
+}
+async function loadRemoteMaterialReqFiles(){
+  try{
+    const {data,error}=await sb.storage.from(BUCKET).download(MATERIAL_REQ_FILES_PATH);
+    if(error){
+      const msg=String(error.message||'');
+      if(/not found|404/i.test(msg)){DB.materialReqFiles=getLocalMaterialReqFiles();return;}
+      throw error;
+    }
+    DB.materialReqFiles=cleanMaterialReqFileMap(JSON.parse(await data.text()));
+    saveLocalMaterialReqFiles(DB.materialReqFiles);
+  }catch(err){
+    DB.materialReqFiles=getLocalMaterialReqFiles();
+    console.warn('[JET] Arquivos de requisição de materiais não carregados:',err?.message||err);
+  }
+}
+async function saveRemoteMaterialReqFiles(map,{silent=false}={}){
+  const cleaned=cleanMaterialReqFileMap(map);
+  DB.materialReqFiles={...cleaned};
+  saveLocalMaterialReqFiles(DB.materialReqFiles);
+  try{
+    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    const {error}=await sb.storage.from(BUCKET).upload(MATERIAL_REQ_FILES_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){
+    console.warn('[JET] Arquivos de requisição de materiais não salvos:',err?.message||err);
+    if(!silent)toast('Anexos salvos apenas neste aparelho. A sincronização online falhou.','#f59e0b');
     return false;
   }
 }
@@ -1867,6 +1963,7 @@ function getTrailingNumber(value){const nums=String(value||'').match(/\d+/g)||[]
 function sortAditivosDisplay(list=[]){return[...(Array.isArray(list)?list:[])].sort((a,b)=>{const na=getTrailingNumber(a?.numero||a?.nome||a?.id);const nb=getTrailingNumber(b?.numero||b?.nome||b?.id);if(na!=null||nb!=null){const diff=(nb??-1)-(na??-1);if(diff!==0)return diff;}const da=String(b?.data||b?.created_at||'');const db=String(a?.data||a?.created_at||'');if(da!==db)return da.localeCompare(db);return String(b?.created_at||b?.id||'').localeCompare(String(a?.created_at||a?.id||''));});}
 function isExpedicaoTipo(tipo){return/expedi/i.test(String(tipo||''));}
 function getDespesaFiles(id){return(DB.despesaFiles&&DB.despesaFiles[id])||[];}
+function getMaterialReqFiles(key){return(DB.materialReqFiles&&DB.materialReqFiles[key])||[];}
 async function copyText(text,label='Copiado para a área de transferência.'){
   try{
     if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);
@@ -1994,7 +2091,7 @@ async function savePedidoPatch(id,patch,{silent=false}={}){
 const SESSION_TIMEOUT=20*60*1000;
 let sessionTimer=null;
 function clearSensitiveLocalCache(){
-  ['jet-baixadas','jet-despesa-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices','jet-propostas'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+  ['jet-baixadas','jet-despesa-files','jet-material-req-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices','jet-propostas'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 }
 function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;toast('Sessão expirada. Faça login novamente.','#ef4444');renderAuth();},SESSION_TIMEOUT);}
 document.addEventListener('click',resetSessionTimeout);document.addEventListener('keydown',resetSessionTimeout);
@@ -2070,7 +2167,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
 async function loadAll(){
   const [a,m,f,r,t,d,e,p,fn,c]=await Promise.all([
@@ -2103,6 +2200,7 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   await loadRemoteHomeNotices();
   await loadRemotePropostas();
   await loadRemoteDespesaFiles();
+  await loadRemoteMaterialReqFiles();
   await loadRemoteAlmoxMeta();
   await loadRemoteAlmoxMovimentos();
 }
@@ -2125,6 +2223,12 @@ async function updateField(table,id,field,value){
     return false;
   }
   const row=DB[table]?.find(r=>r.id===id);
+  if(table==='materiais'&&field==='unidade')value=normalizeMaterialUnit(value);
+  if(table==='materiais'&&field==='item'&&row){
+    const key=normalizeMaterialSpec(value);
+    const hasDuplicate=key&&DB.materiais.some(m=>m.id!==id&&m.obra===row.obra&&(m.data_solicitacao||'')===(row.data_solicitacao||'')&&normalizeMaterialSpec(m.item)===key);
+    if(hasDuplicate&&!confirm(`Atenção: "${value}" já existe nesta solicitação.\n\nDeseja salvar mesmo assim?`))return false;
+  }
   const oldVal=row?row[field]:undefined;
   if(row)row[field]=value;
   const{error}=await sb.from(table).update({[field]:value}).eq('id',id);
@@ -3476,6 +3580,8 @@ ${mat.length===0?`<div class="empty-state"><p>Nenhum material solicitado.</p><bu
     const cid=collapKey+dt;
     const collapsed=window._matCollapsed[cid]===false?false:true;
     const totalItens=items.reduce((s,m)=>s+(parseInt(m.quantidade||0)),0);
+    const reqFileKey=getMaterialReqKeyFromItems(items,obra);
+    const reqFileCount=getMaterialReqFiles(reqFileKey).length;
     return`<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
 <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer" onclick="window._toggleMatGroup('${escJs(cid)}')">
   <svg style="flex-shrink:0;transition:transform .2s;transform:rotate(${collapsed?'0':'90'}deg)" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,2 7,5 2,8"/></svg>
@@ -3484,7 +3590,7 @@ ${mat.length===0?`<div class="empty-state"><p>Nenhum material solicitado.</p><bu
   ${pend>0?`<span style="font-size:11px;color:#fbbf24;background:#2a1d06;padding:1px 8px;border-radius:100px;font-weight:600">⏳ ${pend} pendente${pend!==1?'s':''}</span>`:''}
   ${concl===items.length?`<span style="font-size:11px;color:#34d399;background:#062018;padding:1px 8px;border-radius:100px;font-weight:600">✓ Concluído</span>`:''}
   ${items[0]?.solicitante?`<span style="font-size:11px;color:var(--text3);margin-left:4px">por ${esc(items[0].solicitante)}</span>`:''}
-  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._copyMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Copiar lista">Copiar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button></span>
+  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._copyMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Copiar lista">Copiar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button></span>
 </div>
 ${collapsed?'':
 `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">
@@ -3501,7 +3607,7 @@ ${collapsed?'':
 <tbody>${items.map(m=>`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:5px 8px"><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(m.item)}" onblur="if(this.value.trim())updateField('materiais','${m.id}','item',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:5px 8px;text-align:center"><input class="ci ci-num" type="number" style="width:100%;text-align:center" value="${m.quantidade||''}" onblur="updateField('materiais','${m.id}','quantidade',this.value?parseFloat(this.value):null)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-<td style="padding:5px 8px"><input class="ci" style="width:100%;text-align:center" value="${esc(m.unidade||'un')}" onblur="updateField('materiais','${m.id}','unidade',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+<td style="padding:5px 8px">${materialUnitSelect('ci',m.unidade||'un','width:100%;text-align:center',`onchange="updateField('materiais','${m.id}','unidade',this.value)"`)}</td>
 <td style="padding:5px 8px">${makeCd(['Elétrica','Hidráulica','EPI','Geral','Civil','Lógica'],DISC_MAP,m.disciplina||'Geral',`updateField('materiais','${m.id}','disciplina',VAL)`)}</td>
 <td style="padding:5px 8px">${makeCd(URGENCIA,US,m.urgencia||'Normal',`updateField('materiais','${m.id}','urgencia',VAL)`)}</td>
 <td style="padding:5px 8px">${makeCd(MAT_STATUS,MS,m.status||'Pendente',`updateField('materiais','${m.id}','status',VAL)`)}</td>
@@ -5169,7 +5275,7 @@ function exportMateriaisPDF(obra,ids){
   const reqRows=mats.map((m,i)=>[
     String(i+1),
     m.item||'',
-    m.unidade||'un',
+    normalizeMaterialUnit(m.unidade||'un'),
     String(m.quantidade||''),
     m.urgencia||'Normal',
     m.status||'Pendente',
@@ -5181,7 +5287,7 @@ function exportMateriaisPDF(obra,ids){
   const confRows=mats.map((m,i)=>[
     String(i+1),
     m.item||'',
-    m.unidade||'un',
+    normalizeMaterialUnit(m.unidade||'un'),
     String(m.quantidade||''),
     '',
     ''
@@ -5210,6 +5316,21 @@ function exportMateriaisPDF(obra,ids){
   let almoxStart=startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia via almoxarifado');
   drawManualTable(confColumns,confRows,almoxStart,()=>startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia via almoxarifado'),'conf');
   drawStamp('Almoxarife');
+
+  doc.addPage('a4','portrait');
+  drawHeader('CABE\u00C7ALHO + VIA RASCUNHO - '+obraLabel,false);
+  drawSummary([`Obra: ${obraLabel}`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`,`Itens base: ${mats.length}`]);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(24);
+  doc.setTextColor(26,46,107);
+  doc.text('VIA RASCUNHO',W/2,82,{align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(105,115,140);
+  doc.text('Folha livre para conferência preliminar e anotações internas.',W/2,91,{align:'center'});
+  doc.setDrawColor(210,216,230);
+  doc.setLineWidth(0.25);
+  for(let y=112;y<=245;y+=12)doc.line(M,y,W-M,y);
 
   const totalPages=doc.getNumberOfPages();
   for(let i=1;i<=totalPages;i++){
@@ -5459,7 +5580,7 @@ window._exportFormat=(type,obra,fmt)=>{
 window.aditivosCSV=(obra)=>{const ads=DB.aditivos.filter(a=>a.obra===obra);exportCSV(ads.map(a=>[a.numero,a.nome,a.status,a.valor,a.solicitacao,a.data,a.proposta,a.responsavel]),['Número','Nome','Status','Valor','Solicitação','Data','Proposta','Responsável'],`Aditivos_${obra}`);};
 window.aditivosXLSX=(obra)=>{const ads=DB.aditivos.filter(a=>a.obra===obra);return exportStyledXLSX({sheetName:'Aditivos',filename:`Aditivos_${obra}`,title:'Aditivos de Obra',meta:[obra,`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${ads.length} aditivo(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Nome',key:'nome',width:34},{header:'Status',key:'status',width:20,badgeMap:SS},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Solicitação',key:'solicitacao',width:28},{header:'Data',key:'data',width:14},{header:'Proposta',key:'proposta',width:18,badgeMap:PS},{header:'Responsável',key:'responsavel',width:20}],rows:ads.map((a,i)=>({idx:i+1,numero:a.numero||'',nome:a.nome||'',status:a.status||'',valor:a.valor||'',solicitacao:a.solicitacao||'',data:fmtD(a.data),proposta:a.proposta||'',responsavel:a.responsavel||''}))});};
 window.aditivosPDF=exportAditivosPDF;
-window.materiaisCSV=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportCSV(m.map(x=>[x.item,x.quantidade,x.unidade,x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
+window.materiaisCSV=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportCSV(m.map(x=>[x.item,x.quantidade,normalizeMaterialUnit(x.unidade||'un'),x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
 window.materiaisXLSX=(obra)=>{
   const m=DB.materiais.filter(mat=>mat.obra===obra);
   return exportStyledXLSX({
@@ -5479,10 +5600,10 @@ window.materiaisXLSX=(obra)=>{
       {header:'Data',key:'data',width:14},
       {header:'Observação',key:'observacao',width:34}
     ],
-    rows:m.map((x,i)=>({idx:i+1,item:x.item||'',quantidade:x.quantidade||'',unidade:x.unidade||'',disciplina:x.disciplina||'Geral',urgencia:x.urgencia||'Normal',status:x.status||'',solicitante:x.solicitante||'',data:fmtD(x.data_solicitacao),observacao:x.observacao_item||x.observacao||''}))
+    rows:m.map((x,i)=>({idx:i+1,item:x.item||'',quantidade:x.quantidade||'',unidade:normalizeMaterialUnit(x.unidade||'un'),disciplina:x.disciplina||'Geral',urgencia:x.urgencia||'Normal',status:x.status||'',solicitante:x.solicitante||'',data:fmtD(x.data_solicitacao),observacao:x.observacao_item||x.observacao||''}))
   });
 }
-window.materiaisTXT=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportTXT(m.map(x=>[x.item,x.quantidade,x.unidade,x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
+window.materiaisTXT=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportTXT(m.map(x=>[x.item,x.quantidade,normalizeMaterialUnit(x.unidade||'un'),x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
 window.materiaisPDF=exportMateriaisPDF;
 window.funcionariosCSV=(obra,hideDocs)=>{const f=DB.funcionarios.filter(f=>f.obra===obra);const cols=hideDocs?['Nome','Função','Empresa','Telefone','Entrada','Status']:['Nome','Função','Empresa','Telefone','Documento','Entrada','Status'];const data=f.map(x=>hideDocs?[x.nome,x.funcao,x.empresa,x.telefone,x.data_entrada,x.status]:[x.nome,x.funcao,x.empresa,x.telefone,x.documento,x.data_entrada,x.status]);exportCSV(data,cols,`Funcionarios_${obra}`);};
 window.funcionariosXLSX=(obra,hideDocs)=>{
@@ -5878,9 +5999,9 @@ window.almoxMovXLSX=(rowsOverride)=>{
 };
 
 function reqItemFieldsHtml(mt,inpSt){
-  return `<div class="req-item-field req-item-field-wide"><span class="req-item-label">Descrição</span><input class="req-item-desc" value="${esc(mt.item||'')}" placeholder="Material..." style="${inpSt}"></div>
+  return `<div class="req-item-field req-item-field-wide"><span class="req-item-label">Descrição</span><input class="req-item-desc" value="${esc(mt.item||'')}" placeholder="Material..." style="${inpSt}" oninput="window._refreshMaterialDuplicateWarning('req')"></div>
   <div class="req-item-field"><span class="req-item-label">Qtd</span><input class="req-item-qtd" type="number" value="${mt.quantidade||''}" placeholder="0" style="${inpSt};text-align:center"></div>
-  <div class="req-item-field"><span class="req-item-label">Unid</span><input class="req-item-unit" value="${esc(mt.unidade||'un')}" placeholder="un" style="${inpSt};text-align:center"></div>
+  <div class="req-item-field"><span class="req-item-label">Unid</span>${materialUnitSelect('req-item-unit',mt.unidade||'un',`${inpSt};text-align:center`)}</div>
   <div class="req-item-field"><span class="req-item-label">Disciplina</span><select class="req-item-disc" style="${inpSt}">${['Elétrica','Hidráulica','EPI','Geral','Civil','Lógica'].map(dd=>`<option${(mt.disciplina||'Geral')===dd?' selected':''}>${dd}</option>`).join('')}</select></div>
   <div class="req-item-field"><span class="req-item-label">Status</span><select class="req-item-status" style="${inpSt}">${MAT_STATUS.map(s=>`<option${(mt.status||'Pendente')===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <div class="req-item-field req-item-field-wide"><span class="req-item-label">Observação</span><input class="req-item-obs" value="${esc(mt.observacao_item||mt.observacao||'')}" placeholder="Obs..." style="${inpSt}"></div>`;
@@ -6021,6 +6142,7 @@ function renderModal(){
   <div class="form-group" style="margin-bottom:0"><label>Observação Geral</label><input id="m-obs" placeholder="Observações da requisição..."></div>
 </div>
 <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Itens da Requisição</div>
+<div id="mat-dup-warning" style="display:none;margin-bottom:8px;padding:9px 11px;border:1px solid rgba(245,158,11,.45);border-radius:10px;background:rgba(245,158,11,.10);color:#fbbf24;font-size:12px;font-weight:700"></div>
 <div style="display:grid;grid-template-columns:2fr 55px 65px 100px 1fr 28px;gap:4px;margin-bottom:4px;padding:0 2px">
   <span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Descrição</span>
   <span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Qtd</span>
@@ -6031,15 +6153,16 @@ function renderModal(){
 </div>
 <div id="mat-items-list">
   <div class="mat-item-row" style="display:grid;grid-template-columns:2fr 55px 65px 100px 1fr 28px;gap:4px;margin-bottom:6px">
-    <input class="mat-item-desc" placeholder="Descrição..." style="${inpSt}">
+    <input class="mat-item-desc" placeholder="Descrição..." style="${inpSt}" oninput="window._refreshMaterialDuplicateWarning('mat')">
     <input class="mat-item-qtd" type="number" placeholder="0" style="${inpSt};text-align:center">
-    <input class="mat-item-unit" placeholder="un" style="${inpSt};text-align:center">
+    ${materialUnitSelect('mat-item-unit','un',`${inpSt};text-align:center`)}
     <select class="mat-item-disc" style="${inpSt}"><option>Elétrica</option><option>Hidráulica</option><option>EPI</option><option>Geral</option><option>Civil</option><option>Lógica</option></select>
     <input class="mat-item-obs" placeholder="Observação..." style="${inpSt}">
     <div></div>
   </div>
 </div>
 <button onclick="_addMatRow()" style="background:none;border:1px dashed var(--border2);border-radius:7px;color:var(--text3);cursor:pointer;font-size:12px;padding:6px;font-family:'Inter',sans-serif;width:100%;margin-bottom:12px;transition:all .15s" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">+ Adicionar linha</button>
+<div class="form-group" style="margin-top:8px"><label>Anexar arquivos da solicitação</label><input id="m-matfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-matfiles-list')"><div id="m-matfiles-list" style="margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
 </div>`;
     onSave=`_saveMaterial()`;
     // Override modal to add download buttons in footer
@@ -6055,7 +6178,7 @@ function renderModal(){
   <div class="form-group" style="margin-bottom:0"><label>Item / Descrição *</label><input id="m-eitem" value="${esc(mt.item||'')}" placeholder="Nome do material..."></div>
   <div class="form-group" style="margin-bottom:0"><label>Solicitante</label><input id="m-esolic" value="${esc(mt.solicitante||'')}" placeholder="Nome..."></div>
   <div class="form-group" style="margin-bottom:0"><label>Quantidade</label><input id="m-eqtd" type="number" value="${mt.quantidade||''}" placeholder="0"></div>
-  <div class="form-group" style="margin-bottom:0"><label>Unidade</label><input id="m-eunid" value="${esc(mt.unidade||'un')}" placeholder="un"></div>
+  <div class="form-group" style="margin-bottom:0"><label>Unidade</label><select id="m-eunid">${materialUnitOptions(mt.unidade||'un')}</select></div>
   <div class="form-group" style="margin-bottom:0"><label>Disciplina</label><select id="m-edisc">${['Elétrica','Hidráulica','EPI','Geral','Civil','Lógica'].map(d2=>`<option${(mt.disciplina||'Geral')===d2?' selected':''}>${d2}</option>`).join('')}</select></div>
   <div class="form-group" style="margin-bottom:0"><label>Urgência</label><select id="m-eurg">${URGENCIA.map(u=>`<option${(mt.urgencia||'Normal')===u?' selected':''}>${u}</option>`).join('')}</select></div>
   <div class="form-group" style="margin-bottom:0"><label>Status</label><select id="m-estatus">${MAT_STATUS.map(s=>`<option${(mt.status||'Pendente')===s?' selected':''}>${s}</option>`).join('')}</select></div>
@@ -6072,6 +6195,7 @@ function renderModal(){
     const first=mats[0];
     title='Editar Requisição de Materiais';
     const inpSt='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
+    const reqFileKey=getMaterialReqKeyFromItems(mats,S.obra);
     body=`<div>
 <div class="form-grid-2" style="margin-bottom:14px">
   <div class="form-group" style="margin-bottom:0"><label>Solicitante</label><input id="m-rsolic" value="${esc(first.solicitante||'')}" placeholder="Nome..."></div>
@@ -6080,6 +6204,7 @@ function renderModal(){
   <div class="form-group" style="margin-bottom:0"><label>Observação Geral</label><input id="m-robs" value="${esc(first.observacao||'')}" placeholder="Observações..."></div>
 </div>
 <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Itens da Requisição (${mats.length})</div>
+<div id="req-dup-warning" style="display:none;margin-bottom:8px;padding:9px 11px;border:1px solid rgba(245,158,11,.45);border-radius:10px;background:rgba(245,158,11,.10);color:#fbbf24;font-size:12px;font-weight:700"></div>
 <div class="req-items-head">
   <span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Descrição</span>
   <span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Qtd</span>
@@ -6092,10 +6217,11 @@ function renderModal(){
 <div id="req-items-list" class="req-items-list">
 ${mats.map(mt=>`<div class="req-item-row" data-id="${mt.id}">
   ${reqItemFieldsHtml(mt,inpSt)}
-  <button class="req-item-remove" onclick="this.closest('.req-item-row').remove()">×</button>
+  <button class="req-item-remove" onclick="this.closest('.req-item-row').remove();window._refreshMaterialDuplicateWarning('req')">×</button>
 </div>`).join('')}
 </div>
 <button class="req-add-btn" onclick="window._addReqRow()">+ Adicionar material</button>
+<div style="margin-top:14px">${renderMaterialReqFilesPanel(reqFileKey)}</div>
 </div>`;
     onSave=`_saveRequisicao()`;
   }
@@ -6547,7 +6673,7 @@ ${commercialItemsHeaderHtml()}
     onSave=`_saveCotacao()`;
   }
 
-  return`<div class="modal-overlay" onclick="if(event.target===this)_closeModal()">
+  return`<div class="modal-overlay">
 <div class="modal${m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
 <div class="modal-title">${title}</div>
 ${body}
@@ -6627,7 +6753,31 @@ window._prefillCotacaoEmpresa=(id)=>{
 
 window._getModalMatItems=()=>{
   const rows=Array.from(document.querySelectorAll('.mat-item-row'));
-  return rows.map((r,i)=>({item:r.querySelector('.mat-item-desc')?.value?.trim()||'',quantidade:r.querySelector('.mat-item-qtd')?.value||'',unidade:r.querySelector('.mat-item-unit')?.value||'un',disc:r.querySelector('.mat-item-disc')?.value||'Geral',obs:r.querySelector('.mat-item-obs')?.value||''})).filter(i=>i.item);
+  return rows.map((r,i)=>({item:r.querySelector('.mat-item-desc')?.value?.trim()||'',quantidade:r.querySelector('.mat-item-qtd')?.value||'',unidade:normalizeMaterialUnit(r.querySelector('.mat-item-unit')?.value||'un'),disc:r.querySelector('.mat-item-disc')?.value||'Geral',obs:r.querySelector('.mat-item-obs')?.value||''})).filter(i=>i.item);
+};
+window._refreshMaterialDuplicateWarning=(prefix='mat')=>{
+  const isReq=prefix==='req';
+  const rows=Array.from(document.querySelectorAll(isReq?'.req-item-row':'.mat-item-row'));
+  const items=rows.map(row=>({item:row.querySelector(isReq?'.req-item-desc':'.mat-item-desc')?.value?.trim()||''})).filter(item=>item.item);
+  const dups=findDuplicateMaterialSpecs(items).map(normalizeMaterialSpec);
+  const dupSet=new Set(dups);
+  rows.forEach(row=>{
+    const input=row.querySelector(isReq?'.req-item-desc':'.mat-item-desc');
+    if(!input)return;
+    const isDup=dupSet.has(normalizeMaterialSpec(input.value));
+    input.style.borderColor=isDup?'#f59e0b':'var(--border2)';
+    input.style.boxShadow=isDup?'0 0 0 2px rgba(245,158,11,.12)':'';
+  });
+  const box=document.getElementById(isReq?'req-dup-warning':'mat-dup-warning');
+  if(!box)return;
+  const labels=findDuplicateMaterialSpecs(items);
+  if(labels.length){
+    box.style.display='block';
+    box.textContent='Atenção: item duplicado na solicitação — '+labels.join(', ');
+  }else{
+    box.style.display='none';
+    box.textContent='';
+  }
 };
 
 window._previewMatXLSX=()=>{
@@ -6704,14 +6854,15 @@ window._addMatRow=()=>{
   const st='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
   const row=document.createElement('div');row.className='mat-item-row';
   row.style.cssText='display:grid;grid-template-columns:2fr 55px 65px 100px 1fr 28px;gap:4px;margin-bottom:6px';
-  row.innerHTML=`<input class="mat-item-desc" placeholder="Descrição..." style="${st}"><input class="mat-item-qtd" type="number" placeholder="0" style="${st};text-align:center"><input class="mat-item-unit" placeholder="un" style="${st};text-align:center"><select class="mat-item-disc" style="${st}"><option>Elétrica</option><option>Hidráulica</option><option>EPI</option><option>Geral</option><option>Civil</option><option>Lógica</option></select><input class="mat-item-obs" placeholder="Observação..." style="${st}"><button onclick="this.closest('.mat-item-row').remove()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>`;
+  row.innerHTML=`<input class="mat-item-desc" placeholder="Descrição..." style="${st}" oninput="window._refreshMaterialDuplicateWarning('mat')"><input class="mat-item-qtd" type="number" placeholder="0" style="${st};text-align:center">${materialUnitSelect('mat-item-unit','un',`${st};text-align:center`)}<select class="mat-item-disc" style="${st}"><option>Elétrica</option><option>Hidráulica</option><option>EPI</option><option>Geral</option><option>Civil</option><option>Lógica</option></select><input class="mat-item-obs" placeholder="Observação..." style="${st}"><button onclick="this.closest('.mat-item-row').remove();window._refreshMaterialDuplicateWarning('mat')" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>`;
   list.appendChild(row);row.querySelector('.mat-item-desc').focus();
 };
 
 window._saveMaterial=async()=>{
   const rows=Array.from(document.querySelectorAll('.mat-item-row'));
-  const items=rows.map(r=>({desc:r.querySelector('.mat-item-desc')?.value?.trim(),qtd:r.querySelector('.mat-item-qtd')?.value,unit:r.querySelector('.mat-item-unit')?.value||'un',disc:r.querySelector('.mat-item-disc')?.value||'Geral',obs:r.querySelector('.mat-item-obs')?.value||''})).filter(i=>i.desc);
+  const items=rows.map(r=>({desc:r.querySelector('.mat-item-desc')?.value?.trim(),qtd:r.querySelector('.mat-item-qtd')?.value,unit:normalizeMaterialUnit(r.querySelector('.mat-item-unit')?.value||'un'),disc:r.querySelector('.mat-item-disc')?.value||'Geral',obs:r.querySelector('.mat-item-obs')?.value||''})).filter(i=>i.desc);
   if(!items.length){toast('Adicione pelo menos um item.','#ef4444');return;}
+  if(!confirmMaterialDuplicates(items))return;
   const solic=document.getElementById('m-solic')?.value||'';
   const datareq=document.getElementById('m-datareq')?._flatpickr?.input?.value||new Date().toISOString().slice(0,10);
   const urg=document.getElementById('m-urg')?.value||'Normal';
@@ -6720,6 +6871,7 @@ window._saveMaterial=async()=>{
   const{error}=await sb.from('materiais').insert(objs);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   objs.forEach(o=>DB.materiais.unshift(o));
+  await saveMaterialReqFilesForKey(getMaterialReqKey(S.obra,datareq),document.getElementById('m-matfiles')?.files||[]);
   toast(`${objs.length} item${objs.length!==1?'s':''} adicionado${objs.length!==1?'s':''}!`);
   _closeModal();
 };
@@ -6732,17 +6884,21 @@ window._deleteMaterial=async(id)=>{if(!confirm('Excluir solicitação?'))return;
 window._editMaterial=async(id)=>{
   const item=document.getElementById('m-eitem')?.value?.trim();
   if(!item){toast('Preencha o nome do item.','#ef4444');return;}
+  const current=DB.materiais.find(m=>m.id===id)||{};
   const obj={
     item,
     solicitante:document.getElementById('m-esolic')?.value||'',
     quantidade:parseFloat(document.getElementById('m-eqtd')?.value)||0,
-    unidade:document.getElementById('m-eunid')?.value||'un',
+    unidade:normalizeMaterialUnit(document.getElementById('m-eunid')?.value||'un'),
     disciplina:document.getElementById('m-edisc')?.value||'Geral',
     urgencia:document.getElementById('m-eurg')?.value||'Normal',
     status:document.getElementById('m-estatus')?.value||'Pendente',
     data_solicitacao:document.getElementById('m-edata')?.value||null,
     observacao:document.getElementById('m-eobs')?.value||''
   };
+  const itemKey=normalizeMaterialSpec(item);
+  const hasDuplicate=itemKey&&DB.materiais.some(m=>m.id!==id&&m.obra===current.obra&&(m.data_solicitacao||'')===(obj.data_solicitacao||'')&&normalizeMaterialSpec(m.item)===itemKey);
+  if(hasDuplicate&&!confirm(`Atenção: "${item}" já existe nesta solicitação.\n\nDeseja salvar mesmo assim?`))return;
   const{error}=await sb.from('materiais').update(obj).eq('id',id);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   DB.materiais=DB.materiais.map(m=>m.id===id?{...m,...obj}:m);
@@ -6773,7 +6929,7 @@ window._matReqXLSX=(obra,idsStr)=>{
     title:'Requisição de Materiais',
     meta:[obra,`Solicitante: ${first.solicitante||'-'}`,`Data: ${fmtD(first.data_solicitacao)}`,`${mats.length} item(ns)`],
     columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Item',key:'item',width:34},{header:'Qtd',key:'quantidade',width:10,align:'center'},{header:'Unidade',key:'unidade',width:10,align:'center'},{header:'Disciplina',key:'disciplina',width:16,badgeMap:XLSX_DISC_MAP},{header:'Urgência',key:'urgencia',width:14,badgeMap:US},{header:'Status',key:'status',width:16,badgeMap:MS},{header:'Observação',key:'observacao',width:28}],
-    rows:mats.map((x,i)=>({idx:i+1,item:x.item||'',quantidade:x.quantidade||'',unidade:x.unidade||'',disciplina:x.disciplina||'Geral',urgencia:x.urgencia||'Normal',status:x.status||'',observacao:x.observacao_item||x.observacao||''}))
+    rows:mats.map((x,i)=>({idx:i+1,item:x.item||'',quantidade:x.quantidade||'',unidade:normalizeMaterialUnit(x.unidade||'un'),disciplina:x.disciplina||'Geral',urgencia:x.urgencia||'Normal',status:x.status||'',observacao:x.observacao_item||x.observacao||''}))
   });
 };
 
@@ -6781,7 +6937,7 @@ window._addReqRow=()=>{
   const list=document.getElementById('req-items-list');if(!list)return;
   const st='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
   const row=document.createElement('div');row.className='req-item-row';
-  row.innerHTML=`${reqItemFieldsHtml({item:'',quantidade:'',unidade:'un',disciplina:'Geral',status:'Pendente',observacao_item:''},st)}<button class="req-item-remove" onclick="this.closest('.req-item-row').remove()">×</button>`;
+  row.innerHTML=`${reqItemFieldsHtml({item:'',quantidade:'',unidade:'un',disciplina:'Geral',status:'Pendente',observacao_item:''},st)}<button class="req-item-remove" onclick="this.closest('.req-item-row').remove();window._refreshMaterialDuplicateWarning('req')">×</button>`;
   list.appendChild(row);row.querySelector('.req-item-desc')?.focus();
 };
 
@@ -6790,17 +6946,20 @@ window._saveRequisicao=async()=>{
   const data=document.getElementById('m-rdata')?.value||null;
   const urg=document.getElementById('m-rurg')?.value||'Normal';
   const obs=document.getElementById('m-robs')?.value||'';
+  const origMats=(S.modalData?.ids||[]).map(id=>DB.materiais.find(x=>x.id===id)).filter(Boolean);
+  const oldReqKey=getMaterialReqKeyFromItems(origMats,S.obra);
   const rows=Array.from(document.querySelectorAll('.req-item-row'));
   const items=rows.map(row=>({
     id:row.dataset.id||'',
     item:row.querySelector('.req-item-desc')?.value?.trim()||'',
     quantidade:parseFloat(row.querySelector('.req-item-qtd')?.value)||0,
-    unidade:row.querySelector('.req-item-unit')?.value||'un',
+    unidade:normalizeMaterialUnit(row.querySelector('.req-item-unit')?.value||'un'),
     disciplina:row.querySelector('.req-item-disc')?.value||'Geral',
     status:row.querySelector('.req-item-status')?.value||'Pendente',
     observacao_item:row.querySelector('.req-item-obs')?.value||'',
   })).filter(item=>item.item);
   if(!items.length){toast('Adicione pelo menos um item.','#ef4444');return;}
+  if(!confirmMaterialDuplicates(items))return;
   const btn=document.querySelector('.modal .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const buildPayload=item=>({
@@ -6859,6 +7018,14 @@ window._saveRequisicao=async()=>{
       if(error){toast('Erro: '+error.message,'#ef4444');return;}
       DB.materiais=DB.materiais.filter(m=>!deleteIds.includes(m.id));
     }
+    const newReqKey=getMaterialReqKey(S.obra,data||'sem-data');
+    if(oldReqKey&&newReqKey&&oldReqKey!==newReqKey&&DB.materialReqFiles?.[oldReqKey]){
+      const map={...DB.materialReqFiles};
+      map[newReqKey]=[...(map[newReqKey]||[]),...(map[oldReqKey]||[])];
+      delete map[oldReqKey];
+      await saveRemoteMaterialReqFiles(map,{silent:true});
+    }
+    await saveMaterialReqFilesForKey(newReqKey,document.getElementById('m-rfiles')?.files||[]);
     toast('✓ Requisição atualizada! ('+items.length+' itens)');
     _closeModal();renderApp();
   }finally{
@@ -7891,6 +8058,10 @@ function renderDespesaFilesPanel(item){
   const files=getDespesaFiles(item?.id||'');
   return `<div><div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${item.id}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${item.id}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
 }
+function renderMaterialReqFilesPanel(reqKey){
+  const files=getMaterialReqFiles(reqKey);
+  return `<div><div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos da solicitação</div><div style="font-size:11px;color:var(--text3)">Anexe PDF, foto, planilha, romaneio ou comprovante desta requisição.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" id="m-rfiles" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._previewDespFiles(this,'m-rfiles-list')">+ Selecionar anexos</label></div><div id="m-rfiles-list" style="margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo novo selecionado.</span></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">📎</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeMaterialReqFile('${escJs(reqKey)}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:14px"><p>Nenhum anexo nesta solicitação.</p></div>`}</div>`;
+}
 window._previewDespFiles=(input,targetId='m-dfiles-list')=>{
   const box=document.getElementById(targetId);if(!box)return;
   const files=Array.from(input?.files||[]);
@@ -7916,6 +8087,26 @@ async function saveDespesaFilesForId(despId,files){
   if(uploaded)toast(`${uploaded} arquivo(s) vinculado(s) ao lançamento.`,'#22c55e');
   return uploaded===queue.length;
 }
+async function saveMaterialReqFilesForKey(reqKey,files){
+  const key=String(reqKey||'').trim();
+  const selected=Array.from(files||[]).filter(Boolean);
+  if(!key||!selected.length)return true;
+  const queue=selected.filter(file=>validateUploadFile(file));
+  if(!queue.length)return false;
+  const next=[...getMaterialReqFiles(key)];
+  let uploaded=0;
+  for(const file of queue){
+    const path=`materiais-requisicoes/${key}/${uid()}_${sanitizeStorageName(file.name)}`;
+    const {error:ue}=await sb.storage.from(BUCKET).upload(path,file);
+    if(ue){toast(`Erro ao enviar ${file.name}: ${ue.message}`,'#ef4444');continue;}
+    const {data:ud}=sb.storage.from(BUCKET).getPublicUrl(path);
+    next.push(cleanMaterialReqFile({id:uid(),name:file.name,size:file.size||0,path,url:ud.publicUrl}));
+    uploaded++;
+  }
+  await saveRemoteMaterialReqFiles({...DB.materialReqFiles,[key]:next},{silent:true});
+  if(uploaded)toast(`${uploaded} anexo(s) vinculado(s) à solicitação.`,'#22c55e');
+  return uploaded===queue.length;
+}
 window._openDespesaFiles=id=>{S.modal='desp-files';S.modalData={id};renderApp();};
 window._uploadDespesaFiles=async(e,id)=>{await saveDespesaFilesForId(id,e?.target?.files||[]);if(e?.target)e.target.value='';renderApp();};
 window._removeDespesaFile=async(id,fileId)=>{
@@ -7929,6 +8120,20 @@ window._removeDespesaFile=async(id,fileId)=>{
   if(next.length)map[id]=next;else delete map[id];
   await saveRemoteDespesaFiles(map,{silent:true});
   toast('Arquivo removido.','#f59e0b');
+  renderApp();
+};
+window._removeMaterialReqFile=async(reqKey,fileId)=>{
+  if(!confirm('Remover anexo desta solicitação?'))return;
+  const key=String(reqKey||'').trim();
+  const current=[...getMaterialReqFiles(key)];
+  const file=current.find(item=>item.id===fileId);
+  if(!file)return;
+  if(file.path){try{await sb.storage.from(BUCKET).remove([file.path]);}catch(err){console.warn('[JET] Falha ao remover anexo físico:',err?.message||err);}}
+  const next=current.filter(item=>item.id!==fileId);
+  const map={...DB.materialReqFiles};
+  if(next.length)map[key]=next;else delete map[key];
+  await saveRemoteMaterialReqFiles(map,{silent:true});
+  toast('Anexo removido.','#f59e0b');
   renderApp();
 };
 
@@ -8691,8 +8896,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427135107",
-  id: "/?build=20260427135107",
+  start_url: "/?build=20260427183100",
+  id: "/?build=20260427183100",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
