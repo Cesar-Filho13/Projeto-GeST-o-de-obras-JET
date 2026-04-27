@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427124000">
+<meta name="jet-build" content="20260427133715">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -784,6 +784,15 @@ html[data-theme="light"] .rdo-status-slot .cd-trigger{box-shadow:inset 0 0 0 1px
 /* ── User menu ── */
 .user-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue) 100%);border:1.5px solid #3b7ef8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;transition:all .2s;position:relative;box-shadow:0 8px 18px rgba(59,126,248,.22)}
 .user-avatar:hover{border-color:#60a5fa;box-shadow:0 6px 16px rgba(59,126,248,.3);transform:scale(1.05)}
+.online-presence{display:flex;align-items:center;gap:8px;min-height:30px}
+.online-users{display:flex;align-items:center;gap:0}
+.online-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#17356f 0%,#2254d6 100%);border:2px solid #22c55e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;margin-left:-6px;cursor:default;flex-shrink:0;box-shadow:0 0 0 2px rgba(34,197,94,.1)}
+.online-avatar:first-child{margin-left:0}
+.online-more{background:#111827;border-color:rgba(148,163,184,.45);color:var(--text2)}
+.online-count-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#86efac;font-weight:800;background:rgba(5,32,20,.92);padding:4px 10px;border-radius:999px;border:1px solid rgba(34,197,94,.32);box-shadow:0 8px 22px rgba(34,197,94,.12);white-space:nowrap}
+.online-count-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7)}
+html[data-theme="light"] .online-count-pill{background:#e9fdf1;color:#047857;border-color:#bbf7d0;box-shadow:0 8px 20px rgba(16,185,129,.12)}
+html[data-theme="light"] .online-more{background:#eef4ff;color:#1e3a8a}
 .user-dropdown{position:absolute;top:calc(100%+8px);right:0;background:var(--panel-grad);border:1px solid var(--border2);border-radius:14px;padding:4px;min-width:200px;z-index:500;box-shadow:0 16px 36px rgba(4,10,24,.32);backdrop-filter:blur(14px)}
 .user-dd-info{padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:4px}
 .user-dd-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s}.user-dd-item:hover{background:rgba(59,126,248,.1);color:var(--text);transform:translateX(2px)}
@@ -852,7 +861,10 @@ html[data-theme="light"] .rdo-status-slot .cd-trigger{box-shadow:inset 0 0 0 1px
   .topbar-user{padding:0;border-right:none;font-size:11px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .theme-toggle{width:36px;height:36px;border-radius:12px}
   .user-avatar{width:36px;height:36px}
-  #online-users-bar,#online-count-bar{display:none!important}
+  .online-presence{gap:6px;min-height:28px}
+  .online-avatar{width:24px;height:24px;font-size:10px;margin-left:-7px}
+  .online-avatar:first-child{margin-left:0}
+  .online-count-pill{font-size:10px;padding:3px 7px}
   .section-header{flex-direction:column;align-items:flex-start}
   .section-header>div:last-child{width:100%;flex-wrap:wrap}
   .section-header .btn{flex:1;justify-content:center}
@@ -2231,8 +2243,10 @@ ${crumbs.length?`<div class="topbar-sep"></div><div class="topbar-crumb">${crumb
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Instalar App
   </button>
-  <div id="online-users-bar" style="display:flex;align-items:center;gap:0" title="Usuários online"></div>
-  <div id="online-count-bar"></div>
+  <div class="online-presence" title="Usuários online">
+    <div id="online-users-bar" class="online-users" data-online-users></div>
+    <div id="online-count-bar" data-online-count></div>
+  </div>
   <span class="rt-dot" title="Tempo real ativo"></span>
   ${ua?`<div class="topbar-user"><span>👤 ${esc(ua.email.split('@')[0])}</span></div>`:''}
   <div style="position:relative">
@@ -2628,6 +2642,10 @@ function renderHome(){
     <button class="theme-toggle landing-theme-toggle" onclick="window._toggleTheme()" title="Alternar modo claro/escuro">
       ${themeIconSvg()}
     </button>
+    <div class="online-presence landing-presence" title="Usuários online">
+      <div id="online-users-bar" class="online-users" data-online-users></div>
+      <div id="online-count-bar" data-online-count></div>
+    </div>
     <div class="landing-meta-sep"></div>
     ${currentUser?`<div class="landing-user"><span>${esc(currentHandle)}</span></div>`:''}
     <div style="position:relative">
@@ -8479,11 +8497,17 @@ window._importRDOFotosPlanilha=async(event)=>{
 // ─── RENDER APP ───────────────────────────────────────────────────────────
 // ─── ONLINE PRESENCE ──────────────────────────────────────────────────────
 let _onlineUsers = {};
+let _presenceChannel = null;
 
 function setupPresence(){
   if(!currentUser) return;
   const userName = currentUser.email.split('@')[0];
+  if(_presenceChannel){
+    try{sb.removeChannel(_presenceChannel);}catch(_){}
+    _presenceChannel=null;
+  }
   const channel = sb.channel('online-users', {config:{presence:{key: currentUser.id}}});
+  _presenceChannel=channel;
   channel
     .on('presence', {event:'sync'}, ()=>{
       const state = channel.presenceState();
@@ -8491,25 +8515,38 @@ function setupPresence(){
       Object.values(state).forEach(presences=>{
         presences.forEach(p=>{if(p.name)_onlineUsers[p.name]=p;});
       });
-      // Update online indicator without full re-render
-      const el = document.getElementById('online-users-bar');
-      if(el) el.innerHTML = renderOnlineUsers();
-      const cnt = document.getElementById('online-count-bar');
-      const n = Object.keys(_onlineUsers).length;
-      if(cnt) cnt.innerHTML = n>0?`<span style="font-size:11px;color:#22c55e;font-weight:600;background:#052014;padding:2px 8px;border-radius:100px;border:1px solid #0a3020">${n} online</span>`:'';
+      updateOnlinePresenceUI();
     })
     .subscribe(async status=>{
       if(status === 'SUBSCRIBED'){
         await channel.track({name: userName, at: Date.now()});
+        _onlineUsers[userName]={name:userName,at:Date.now()};
+        updateOnlinePresenceUI();
       }
     });
 }
 
+function getOnlineUsers(){
+  const map={..._onlineUsers};
+  if(currentUser){
+    const userName=currentUser.email.split('@')[0];
+    if(userName&&!map[userName])map[userName]={name:userName,at:Date.now(),self:true};
+  }
+  return Object.values(map).filter(u=>u?.name).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+}
 function renderOnlineUsers(){
-  const users = Object.values(_onlineUsers);
+  const users = getOnlineUsers();
   if(!users.length) return '';
-  return users.slice(0,5).map(u=>`<div title="${esc(u.name)} (online)" style="width:28px;height:28px;border-radius:50%;background:#1a3a6b;border:2px solid #22c55e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-left:-6px;cursor:default;flex-shrink:0">${u.name.charAt(0).toUpperCase()}</div>`).join('')
-  + (users.length>5?`<div style="width:28px;height:28px;border-radius:50%;background:#1a1a1a;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);margin-left:-6px">+${users.length-5}</div>`:'');
+  return users.slice(0,5).map(u=>`<div class="online-avatar" title="${esc(u.name)} (online)">${esc(u.name.charAt(0).toUpperCase())}</div>`).join('')
+  + (users.length>5?`<div class="online-avatar online-more">+${users.length-5}</div>`:'');
+}
+function renderOnlineCount(){
+  const n=getOnlineUsers().length;
+  return n>0?`<span class="online-count-pill">${n} online</span>`:'';
+}
+function updateOnlinePresenceUI(){
+  document.querySelectorAll('[data-online-users]').forEach(el=>{el.innerHTML=renderOnlineUsers();});
+  document.querySelectorAll('[data-online-count]').forEach(el=>{el.innerHTML=renderOnlineCount();});
 }
 
 let _historyBootstrapped=false,_historyApplying=false,_lastHistoryKey='';
@@ -8581,6 +8618,7 @@ function renderApp(){
   let content='';
   if(S.page==='home'){
     document.getElementById('root').innerHTML=renderHome()+renderModal();
+    updateOnlinePresenceUI();
     applyMobileTableCards();
     syncAppHistory({replace:!_historyBootstrapped});
     return;
@@ -8590,6 +8628,7 @@ function renderApp(){
   else if(S.page==='gerenciar-obras')content=renderGerenciarObras();
 
   document.getElementById('root').innerHTML=topbarHtml()+content+renderModal();
+  updateOnlinePresenceUI();
   applyMobileTableCards();
   syncAppHistory({replace:!_historyBootstrapped});
 }
@@ -8638,8 +8677,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260427124000",
-  id: "/?build=20260427124000",
+  start_url: "/?build=20260427133715",
+  id: "/?build=20260427133715",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
