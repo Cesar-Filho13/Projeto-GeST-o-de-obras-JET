@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260426185654">
+<meta name="jet-build" content="20260427013232">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%231a2e6b'/%3E%3Ctext x='256' y='310' font-family='Arial Black' font-size='160' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231a2e6b'/%3E%3Ctext x='50' y='62' font-family='Arial Black' font-size='34' font-weight='900' text-anchor='middle' fill='white'%3EJET%3C/text%3E%3C/svg%3E">
@@ -744,7 +744,11 @@ html[data-theme="light"] .proposal-meta span,html[data-theme="light"] .proposal-
 .rdo-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:10px;cursor:pointer;transition:all .15s}
 .rdo-card:hover{border-color:var(--border2);background:var(--bg3)}
 .rdo-date{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);margin-bottom:6px}
-.rdo-preview{font-size:13px;color:var(--text2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.rdo-activity-card{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,rgba(96,165,250,.08),rgba(15,23,42,.04));cursor:pointer}
+.rdo-activity-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:var(--text);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.rdo-activity-hint{font-size:11px;color:var(--text3);font-weight:700;text-transform:none;letter-spacing:0}
+.rdo-preview{font-size:13px;color:var(--text2);line-height:1.55;white-space:pre-line;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical}
+html[data-theme="light"] .rdo-activity-card{background:linear-gradient(180deg,#f7fbff,#eef5ff);border-color:#d8e6ff}
 .weather-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .weather-opt{padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;transition:all .15s}
 .weather-opt.active{border-color:var(--blue);background:rgba(79,140,255,.12);color:#60a5fa}
@@ -3583,7 +3587,7 @@ ${rdos.length===0?`<div class="empty-state"><p>Nenhum RDO registrado.</p><button
     <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteRdo('${r.id}')">×</button>
   </div>
 </div>
-${r.atividades?`<div class="rdo-preview" style="margin-top:10px;cursor:pointer" onclick="_openModal('edit-rdo',{id:'${r.id}'})">${esc(r.atividades)}</div>`:''}
+${r.atividades?`<div class="rdo-activity-card" onclick="_openModal('edit-rdo',{id:'${r.id}'})"><div class="rdo-activity-head"><span>Atividades executadas</span><span class="rdo-activity-hint">Clique para editar</span></div><div class="rdo-preview">${esc(r.atividades)}</div></div>`:''}
 ${r.ocorrencias?`<div style="margin-top:8px;padding:8px;background:#200c0c;border-radius:6px;font-size:12px;color:#f87171">⚠ ${esc(r.ocorrencias)}</div>`:''}
 ${(r.fotos||[]).length>0?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(r.fotos||[]).slice(0,4).map(f=>`<div style="width:60px;height:60px;border-radius:6px;overflow:hidden;border:1px solid var(--border)"><img src="${esc(f.url||f)}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}${(r.fotos||[]).length>4?`<div style="width:60px;height:60px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">+${(r.fotos||[]).length-4}</div>`:''}</div>`:''}
 </div>`).join('')}</div>`}
@@ -4886,30 +4890,82 @@ function exportRDOPDF(obra,rdoId){
     const pg=doc.getNumberOfPages();
     for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`RDO - ${obra} - ${fmtD(r.data)} - ${r.rdo_numero||''}`,105,290,{align:'center'});}
   });
-  // Embed photos
+  const photoUrlCandidates=(foto)=>{
+    const raw=typeof foto==='string'?foto:(foto?.url||foto?.thumb||foto?.drive_url||foto?.original_url||'');
+    const drive=typeof foto==='string'?foto:(foto?.drive_url||foto?.original_url||raw);
+    const id=rdoFotoDriveId(drive||raw);
+    const urls=[];
+    if(id){
+      urls.push(`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1200`);
+      urls.push(`https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1200`);
+    }
+    [raw,typeof foto==='string'?'':foto?.thumb,typeof foto==='string'?'':foto?.url].forEach(url=>{if(url)urls.push(url);});
+    return[...new Set(urls.filter(Boolean))];
+  };
+  const imageToDataUrl=async(foto)=>{
+    let lastErr=null;
+    for(const url of photoUrlCandidates(foto)){
+      try{
+        const resp=await fetch(url,{mode:'cors',credentials:'omit',cache:'no-store'});
+        if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+        const blob=await resp.blob();
+        if(!String(blob.type||'').startsWith('image/'))throw new Error('Resposta não é imagem');
+        const dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.onerror=rej;fr.readAsDataURL(blob);});
+        let imgType='JPEG';
+        if(String(blob.type).includes('png'))imgType='PNG';
+        if(String(blob.type).includes('webp'))imgType='WEBP';
+        return{dataUrl,imgType};
+      }catch(err){lastErr=err;}
+    }
+    throw lastErr||new Error('Imagem indisponível');
+  };
+  const drawPhotoFallback=(foto,x,y,w,h)=>{
+    const link=(typeof foto==='string'?foto:(foto?.drive_url||foto?.original_url||foto?.url||foto?.thumb||''));
+    doc.setDrawColor(180,190,210);doc.setFillColor(247,250,255);doc.roundedRect(x,y,w,h,2,2,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(26,46,107);
+    doc.text('Foto do Google Drive',x+4,y+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90,100,120);
+    const name=typeof foto==='string'?'Foto importada':(foto?.name||'Foto importada');
+    doc.text(doc.splitTextToSize(name,w-8).slice(0,2),x+4,y+15);
+    if(link){
+      doc.setTextColor(37,99,235);doc.setFont('helvetica','bold');
+      if(doc.textWithLink)doc.textWithLink('Abrir foto no Drive',x+4,y+h-6,{url:link});
+      else doc.text('Abrir foto no Drive',x+4,y+h-6);
+    }
+  };
+  // Embed photos. Google Drive sometimes blocks browser-side capture; in that case we keep clickable placeholders instead of a blank PDF page.
   const _embedFotos=async()=>{
     for(const r of rdos){
       const fotos=r.fotos||[];
       if(!fotos.length)continue;
       doc.addPage();
-      doc.setFontSize(11);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);
-      doc.text('Anexos (fotos)',M,14);
-      let fx=M,fy=20,maxH=0,col=0;
+      doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);
+      doc.text(`Anexos (fotos) - ${fmtD(r.data)} - RDO Nº ${r.rdo_numero||''}`,M,14);
+      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+      doc.text(`${fotos.length} registro(s) fotográfico(s). Se alguma imagem não aparecer, use o link do Drive no quadro correspondente.`,M,20);
+      let fx=M,fy=28,maxH=0,col=0;
       for(const foto of fotos){
+        const imgW=85,imgH=58,cellH=76;
+        if(fx+imgW>W-M){fx=M;fy+=maxH+6;maxH=0;col=0;}
+        if(fy+cellH>286){doc.addPage();fy=14;doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);doc.text(`Anexos (fotos) - ${fmtD(r.data)}`,M,fy);fy+=8;}
         try{
-          const resp=await fetch(foto.url||foto);
-          const blob=await resp.blob();
-          const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.readAsDataURL(blob);});
-          const ext=(foto.name||'img').split('.').pop().toUpperCase().replace('JPG','JPEG');
-          const imgType=['JPEG','PNG','WEBP'].includes(ext)?ext:'JPEG';
-          const imgW=85,imgH=65;
-          if(fx+imgW>W-M){fx=M;fy+=maxH+4;maxH=0;col=0;}
-          if(fy+imgH>290){doc.addPage();fy=14;doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Anexos (fotos)',M,fy);fy+=6;}
-          doc.addImage(b64,imgType,fx,fy,imgW,imgH);
-          if(foto.name){doc.setFontSize(7);doc.setTextColor(120,120,120);const nm=foto.name.length>18?foto.name.slice(0,18)+'…':foto.name;doc.text(nm,fx,fy+imgH+3);}
-          fx+=imgW+4;col++;maxH=Math.max(maxH,imgH+5);
-          if(col>=2){fx=M;fy+=maxH+4;maxH=0;col=0;}
-        }catch(e){console.warn('Foto error:',e);}
+          const img=await imageToDataUrl(foto);
+          doc.addImage(img.dataUrl,img.imgType,fx,fy,imgW,imgH);
+          const link=typeof foto==='string'?foto:(foto.drive_url||foto.original_url||foto.url||'');
+          if(link&&doc.link)doc.link(fx,fy,imgW,imgH,{url:link});
+        }catch(e){
+          console.warn('Foto error:',e);
+          drawPhotoFallback(foto,fx,fy,imgW,imgH);
+        }
+        const name=typeof foto==='string'?'':(foto.name||'');
+        const desc=typeof foto==='string'?'':(foto.desc||foto.descricao||'');
+        const caption=[name,desc].filter(Boolean).join(' - ');
+        if(caption){
+          doc.setFontSize(6.8);doc.setFont('helvetica','normal');doc.setTextColor(90,90,90);
+          doc.text(doc.splitTextToSize(caption,imgW).slice(0,2),fx,fy+imgH+4);
+        }
+        fx+=imgW+6;col++;maxH=Math.max(maxH,cellH);
+        if(col>=2){fx=M;fy+=maxH+6;maxH=0;col=0;}
       }
     }
     doc.save(`RDO_${obra.replace(/\s+/g,'_')}_${rdos[0]?.rdo_numero||''}.pdf`);toast('PDF com fotos exportado!');
@@ -8134,8 +8190,8 @@ const _manifest = {
   name: "JET Gestão de Obras",
   short_name: "JET Obras",
   description: "Sistema de Gestão de Obras — JET Serviços de Engenharia",
-  start_url: "/?build=20260426185654",
-  id: "/?build=20260426185654",
+  start_url: "/?build=20260427013232",
+  id: "/?build=20260427013232",
   scope: "/",
   display: "standalone",
   background_color: "#07111f",
