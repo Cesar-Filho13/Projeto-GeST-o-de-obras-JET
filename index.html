@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260428024747">
+<meta name="jet-build" content="20260428032033">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -6820,7 +6820,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group"><label>E-mail</label><input id="m-prop-email" type="email" value="${esc(base.email)}" placeholder="contato@cliente.com"></div>
   <div class="form-group"><label>Telefone</label><input id="m-prop-telefone" value="${esc(base.telefone)}" placeholder="(00) 00000-0000"></div>
   <div class="form-group"><label>Responsável</label><input id="m-prop-resp" value="${esc(base.responsavel)}" placeholder="Responsável JET"></div>
-  <div class="form-group" style="grid-column:1/-1"><label>Logo da empresa solicitante</label><div class="client-logo-uploader"><div class="client-logo-preview" id="m-prop-logo-preview">${proposalLogoPreviewHtml(base.cliente_logo)}</div><div class="client-logo-actions"><input id="m-prop-logo-file" type="file" accept=".png,.jpg,.jpeg,.webp" onchange="window._loadPropostaLogo(this.files&&this.files[0])"><input id="m-prop-logo-data" type="hidden" value="${esc(base.cliente_logo)}"><small>Use PNG/JPG/WebP. SVG é bloqueado por segurança.</small><button type="button" class="btn btn-secondary btn-sm" onclick="window._clearPropostaLogo()">Remover logo</button></div></div></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Logo da empresa solicitante</label><div class="client-logo-uploader"><div class="client-logo-preview" id="m-prop-logo-preview">${proposalLogoPreviewHtml(base.cliente_logo)}</div><div class="client-logo-actions"><input id="m-prop-logo-file" type="file" accept=".png,.jpg,.jpeg,.webp,.svg" onchange="window._loadPropostaLogo(this.files&&this.files[0])"><input id="m-prop-logo-data" type="hidden" value="${esc(base.cliente_logo)}"><small>Use PNG/JPG/WebP/SVG. SVG é convertido para PNG antes de salvar no documento.</small><button type="button" class="btn btn-secondary btn-sm" onclick="window._clearPropostaLogo()">Remover logo</button></div></div></div>
   <div class="form-group" style="grid-column:1/-1"><label>Endereço</label><textarea id="m-prop-endereco" placeholder="Endereço do cliente/obra">${esc(base.endereco)}</textarea></div>
 </div>
 <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens da proposta</div>
@@ -6889,37 +6889,67 @@ window._setPropostaLogo=(data='')=>{
   if(preview)preview.innerHTML=proposalLogoPreviewHtml(data||'');
 };
 window._clearPropostaLogo=()=>{window._setPropostaLogo('');const input=document.getElementById('m-prop-logo-file');if(input)input.value='';};
+function validatePropostaLogoFile(file){
+  const ext=getExt(file?.name||'');
+  if(!['png','jpg','jpeg','webp','svg'].includes(ext)){toast(`Tipo de logo não permitido: .${ext||'sem extensão'}`,'#ef4444');return false;}
+  if(Number(file.size||0)>10*1024*1024){toast('Logo muito grande. Use imagem de até 10 MB.','#ef4444');return false;}
+  if(ext!=='svg'&&file.type&&!String(file.type).startsWith('image/')){toast('Selecione uma imagem PNG, JPG, WebP ou SVG.','#ef4444');return false;}
+  return true;
+}
+function sanitizeSvgLogo(svgText=''){
+  const doc=new DOMParser().parseFromString(String(svgText||''),'image/svg+xml');
+  if(doc.querySelector('parsererror'))throw new Error('SVG inválido');
+  doc.querySelectorAll('script,foreignObject,iframe,object,embed,link,meta,base').forEach(node=>node.remove());
+  doc.querySelectorAll('*').forEach(node=>{
+    [...node.attributes].forEach(attr=>{
+      const name=attr.name.toLowerCase();
+      const value=String(attr.value||'').trim().toLowerCase();
+      if(name.startsWith('on'))node.removeAttribute(attr.name);
+      if((name==='href'||name==='xlink:href')&&(value.startsWith('javascript:')||value.startsWith('data:')))node.removeAttribute(attr.name);
+      if(name==='style'&&/(javascript:|expression\s*\(|url\s*\(|@import)/i.test(attr.value))node.removeAttribute(attr.name);
+    });
+  });
+  const root=doc.documentElement;
+  if(!root||root.nodeName.toLowerCase()!=='svg')throw new Error('Arquivo não é SVG');
+  return new XMLSerializer().serializeToString(root);
+}
+function renderPropostaLogoToPng(src,onDone,onError){
+  const img=new Image();
+  img.onload=()=>{
+    const max=520;
+    const scale=Math.min(1,max/Math.max(img.width||max,img.height||max));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round((img.width||max)*scale));
+    canvas.height=Math.max(1,Math.round((img.height||max)*scale));
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    onDone(canvas.toDataURL('image/png'));
+  };
+  img.onerror=()=>onError&&onError();
+  img.src=src;
+}
 window._loadPropostaLogo=(file)=>{
   if(!file)return;
-  if(!validateUploadFile(file,{imagesOnly:true})){return;}
-  if(getExt(file.name)==='gif'){toast('Use PNG, JPG ou WebP para o logo.','#ef4444');return;}
-  if(!String(file.type||'').startsWith('image/')){toast('Selecione uma imagem PNG, JPG ou WebP.','#ef4444');return;}
-  const maxFile=10*1024*1024;
-  if(Number(file.size||0)>maxFile){
-    toast('Logo muito grande. Use imagem de até 10 MB.','#ef4444');
-    const input=document.getElementById('m-prop-logo-file');
-    if(input)input.value='';
+  if(!validatePropostaLogoFile(file)){const input=document.getElementById('m-prop-logo-file');if(input)input.value='';return;}
+  const ext=getExt(file.name);
+  const done=data=>{window._setPropostaLogo(data);toast('Logo do cliente anexado.','#22c55e');};
+  const fail=()=>toast('Não consegui ler esse logo. Tente PNG, JPG, WebP ou SVG simples.','#ef4444');
+  const reader=new FileReader();
+  if(ext==='svg'){
+    reader.onload=()=>{
+      try{
+        const clean=sanitizeSvgLogo(String(reader.result||''));
+        const svgUrl='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(clean);
+        renderPropostaLogoToPng(svgUrl,done,fail);
+      }catch(err){fail();}
+    };
+    reader.onerror=fail;
+    reader.readAsText(file);
     return;
   }
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const img=new Image();
-    img.onload=()=>{
-      const max=520;
-      const scale=Math.min(1,max/Math.max(img.width||max,img.height||max));
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.max(1,Math.round((img.width||max)*scale));
-      canvas.height=Math.max(1,Math.round((img.height||max)*scale));
-      const ctx=canvas.getContext('2d');
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(img,0,0,canvas.width,canvas.height);
-      window._setPropostaLogo(canvas.toDataURL('image/png'));
-      toast('Logo do cliente anexado.','#22c55e');
-    };
-    img.onerror=()=>toast('Não consegui ler esse logo. Tente PNG ou JPG.','#ef4444');
-    img.src=String(reader.result||'');
-  };
-  reader.onerror=()=>toast('Falha ao carregar o arquivo do logo.','#ef4444');
+  reader.onload=()=>renderPropostaLogoToPng(String(reader.result||''),done,fail);
+  reader.onerror=fail;
   reader.readAsDataURL(file);
 };
 
