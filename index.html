@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427220539">
+<meta name="jet-build" content="20260427233404">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4087,11 +4087,16 @@ function buildDespesaLedger(items=[]){
   let saldoAtual=0;
   let totalEntradas=0;
   const rows=[];
-  sortDespesaItems(items).forEach(item=>{
+  const sorted=sortDespesaItems(items);
+  const adiantKey=item=>[item.data||'',despImportTextKey(item.descricao||'')].join('|');
+  const hasExplicitCredit=item=>moneyNumber(item.movimento_adiantamento??item.importCredit)>0;
+  const repScore=item=>(String(item.loja||'').trim()?4:0)+(String(item.nfe||'').trim()?2:0)+(typeof getDespesaFiles==='function'&&getDespesaFiles(item.id).length?8:0);
+  for(let i=0;i<sorted.length;i++){
+    let item=sorted[i];
     let isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
     const descKey=despImportTextKey(item.descricao||'');
     if(isAdiant&&/^(saldo|saldo final|saldo total|total de creditos|total de créditos|total de despesas|tarifa|abatimento)/.test(descKey)){
-      return;
+      continue;
     }
     const rawAdiant=item.valor_adiantamento!=null&&item.valor_adiantamento!==''?moneyNumber(item.valor_adiantamento):null;
     let conta=isAdiant?0:(moneyNumber(item.valor_conta)||0);
@@ -4100,13 +4105,18 @@ function buildDespesaLedger(items=[]){
       // Historico: versões antigas salvavam a coluna "Adiantamento" como saldo/credito acumulado.
       // A tela agora reconstrói a entrada real comparando com o total de entradas já reconhecido.
       const explicit=moneyNumber(item.movimento_adiantamento??item.importCredit);
-      const raw=rawAdiant!=null?Number(rawAdiant):0;
       if(explicit&&explicit>0){
         entradaAdiant=explicit;
-      }else if(raw>0){
-        const diffFromAccumulated=raw-totalEntradas;
-        entradaAdiant=diffFromAccumulated>0.005?diffFromAccumulated:raw;
+      }else{
+        const group=[item];
+        while(i+1<sorted.length&&String(sorted[i+1].tipo||'Despesa')==='Adiantamento'&&!hasExplicitCredit(sorted[i+1])&&adiantKey(sorted[i+1])===adiantKey(item)){
+          group.push(sorted[++i]);
+        }
+        const rawMax=Math.max(...group.map(x=>Number(moneyNumber(x.valor_adiantamento)||0)));
+        entradaAdiant=rawMax-totalEntradas>0.005?rawMax-totalEntradas:0;
+        item=[...group].sort((a,b)=>repScore(b)-repScore(a))[0]||item;
       }
+      if(entradaAdiant<=0.005)continue; // ignora duplicatas e linhas espelho de saldo
       totalEntradas+=entradaAdiant;
       saldoAtual+=entradaAdiant;
     }else if(conta>0){
@@ -4115,7 +4125,7 @@ function buildDespesaLedger(items=[]){
     const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0};
     row.descricao=despesaDisplayDesc(row)||row.descricao;
     rows.push(row);
-  });
+  }
   return rows;
 }
 function despesaMonthLabel(ym){
@@ -4441,10 +4451,13 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
   const rows=despImportAOA(workbook,mainName);
   const header=despImportFindHeaderRow(rows);
   if(header<0)throw new Error('Não encontrei o cabeçalho esperado: Data, Descrição e Valor.');
+  const adiantHeader=despImportTextKey([despImportCell(rows[header]||[],5),despImportCell(rows[header+1]||[],5)].join(' '));
+  const adiantColumnIsSaldo=adiantHeader.includes('saldo');
   const attachments=despImportAttachmentRows(workbook,zipFiles);
   const drafts=[];
   const usedFiles=new Set();
   let running=0;
+  let creditRunning=0;
   let lastDate='';
   for(let i=header+1;i<rows.length;i++){
     const row=rows[i]||[];
@@ -4457,8 +4470,9 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     const rawSaldo=despImportMoney(despImportCell(row,5));
     const hasCore=!!(rawDate||desc||nfe||loja||valorConta!=null);
     if(!hasCore&&rawSaldo!=null&&drafts.length&&drafts[drafts.length-1].tipo==='Adiantamento'){
-      drafts[drafts.length-1].valor_adiantamento=Number(rawSaldo)||0;
-      running=Number(rawSaldo)||running;
+      if(adiantColumnIsSaldo){
+        running=Number(rawSaldo)||running;
+      }
       continue;
     }
     if(!hasCore)continue;
@@ -4475,6 +4489,12 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     let importCredit=null;
     if(tipo==='Adiantamento'){
       const prevRunning=Number(running)||0;
+      if(!adiantColumnIsSaldo){
+        importCredit=Number(rawSaldo)||0;
+        if(importCredit<=.005)continue;
+        creditRunning+=importCredit;
+        running=prevRunning+importCredit;
+      }else{
       const nextRow=rows[i+1]||[];
       const nextSaldo=despImportMoney(despImportCell(nextRow,5));
       const nextHasCore=!!(despImportCell(nextRow,0)||String(despImportCell(nextRow,1)||'').trim()||String(despImportCell(nextRow,2)||'').trim()||String(despImportCell(nextRow,3)||'').trim()||despImportMoney(despImportCell(nextRow,4))!=null);
@@ -4493,6 +4513,7 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
           continue;
         }else{
           importCredit=rawSaldo!=null?Number(rawSaldo):Math.max(0,diff);
+          creditRunning+=Math.max(0,Number(importCredit)||0);
           running=saldoAtual||prevRunning+importCredit;
         }
         i++;
@@ -4509,8 +4530,10 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
           continue;
         }else{
           importCredit=Math.max(0,diff);
+          creditRunning+=Math.max(0,Number(importCredit)||0);
           running=saldoAtual;
         }
+      }
       }
     }else{
       running=rawSaldo!=null?Number(rawSaldo):(running-(Number(valorConta)||0));
@@ -4519,7 +4542,8 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     const draft={
       id:uid(),obra,data,descricao:finalDesc,nfe,loja,
       valor_conta:tipo==='Despesa'?(Number(derivedValorConta)||0):null,
-      valor_adiantamento:Number(running)||0,tipo,responsavel:responsavel||despesaExportResponsible(),
+      valor_adiantamento:tipo==='Adiantamento'?(Number(creditRunning)||Number(running)||0):(Number(running)||0),
+      tipo,responsavel:responsavel||despesaExportResponsible(),
       importCredit,sourceRow:i+1,files:[]
     };
     draft.files=despImportAttachFiles(draft,attachments,usedFiles);
