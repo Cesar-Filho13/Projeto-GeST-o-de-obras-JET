@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427233404">
+<meta name="jet-build" content="20260428021445">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1185,6 +1185,12 @@ function themeIconSvg(theme=document.documentElement.getAttribute('data-theme')|
 }
 function bellIconSvg(){
   return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17H5.6a1 1 0 0 1-.8-1.6l1.2-1.6a3 3 0 0 0 .6-1.8V10a5.4 5.4 0 1 1 10.8 0v2a3 3 0 0 0 .6 1.8l1.2 1.6a1 1 0 0 1-.8 1.6H15"/><path d="M10 19a2 2 0 0 0 4 0"/><circle cx="18.4" cy="5.6" r="1.4" fill="currentColor" stroke="none"/></svg>`;
+}
+function actionIconSvg(name,size=14){
+  const common=`width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+  if(name==='edit')return`<svg ${common}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+  if(name==='trash')return`<svg ${common}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>`;
+  return'';
 }
 
 // Custom obra storage
@@ -4094,6 +4100,7 @@ function buildDespesaLedger(items=[]){
   for(let i=0;i<sorted.length;i++){
     let item=sorted[i];
     let isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
+    let sourceIds=[item.id].filter(Boolean);
     const descKey=despImportTextKey(item.descricao||'');
     if(isAdiant&&/^(saldo|saldo final|saldo total|total de creditos|total de créditos|total de despesas|tarifa|abatimento)/.test(descKey)){
       continue;
@@ -4112,6 +4119,7 @@ function buildDespesaLedger(items=[]){
         while(i+1<sorted.length&&String(sorted[i+1].tipo||'Despesa')==='Adiantamento'&&!hasExplicitCredit(sorted[i+1])&&adiantKey(sorted[i+1])===adiantKey(item)){
           group.push(sorted[++i]);
         }
+        sourceIds=group.map(x=>x.id).filter(Boolean);
         const rawMax=Math.max(...group.map(x=>Number(moneyNumber(x.valor_adiantamento)||0)));
         entradaAdiant=rawMax-totalEntradas>0.005?rawMax-totalEntradas:0;
         item=[...group].sort((a,b)=>repScore(b)-repScore(a))[0]||item;
@@ -4122,7 +4130,7 @@ function buildDespesaLedger(items=[]){
     }else if(conta>0){
       saldoAtual-=conta;
     }
-    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0};
+    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0,_source_ids:sourceIds};
     row.descricao=despesaDisplayDesc(row)||row.descricao;
     rows.push(row);
   }
@@ -4732,19 +4740,18 @@ function renderDespesas(despesas,obra){
     const entrada=Number(item.movimento_adiantamento)||0;
     const saida=Number(item.valor_conta)||0;
     const entradaCell=isAdiant&&entrada>0?`<strong style="color:#22c55e">${fmtV(entrada)}</strong>`:'<span style="color:var(--text3)">—</span>';
-    const saidaCell=!isAdiant
-      ?(saida>0?`<input class="ci ci-num" type="number" step="0.01" style="width:110px;text-align:right;color:#ef4444;font-weight:800" value="${saida}" onblur="updateField('despesas','${item.id}','valor_conta',parseFloat(this.value)||null)" onkeydown="if(event.key==='Enter')this.blur()">`:`<button onclick="window._addContaValue('${item.id}')" style="background:none;border:1px dashed var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;font-family:'Inter',sans-serif">+ valor</button>`)
-      :'<span style="color:var(--text3)">—</span>';
+    const saidaCell=!isAdiant&&saida>0?`<strong style="color:#ef4444">${fmtV(saida)}</strong>`:'<span style="color:var(--text3)">—</span>';
+    const sourceIds=(item._source_ids||[item.id]).filter(Boolean).join(',');
     return`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:7px 10px;white-space:nowrap;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px">${fmtD(item.data)}</td>
-<td style="padding:7px 10px"><input class="ci" style="width:100%;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}" value="${esc(item.descricao||'')}" onblur="updateField('despesas','${item.id}','descricao',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-<td style="padding:7px 10px"><input class="ci" style="width:90px;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px" value="${esc(item.nfe||'')}" placeholder="—" onblur="updateField('despesas','${item.id}','nfe',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-<td style="padding:7px 10px"><input class="ci" style="width:100%;color:var(--text2)" value="${esc(item.loja||'')}" placeholder="—" onblur="updateField('despesas','${item.id}','loja',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+<td style="padding:7px 10px;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}">${esc(item.descricao||'—')}</td>
+<td style="padding:7px 10px;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(item.nfe||'—')}</td>
+<td style="padding:7px 10px;color:var(--text2)">${esc(item.loja||'—')}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${entradaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${saidaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap;font-weight:800;color:${item.saldo<0?'#ef4444':'#14956b'}">${fmtV(item.saldo)}</td>
 <td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${item.id}')" title="Anexos">${getDespesaFiles(item.id).length?`Arquivos (${getDespesaFiles(item.id).length})`:'Anexar'}</button></td>
-<td style="padding:7px 10px;text-align:center"><button class="btn btn-sm btn-danger" onclick="_deleteDespesa('${item.id}')">?</button></td>
+<td style="padding:7px 10px;text-align:center"><div style="display:flex;gap:6px;justify-content:center;align-items:center"><button class="btn btn-secondary btn-sm" onclick="_openModal('edit-despesa',{id:'${escJs(item.id)}',entrada:${entrada},saida:${saida}})" title="Editar lançamento">${actionIconSvg('edit')} Editar</button><button class="btn btn-sm btn-danger btn-icon" onclick="_deleteDespesa('${escJs(item.id)}','${escJs(sourceIds)}')" title="Excluir com trava de segurança">${actionIconSvg('trash')}</button></div></td>
 </tr>`;
   }).join('');
   const groups=months.map(month=>{
@@ -4764,7 +4771,7 @@ function renderDespesas(despesas,obra){
   <span class="quote-metric">Saldo ${fmtV(mSaldo)}</span>
   <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();exportDespesaWorkbook('${escJs(obra)}','${month}')" title="Planilha mensal">📘 Planilha</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._exportDespesaPackage('${escJs(obra)}','${month}')" title="Pacote com planilha e anexos">📦 ZIP</button></span>
 </div>
-${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:940px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Entrada PIX</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saída</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:130px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="width:40px"></th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#22c55e">${fmtV(mAdiant)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#ef4444">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:${mSaldo<0?'#ef4444':'#14956b'}">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
+${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1040px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Entrada PIX</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saída</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:130px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:150px">Ações</th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#22c55e">${fmtV(mAdiant)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#ef4444">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:${mSaldo<0?'#ef4444':'#14956b'}">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
 </div>`;
   }).join('');
   return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#22c55e;border-radius:10px 0 0 10px"></div><div class="stat-label">Entradas PIX</div><div class="stat-value" style="color:#22c55e">${fmtV(totalAdiant)}</div><div class="stat-sub">${pixCount} adiantamento${pixCount!==1?'s':''} recebido${pixCount!==1?'s':''}</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ef4444;border-radius:10px 0 0 10px"></div><div class="stat-label">Saídas</div><div class="stat-value" style="color:#ef4444">${fmtV(totalConta)}</div><div class="stat-sub">Despesas pagas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Entradas menos saídas</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
@@ -4772,7 +4779,33 @@ ${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-col
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
 window._addContaValue=(id)=>{const v=parseFloat(prompt('Valor pago pela conta bancária (R$):'));if(v>0)updateField('despesas',id,'valor_conta',v).then(()=>renderApp());};
-window._deleteDespesa=async(id)=>{if(!confirm('Excluir lançamento?'))return;await sb.from('despesas').delete().eq('id',id);DB.despesas=DB.despesas.filter(d=>d.id!==id);renderApp();};
+function despesaCreditBeforeRow(id,obra){
+  let total=0;
+  const ledger=buildDespesaLedger(DB.despesas.filter(d=>d.obra===obra));
+  for(const row of ledger){
+    if(row.id===id||(row._source_ids||[]).includes(id))return total;
+    total+=Number(row.movimento_adiantamento)||0;
+  }
+  return total;
+}
+window._deleteDespesa=async(id,sourceIdsCsv='')=>{
+  const ids=[...new Set(String(sourceIdsCsv||id).split(',').map(s=>s.trim()).filter(Boolean))];
+  if(!ids.length){toast('Lançamento não encontrado.','#ef4444');return;}
+  const row=DB.despesas.find(d=>d.id===id)||DB.despesas.find(d=>ids.includes(d.id));
+  const label=`${fmtD(row?.data)} - ${row?.descricao||'lançamento'}`;
+  const extra=ids.length>1?`\n\nAtenção: esta linha representa ${ids.length} registros espelhados/duplicados. Todos serão removidos juntos.`:'';
+  const typed=prompt(`Exclusão protegida\n\n${label}${extra}\n\nDigite EXCLUIR para confirmar:`);
+  if(typed!=='EXCLUIR'){toast('Exclusão cancelada.','#f59e0b');return;}
+  const query=ids.length>1?sb.from('despesas').delete().in('id',ids):sb.from('despesas').delete().eq('id',ids[0]);
+  const{error}=await query;
+  if(error){toast('Erro ao excluir: '+error.message,'#ef4444');return;}
+  DB.despesas=DB.despesas.filter(d=>!ids.includes(d.id));
+  const files={...(DB.despesaFiles||{})};
+  ids.forEach(x=>delete files[x]);
+  await saveRemoteDespesaFiles(files,{silent:true});
+  toast('Lançamento excluído com segurança.','#22c55e');
+  renderApp();
+};
 
 // ─── DESPESAS EXPORTS ──────────────────────────────────────────────────────
 window._exportDespCSV=(obra)=>{
@@ -6433,6 +6466,24 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
 <div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
 </div>`;
     onSave=`_saveDespesa()`;
+  }
+  else if(m==='edit-despesa'){
+    const desp=DB.despesas.find(x=>x.id===d.id);
+    const ledgerRow=desp?buildDespesaLedger(DB.despesas.filter(x=>x.obra===desp.obra)).find(x=>x.id===desp.id||(x._source_ids||[]).includes(desp.id)):null;
+    const isAdiant=(ledgerRow?.tipo||desp?.tipo)==='Adiantamento';
+    const valor=isAdiant?(Number(d.entrada??ledgerRow?.movimento_adiantamento??0)||0):(Number(d.saida??desp?.valor_conta??0)||0);
+    title=isAdiant?'Editar Adiantamento':'Editar Despesa';
+    body=desp?`<div class="form-grid-2">
+<input id="m-dedit-id" type="hidden" value="${esc(desp.id)}">
+<div class="form-group"><label>Data *</label><input id="m-ddata" type="date" value="${esc(desp.data||new Date().toISOString().slice(0,10))}"></div>
+<div class="form-group"><label>${isAdiant?'Entrada PIX (R$)':'Saída / Despesa (R$)'} *</label><input id="m-dvalor" type="number" step="0.01" value="${valor||''}" placeholder="0,00"></div>
+<div class="form-group" style="grid-column:1/-1"><label>Descrição *</label><input id="m-ddesc" value="${esc(desp.descricao||'')}" placeholder="Descrição do lançamento"></div>
+<div class="form-group"><label>NFe Nº</label><input id="m-dnfe" value="${esc(desp.nfe||'')}" placeholder="000000000"></div>
+<div class="form-group"><label>Loja / Fornecedor</label><input id="m-dloja" value="${esc(desp.loja||'')}" placeholder="Fornecedor, origem do PIX..."></div>
+<div class="form-group"><label>Responsável</label><input id="m-dresp" value="${esc(desp.responsavel||currentUser?.email?.split('@')[0]||'')}" list="m-dresp-list-edit"><datalist id="m-dresp-list-edit">${DB.funcionarios.filter(f=>f.obra===S.obra).map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div>
+<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><button type="button" class="btn btn-secondary" onclick="window._openDespesaFiles('${escJs(desp.id)}')">Gerenciar anexos (${getDespesaFiles(desp.id).length})</button></div>
+</div>`:`<div class="empty-state"><p>Lançamento não encontrado.</p></div>`;
+    onSave=desp?`_saveDespesaEdit()`:`_closeModal()`;
   }
   else if(m==='desp-files'){
     const desp=DB.despesas.find(x=>x.id===d.id);
@@ -8334,6 +8385,43 @@ window._saveDespesa=async()=>{
   DB.despesas.push(obj);DB.despesas.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
   await saveDespesaFilesForId(obj.id,files);
   toast('Despesa registrada!');_closeModal();
+};
+
+window._saveDespesaEdit=async()=>{
+  const id=document.getElementById('m-dedit-id')?.value;
+  const item=DB.despesas.find(d=>d.id===id);
+  if(!item){toast('Lançamento não encontrado.','#ef4444');return;}
+  const data=document.getElementById('m-ddata')?.value;
+  const desc=document.getElementById('m-ddesc')?.value?.trim();
+  const rawValor=document.getElementById('m-dvalor')?.value;
+  const valor=Number(moneyNumber(rawValor)||0);
+  if(!data||!desc||valor<=0){toast('Data, descrição e valor são obrigatórios.','#ef4444');return;}
+  const ledgerRow=buildDespesaLedger(DB.despesas.filter(d=>d.obra===item.obra)).find(row=>row.id===id||(row._source_ids||[]).includes(id));
+  const sourceIds=[...new Set((ledgerRow?._source_ids||[id]).filter(Boolean))];
+  const isAdiant=(ledgerRow?.tipo||item.tipo)==='Adiantamento';
+  const patch={
+    data,
+    descricao:desc,
+    nfe:document.getElementById('m-dnfe')?.value||'',
+    loja:document.getElementById('m-dloja')?.value||'',
+    responsavel:document.getElementById('m-dresp')?.value||'',
+    tipo:isAdiant?'Adiantamento':'Despesa'
+  };
+  if(isAdiant){
+    const before=despesaCreditBeforeRow(id,item.obra);
+    patch.valor_conta=null;
+    patch.valor_adiantamento=before+valor;
+  }else{
+    patch.valor_conta=valor;
+  }
+  const targetIds=isAdiant&&sourceIds.length?sourceIds:[id];
+  const query=targetIds.length>1?sb.from('despesas').update(patch).in('id',targetIds):sb.from('despesas').update(patch).eq('id',id);
+  const{error}=await query;
+  if(error){toast('Erro ao atualizar: '+error.message,'#ef4444');return;}
+  DB.despesas=DB.despesas.map(d=>targetIds.includes(d.id)?{...d,...patch}:d);
+  DB.despesas.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  toast('Lançamento atualizado com segurança.','#22c55e');
+  _closeModal();
 };
 
 window._saveRDO=async(mode,eid)=>{
