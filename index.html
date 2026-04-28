@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260428032033">
+<meta name="jet-build" content="20260428150654">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -6550,6 +6550,7 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     const efJet=gjson('efetivo_jet',FUNCOES.map(f=>({funcao:f,jet:'',terceiros:''})));
     const efAdm=gjson('efetivo_admin',ADMIN.map(f=>({cargo:f,qtde:'',obs:''})));
     const inpS='padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
+    const fotosDraft=Array.isArray(window._rdoFotos)?window._rdoFotos:gjson('fotos',[]);
     body=`<div style="max-height:70vh;overflow-y:auto;padding-right:4px">
 <div class="form-grid-2" style="margin-bottom:14px">
   <div class="form-group" style="margin-bottom:0"><label>Data *</label><input id="m-rdata" type="date" value="${esc(gv('data',new Date().toISOString().slice(0,10)))}"></div>
@@ -6598,11 +6599,12 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     <div style="font-size:13px;color:var(--text3)">📷 Clique para adicionar fotos</div>
   </div>
   <div id="rdo-fotos-preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:8px">
-    ${gjson('fotos',[]).map((f,i)=>`<div style="position:relative;border-radius:6px;overflow:hidden;aspect-ratio:1;background:var(--bg2)">
+    ${fotosDraft.map((f,i)=>`<div style="position:relative;border-radius:6px;overflow:hidden;aspect-ratio:1;background:var(--bg2);border:1px solid var(--border)">
 <img src="${esc(f.url||f)}" style="width:100%;height:100%;object-fit:cover">
-<button onclick="window._rdoRemoveFoto(${i})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);border:none;color:#f87171;cursor:pointer;font-size:10px">×</button>
+<button type="button" onclick="window._rdoRemoveFoto(${i})" title="Remover foto deste RDO" style="position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.82);border:1px solid rgba(248,113,113,.65);color:#f87171;cursor:pointer;font-size:14px;line-height:1;font-weight:800">×</button>
 </div>`).join('')}
   </div>
+  <div style="margin-top:8px;font-size:11px;color:var(--text3)">Ao remover uma foto, clique em <strong>Salvar</strong> para gravar a alteração no RDO.</div>
 </div>
 </div>`;
     onSave=`_saveRDO('${m}','${d.id||''}')`;
@@ -8281,7 +8283,13 @@ window._rdoAddFotos=async(input)=>{
   input.value='';
 };
 
-window._rdoRemoveFoto=(idx)=>{window._rdoFotos.splice(idx,1);renderApp();};
+window._rdoRemoveFoto=(idx)=>{
+  if(!Array.isArray(window._rdoFotos))window._rdoFotos=[];
+  if(idx<0||idx>=window._rdoFotos.length)return;
+  window._rdoFotos.splice(idx,1);
+  toast('Foto removida da edição. Clique em Salvar para gravar.','#f59e0b');
+  renderApp();
+};
 
 function sanitizeStorageName(name){return String(name||'arquivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_');}
 function renderDespesaFilesPanel(item){
