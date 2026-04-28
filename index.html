@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260428021445">
+<meta name="jet-build" content="20260428024747">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -6820,7 +6820,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group"><label>E-mail</label><input id="m-prop-email" type="email" value="${esc(base.email)}" placeholder="contato@cliente.com"></div>
   <div class="form-group"><label>Telefone</label><input id="m-prop-telefone" value="${esc(base.telefone)}" placeholder="(00) 00000-0000"></div>
   <div class="form-group"><label>Responsável</label><input id="m-prop-resp" value="${esc(base.responsavel)}" placeholder="Responsável JET"></div>
-  <div class="form-group" style="grid-column:1/-1"><label>Logo da empresa solicitante</label><div class="client-logo-uploader"><div class="client-logo-preview" id="m-prop-logo-preview">${proposalLogoPreviewHtml(base.cliente_logo)}</div><div class="client-logo-actions"><input id="m-prop-logo-file" type="file" accept="image/*" onchange="window._loadPropostaLogo(this.files&&this.files[0])"><input id="m-prop-logo-data" type="hidden" value="${esc(base.cliente_logo)}"><small>Use PNG/JPG. O sistema comprime o logo para manter o PDF leve.</small><button type="button" class="btn btn-secondary btn-sm" onclick="window._clearPropostaLogo()">Remover logo</button></div></div></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Logo da empresa solicitante</label><div class="client-logo-uploader"><div class="client-logo-preview" id="m-prop-logo-preview">${proposalLogoPreviewHtml(base.cliente_logo)}</div><div class="client-logo-actions"><input id="m-prop-logo-file" type="file" accept=".png,.jpg,.jpeg,.webp" onchange="window._loadPropostaLogo(this.files&&this.files[0])"><input id="m-prop-logo-data" type="hidden" value="${esc(base.cliente_logo)}"><small>Use PNG/JPG/WebP. SVG é bloqueado por segurança.</small><button type="button" class="btn btn-secondary btn-sm" onclick="window._clearPropostaLogo()">Remover logo</button></div></div></div>
   <div class="form-group" style="grid-column:1/-1"><label>Endereço</label><textarea id="m-prop-endereco" placeholder="Endereço do cliente/obra">${esc(base.endereco)}</textarea></div>
 </div>
 <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens da proposta</div>
@@ -6891,7 +6891,9 @@ window._setPropostaLogo=(data='')=>{
 window._clearPropostaLogo=()=>{window._setPropostaLogo('');const input=document.getElementById('m-prop-logo-file');if(input)input.value='';};
 window._loadPropostaLogo=(file)=>{
   if(!file)return;
-  if(!String(file.type||'').startsWith('image/')){toast('Selecione uma imagem PNG ou JPG.','#ef4444');return;}
+  if(!validateUploadFile(file,{imagesOnly:true})){return;}
+  if(getExt(file.name)==='gif'){toast('Use PNG, JPG ou WebP para o logo.','#ef4444');return;}
+  if(!String(file.type||'').startsWith('image/')){toast('Selecione uma imagem PNG, JPG ou WebP.','#ef4444');return;}
   const maxFile=10*1024*1024;
   if(Number(file.size||0)>maxFile){
     toast('Logo muito grande. Use imagem de até 10 MB.','#ef4444');
