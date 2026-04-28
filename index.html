@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260427213120">
+<meta name="jet-build" content="20260427220539">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4066,6 +4066,9 @@ function sortDespesaItems(items=[]){
     const da=String(a.data||'9999-12-31');
     const db=String(b.data||'9999-12-31');
     if(da!==db)return da.localeCompare(db);
+    const ta=String(a.tipo||'Despesa')==='Adiantamento'?0:1;
+    const tb=String(b.tipo||'Despesa')==='Adiantamento'?0:1;
+    if(ta!==tb)return ta-tb;
     return String(a.created_at||a.id||'').localeCompare(String(b.created_at||b.id||''));
   });
 }
@@ -4081,38 +4084,36 @@ function despesaDisplayDesc(item={}){
   return desc;
 }
 function buildDespesaLedger(items=[]){
-  let saldoAnterior=0;
+  let saldoAtual=0;
+  let totalEntradas=0;
   const rows=[];
   sortDespesaItems(items).forEach(item=>{
     let isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
-    const saldoInformado=item.valor_adiantamento!=null&&item.valor_adiantamento!==''?Number(item.valor_adiantamento):null;
-    let conta=moneyNumber(item.valor_conta)||0;
-    let movimentoAdiant=0;
-    let saldoAtual=saldoAnterior;
-    if(isAdiant){
-      const hasOnlySaldo=conta===0&&saldoInformado!=null;
-      const hasEvidenceOfExpense=!!(String(item.loja||'').trim()||String(item.nfe||'').trim());
-      saldoAtual=saldoInformado!=null?saldoInformado:saldoAnterior;
-      const diff=saldoAtual-saldoAnterior;
-      if(hasOnlySaldo&&diff<-.005){
-        // Algumas planilhas trazem uma linha só com o saldo após o gasto.
-        // Ela não é um novo adiantamento; é uma despesa cujo valor é a queda do saldo.
-        isAdiant=false;
-        conta=Math.abs(diff);
-      }else{
-        movimentoAdiant=diff;
-        if(saldoAnterior===0&&saldoAtual>0&&movimentoAdiant<=0)movimentoAdiant=saldoAtual;
-        if(movimentoAdiant<=.005&&hasOnlySaldo&&(hasEvidenceOfExpense||isGenericAdiantamentoDesc(item.descricao))){
-          return; // linha espelho/sem movimento importada por engano
-        }
-        if(movimentoAdiant<0)movimentoAdiant=0;
-      }
-    }else{
-      saldoAtual=saldoInformado!=null?saldoInformado:(saldoAnterior-conta);
+    const descKey=despImportTextKey(item.descricao||'');
+    if(isAdiant&&/^(saldo|saldo final|saldo total|total de creditos|total de créditos|total de despesas|tarifa|abatimento)/.test(descKey)){
+      return;
     }
-    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:movimentoAdiant||0,saldo:saldoAtual||0};
+    const rawAdiant=item.valor_adiantamento!=null&&item.valor_adiantamento!==''?moneyNumber(item.valor_adiantamento):null;
+    let conta=isAdiant?0:(moneyNumber(item.valor_conta)||0);
+    let entradaAdiant=0;
+    if(isAdiant){
+      // Historico: versões antigas salvavam a coluna "Adiantamento" como saldo/credito acumulado.
+      // A tela agora reconstrói a entrada real comparando com o total de entradas já reconhecido.
+      const explicit=moneyNumber(item.movimento_adiantamento??item.importCredit);
+      const raw=rawAdiant!=null?Number(rawAdiant):0;
+      if(explicit&&explicit>0){
+        entradaAdiant=explicit;
+      }else if(raw>0){
+        const diffFromAccumulated=raw-totalEntradas;
+        entradaAdiant=diffFromAccumulated>0.005?diffFromAccumulated:raw;
+      }
+      totalEntradas+=entradaAdiant;
+      saldoAtual+=entradaAdiant;
+    }else if(conta>0){
+      saldoAtual-=conta;
+    }
+    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0};
     row.descricao=despesaDisplayDesc(row)||row.descricao;
-    saldoAnterior=row.saldo;
     rows.push(row);
   });
   return rows;
@@ -4467,6 +4468,9 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
     if(!data)continue;
     lastDate=data;
     let tipo=(valorConta!=null&&Math.abs(valorConta)>0.0001)?'Despesa':'Adiantamento';
+    if(tipo==='Adiantamento'&&!/adiant|pix/i.test(despImportTextKey(desc))){
+      continue; // linhas auxiliares de saldo/observação não são PIX de adiantamento
+    }
     let derivedValorConta=valorConta;
     let importCredit=null;
     if(tipo==='Adiantamento'){
@@ -4698,18 +4702,22 @@ function renderDespesas(despesas,obra){
   const totalAdiant=ledger.reduce((sum,row)=>sum+(Number(row.movimento_adiantamento)||0),0);
   const saldoAtual=ledger.length?ledger[ledger.length-1].saldo:0;
   const docsLancados=ledger.filter(row=>row.nfe).length;
+  const pixCount=ledger.filter(row=>row.tipo==='Adiantamento'&&(Number(row.movimento_adiantamento)||0)>0).length;
   const rows=(items)=>items.map(item=>{
     const isAdiant=item.tipo==='Adiantamento';
-    const movimentoAdiant=Number(item.movimento_adiantamento)||0;
-    const valorCell=isAdiant
-      ?`<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><span style="font-size:11px;color:#b7791f;font-weight:800;text-transform:uppercase;letter-spacing:.4px">Aporte</span><strong style="color:#b7791f">${fmtV(movimentoAdiant)}</strong></div>`
-      :(item.valor_conta?`<input class="ci ci-num" type="number" step="0.01" style="width:110px;text-align:right;color:var(--text)" value="${item.valor_conta}" onblur="updateField('despesas','${item.id}','valor_conta',parseFloat(this.value)||null)" onkeydown="if(event.key==='Enter')this.blur()">`:`<button onclick="window._addContaValue('${item.id}')" style="background:none;border:1px dashed var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;font-family:'Inter',sans-serif">+ valor</button>`);
+    const entrada=Number(item.movimento_adiantamento)||0;
+    const saida=Number(item.valor_conta)||0;
+    const entradaCell=isAdiant&&entrada>0?`<strong style="color:#22c55e">${fmtV(entrada)}</strong>`:'<span style="color:var(--text3)">—</span>';
+    const saidaCell=!isAdiant
+      ?(saida>0?`<input class="ci ci-num" type="number" step="0.01" style="width:110px;text-align:right;color:#ef4444;font-weight:800" value="${saida}" onblur="updateField('despesas','${item.id}','valor_conta',parseFloat(this.value)||null)" onkeydown="if(event.key==='Enter')this.blur()">`:`<button onclick="window._addContaValue('${item.id}')" style="background:none;border:1px dashed var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;font-family:'Inter',sans-serif">+ valor</button>`)
+      :'<span style="color:var(--text3)">—</span>';
     return`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:7px 10px;white-space:nowrap;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px">${fmtD(item.data)}</td>
-<td style="padding:7px 10px"><input class="ci" style="width:100%;font-weight:${isAdiant?'700':'500'};color:${isAdiant?'#b7791f':'var(--text)'}" value="${esc(item.descricao||'')}" onblur="updateField('despesas','${item.id}','descricao',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+<td style="padding:7px 10px"><input class="ci" style="width:100%;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}" value="${esc(item.descricao||'')}" onblur="updateField('despesas','${item.id}','descricao',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:7px 10px"><input class="ci" style="width:90px;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px" value="${esc(item.nfe||'')}" placeholder="—" onblur="updateField('despesas','${item.id}','nfe',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:7px 10px"><input class="ci" style="width:100%;color:var(--text2)" value="${esc(item.loja||'')}" placeholder="—" onblur="updateField('despesas','${item.id}','loja',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-<td style="padding:7px 10px;text-align:right;white-space:nowrap">${valorCell}</td>
+<td style="padding:7px 10px;text-align:right;white-space:nowrap">${entradaCell}</td>
+<td style="padding:7px 10px;text-align:right;white-space:nowrap">${saidaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap;font-weight:800;color:${item.saldo<0?'#ef4444':'#14956b'}">${fmtV(item.saldo)}</td>
 <td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${item.id}')" title="Anexos">${getDespesaFiles(item.id).length?`Arquivos (${getDespesaFiles(item.id).length})`:'Anexar'}</button></td>
 <td style="padding:7px 10px;text-align:center"><button class="btn btn-sm btn-danger" onclick="_deleteDespesa('${item.id}')">?</button></td>
@@ -4727,15 +4735,15 @@ function renderDespesas(despesas,obra){
   <svg style="flex-shrink:0;transition:transform .2s;transform:rotate(${collapsed?'0':'90'}deg)" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round"><polyline points="2,2 7,5 2,8"/></svg>
   <span style="font-size:13px;font-weight:700;color:var(--text)">${despesaMonthLabel(month)}</span>
   <span class="tag">${items.length} lançamento${items.length!==1?'s':''}</span>
-  <span class="quote-metric">Conta ${fmtV(mTotalConta)}</span>
-  <span class="quote-metric">Adiantado ${fmtV(mAdiant)}</span>
+  <span class="quote-metric">Entradas ${fmtV(mAdiant)}</span>
+  <span class="quote-metric">Saídas ${fmtV(mTotalConta)}</span>
   <span class="quote-metric">Saldo ${fmtV(mSaldo)}</span>
   <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();exportDespesaWorkbook('${escJs(obra)}','${month}')" title="Planilha mensal">📘 Planilha</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._exportDespesaPackage('${escJs(obra)}','${month}')" title="Pacote com planilha e anexos">📦 ZIP</button></span>
 </div>
-${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:860px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:140px">Conta / Aporte</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saldo acumulado</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="width:40px"></th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--text)"><div>Despesas ${fmtV(mTotalConta)}</div><div style="color:#b7791f">Aportes ${fmtV(mAdiant)}</div></td><td style="padding:8px 10px;text-align:right;font-weight:700;color:${mSaldo<0?'#ef4444':'#14956b'}">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
+${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:940px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Entrada PIX</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saída</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:130px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="width:40px"></th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#22c55e">${fmtV(mAdiant)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#ef4444">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:${mSaldo<0?'#ef4444':'#14956b'}">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
 </div>`;
   }).join('');
-  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Despesas</div><div class="stat-value" style="color:#34d399">${fmtV(totalConta)}</div><div class="stat-sub">Saídas lançadas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Aportes</div><div class="stat-value" style="color:#fbbf24">${fmtV(totalAdiant)}</div><div class="stat-sub">Entradas de adiantamento</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Saldo acumulado da prestação</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · a coluna “Saldo acumulado” não é um novo lançamento, é o saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
+  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#22c55e;border-radius:10px 0 0 10px"></div><div class="stat-label">Entradas PIX</div><div class="stat-value" style="color:#22c55e">${fmtV(totalAdiant)}</div><div class="stat-sub">${pixCount} adiantamento${pixCount!==1?'s':''} recebido${pixCount!==1?'s':''}</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ef4444;border-radius:10px 0 0 10px"></div><div class="stat-label">Saídas</div><div class="stat-value" style="color:#ef4444">${fmtV(totalConta)}</div><div class="stat-sub">Despesas pagas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Entradas menos saídas</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
 }
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
@@ -8269,12 +8277,12 @@ window._saveAdiantamento=async()=>{
   const adiant=parseFloat(document.getElementById('m-dadiant')?.value||0);
   const files=document.getElementById('m-dfiles')?.files||[];
   if(!data||!adiant){toast('Data e valor obrigatórios.','#ef4444');return;}
-  // Calculate running balance
-  const prevDesp=DB.despesas.filter(d=>d.obra===S.obra).sort((a,b)=>a.data?.localeCompare(b.data||'')||0);
-  const lastAdiant=prevDesp.length>0?prevDesp[prevDesp.length-1]?.valor_adiantamento||0:0;
-  const newBalance=lastAdiant+adiant;
+  // Mantém compatibilidade: a coluna salva o total de entradas acumuladas; a tela mostra o PIX real.
+  const prevLedger=buildDespesaLedger(DB.despesas.filter(d=>d.obra===S.obra));
+  const totalEntradas=prevLedger.reduce((sum,row)=>sum+(Number(row.movimento_adiantamento)||0),0);
+  const accumulatedCredit=totalEntradas+adiant;
   const obj={id:uid(),obra:S.obra,data,descricao:document.getElementById('m-ddesc')?.value||'Adiantamento de despesas (Pix)',
-    nfe:'',loja:'',valor_conta:null,valor_adiantamento:newBalance,tipo:'Adiantamento',
+    nfe:'',loja:'',valor_conta:null,valor_adiantamento:accumulatedCredit,tipo:'Adiantamento',
     responsavel:document.getElementById('m-dresp')?.value||''};
   const{error}=await sb.from('despesas').insert(obj);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
@@ -8289,10 +8297,9 @@ window._saveDespesa=async()=>{
   const files=document.getElementById('m-dfiles')?.files||[];
   if(!data||!desc){toast('Data e descrição obrigatórios.','#ef4444');return;}
   const conta=parseFloat(document.getElementById('m-dconta')?.value||0)||null;
-  // Calculate running balance (subtract from adiantamento)
-  const prevDesp=DB.despesas.filter(d=>d.obra===S.obra).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
-  const lastAdiant=prevDesp.length>0?prevDesp[prevDesp.length-1]?.valor_adiantamento||0:0;
-  const newBalance=conta?lastAdiant-conta:null;
+  const prevLedger=buildDespesaLedger(DB.despesas.filter(d=>d.obra===S.obra));
+  const currentSaldo=prevLedger.length?prevLedger[prevLedger.length-1].saldo:0;
+  const newBalance=conta?currentSaldo-conta:null;
   const obj={id:uid(),obra:S.obra,data,descricao:desc,
     nfe:document.getElementById('m-dnfe')?.value||'',
     loja:document.getElementById('m-dloja')?.value||'',
