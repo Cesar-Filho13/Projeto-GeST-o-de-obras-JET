@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260428150654">
+<meta name="jet-build" content="20260428175504">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -5259,7 +5259,7 @@ function exportAditivosPDF(obra){
   doc.save(`Aditivos_${obra.replace(/\s+/g,'_')}.pdf`);toast('PDF exportado!');
 }
 
-function exportMateriaisPDF(obra,ids){
+async function exportMateriaisPDF(obra,ids){
   if(!window.jspdf){toast('Biblioteca n\u00E3o carregada.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;
   let mats=DB.materiais.filter(m=>m.obra===obra);
@@ -5279,6 +5279,12 @@ function exportMateriaisPDF(obra,ids){
     return text?text.charAt(0).toUpperCase()+text.slice(1):'-';
   };
   const solicitanteLabel=upperFirst(solicitante);
+  const reqFileKey=getMaterialReqKeyFromItems(mats,obra);
+  const reqFiles=getMaterialReqFiles(reqFileKey);
+  const printableImageExts=new Set(['png','jpg','jpeg','webp','gif']);
+  const attachmentExt=file=>getExt(String(file?.name||file?.path||file?.url||'').split('?')[0].split('#')[0]);
+  const attachmentLabel=(file,index)=>String(file?.name||`Anexo ${String(index+1).padStart(2,'0')}`);
+  const isPrintableImageFile=file=>printableImageExts.has(attachmentExt(file));
 
   function drawLogo(){
     doc.setFillColor(26,46,107);
@@ -5424,6 +5430,116 @@ function exportMateriaisPDF(obra,ids){
     return y;
   }
 
+  function fitIntoBox(width,height,maxW,maxH){
+    const ratio=Math.min(maxW/Math.max(width,1),maxH/Math.max(height,1),1);
+    return{w:width*ratio,h:height*ratio};
+  }
+
+  async function loadImageAttachment(file){
+    const response=await fetch(file.url,{mode:'cors',credentials:'omit',cache:'no-store'});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const blob=await response.blob();
+    const objectUrl=URL.createObjectURL(blob);
+    try{
+      const img=await new Promise((resolve,reject)=>{
+        const image=new Image();
+        image.onload=()=>resolve(image);
+        image.onerror=()=>reject(new Error('imagem indisponível'));
+        image.src=objectUrl;
+      });
+      const naturalW=img.naturalWidth||img.width||1;
+      const naturalH=img.naturalHeight||img.height||1;
+      const maxPx=1600;
+      const scale=Math.min(1,maxPx/Math.max(naturalW,naturalH));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(naturalW*scale));
+      canvas.height=Math.max(1,Math.round(naturalH*scale));
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      return{dataUrl:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height};
+    }finally{
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  function drawAttachmentPlaceholder(file,index,errorMsg=''){
+    doc.addPage('a4','portrait');
+    drawHeader(`ANEXO ${String(index+1).padStart(2,'0')} - ${obraLabel}`,false);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(12);
+    doc.setTextColor(26,46,107);
+    doc.text(attachmentLabel(file,index),M,48,{maxWidth:W-M*2});
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8.2);
+    doc.setTextColor(90,100,120);
+    doc.text(`Tipo: ${(attachmentExt(file)||'arquivo').toUpperCase()} · Tamanho: ${fmtSz(file?.size||0)}`,M,58);
+    if(file?.url){
+      doc.setTextColor(37,99,235);
+      if(typeof doc.textWithLink==='function')doc.textWithLink('Abrir anexo original',M,70,{url:file.url});
+      else doc.text('Abrir anexo original: '+file.url,M,70,{maxWidth:W-M*2});
+    }
+    const noteColor=errorMsg?[180,90,0]:[110,120,140];
+    doc.setTextColor(...noteColor);
+    doc.text(errorMsg?`Prévia não incluída automaticamente: ${errorMsg}`:'Arquivo listado como anexo da solicitação.',M,83,{maxWidth:W-M*2});
+  }
+
+  async function appendMaterialAttachments(){
+    if(!reqFiles.length)return;
+    doc.addPage('a4','portrait');
+    drawHeader('ANEXOS DA SOLICITAÇÃO - '+obraLabel,false);
+    drawSummary([`Total de anexos: ${reqFiles.length}`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`]);
+    let y=64;
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.setTextColor(26,46,107);
+    doc.text('Índice de anexos',M,y);
+    y+=8;
+    reqFiles.forEach((file,index)=>{
+      if(y>H-26){
+        doc.addPage('a4','portrait');
+        drawHeader('ANEXOS DA SOLICITAÇÃO - '+obraLabel,false);
+        y=44;
+      }
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(30,40,65);
+      doc.text(`${String(index+1).padStart(2,'0')}. ${attachmentLabel(file,index)}`,M,y,{maxWidth:W-M*2-18});
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100,110,130);
+      doc.text(`${fmtSz(file?.size||0)} · ${isPrintableImageFile(file)?'prévia incluída nas páginas seguintes':'arquivo original listado com link'}`,M,y+5,{maxWidth:W-M*2});
+      y+=13;
+    });
+
+    for(let i=0;i<reqFiles.length;i++){
+      const file=reqFiles[i];
+      if(isPrintableImageFile(file)&&file?.url){
+        try{
+          const image=await loadImageAttachment(file);
+          doc.addPage('a4','portrait');
+          drawHeader(`ANEXO ${String(i+1).padStart(2,'0')} - ${obraLabel}`,false);
+          doc.setFont('helvetica','bold');
+          doc.setFontSize(10);
+          doc.setTextColor(26,46,107);
+          doc.text(attachmentLabel(file,i),M,43,{maxWidth:W-M*2});
+          const maxW=W-M*2;
+          const maxH=214;
+          const fit=fitIntoBox(image.width,image.height,maxW,maxH);
+          const x=M+(maxW-fit.w)/2;
+          const yImg=54;
+          doc.addImage(image.dataUrl,'PNG',x,yImg,fit.w,fit.h);
+          if(file.url&&typeof doc.link==='function')doc.link(x,yImg,fit.w,fit.h,{url:file.url});
+        }catch(err){
+          drawAttachmentPlaceholder(file,i,err?.message||'imagem indisponível');
+        }
+      }else{
+        drawAttachmentPlaceholder(file,i);
+      }
+    }
+  }
+
   const reqColumns=[
     {label:'#',width:8,align:'center'},
     {label:'DESCRI\u00C7\u00C3O',width:48},
@@ -5468,12 +5584,12 @@ function exportMateriaisPDF(obra,ids){
 
   function startReqPage(){
     drawHeader('Requisi\u00E7\u00E3o de Materiais - '+obraLabel,false);
-    return drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Aprovados/Comprados: ${aprov}`,`Solicitante: ${solicitanteLabel}`]);
+    return drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Aprovados/Comprados: ${aprov}`,`Solicitante: ${solicitanteLabel}`,`Anexos: ${reqFiles.length}`]);
   }
 
   function startConferencePage(titleText){
     drawHeader(titleText+' - '+obraLabel);
-    return drawSummary([`Total: ${mats.length} itens`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`]);
+    return drawSummary([`Total: ${mats.length} itens`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`,`Anexos: ${reqFiles.length}`]);
   }
 
   let reqStart=startReqPage();
@@ -5504,6 +5620,8 @@ function exportMateriaisPDF(obra,ids){
   doc.setDrawColor(210,216,230);
   doc.setLineWidth(0.25);
   for(let y=112;y<=245;y+=12)doc.line(M,y,W-M,y);
+
+  await appendMaterialAttachments();
 
   const totalPages=doc.getNumberOfPages();
   for(let i=1;i<=totalPages;i++){
@@ -7146,7 +7264,10 @@ window._openEditReq=(idsStr)=>{
 
 window._matReqPDF=(obra,idsStr)=>{
   const ids=idsStr.split(',').filter(Boolean);
-  exportMateriaisPDF(obra,ids);
+  exportMateriaisPDF(obra,ids).catch(err=>{
+    console.error('[JET] Falha ao exportar PDF de materiais:',err);
+    toast('Não consegui gerar o PDF de materiais.','#ef4444');
+  });
 };
 
 window._matReqXLSX=(obra,idsStr)=>{
