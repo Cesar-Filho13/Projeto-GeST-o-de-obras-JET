@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429080105">
+<meta name="jet-build" content="20260429161116">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -189,6 +189,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-notice-tag{padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(148,163,184,.14);font-size:11px;color:rgba(255,255,255,.66)}
 .landing-notice-actions{display:flex;gap:8px;flex-wrap:wrap}
 .landing-notice-actions .btn{padding:6px 10px;font-size:11px}
+.landing-notice-replies{margin-top:10px;padding-left:12px;border-left:2px solid rgba(96,165,250,.22);display:grid;gap:7px}
+.landing-notice-reply{padding:9px 10px;border-radius:12px;background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.12)}
+.landing-notice-reply-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;color:rgba(255,255,255,.58);font-size:10px;font-weight:700}
+.landing-notice-reply-text{font-size:11px;line-height:1.5;color:rgba(255,255,255,.76)}
 .landing-notice-empty{padding:24px 18px;border-radius:20px;border:1px dashed rgba(148,163,184,.22);background:rgba(255,255,255,.02);text-align:center}
 .landing-notice-empty strong{display:block;font-size:15px;color:#fff;margin-bottom:6px}
 .landing-notice-empty span{font-size:12px;color:rgba(255,255,255,.5)}
@@ -239,6 +243,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .landing-notice-tag{padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.18);font-size:9px;color:#93c5fd}
 .landing-notice-actions{display:flex;gap:6px;flex-wrap:wrap}
 .landing-notice-actions .btn{padding:5px 9px;font-size:10px}
+.landing-notice-replies{margin-top:8px;padding-left:10px;gap:6px}
+.landing-notice-reply{padding:8px 9px;border-radius:12px}
+.landing-notice-reply-text{font-size:10px}
 .landing-notice-empty{padding:22px 14px;border-radius:18px;border:1px dashed rgba(148,163,184,.22);background:rgba(255,255,255,.02);text-align:center}
 .landing-notice-empty strong{display:block;font-size:14px;color:#fff;margin-bottom:5px}
 .landing-notice-empty span{font-size:11px;color:rgba(255,255,255,.5)}
@@ -611,6 +618,10 @@ html[data-theme="light"] .landing-notice-author strong{color:#11203a}
 html[data-theme="light"] .landing-notice-author small{color:#6b7c95}
 html[data-theme="light"] .landing-notice-text{color:#25364e}
 html[data-theme="light"] .landing-notice-tag{background:rgba(39,87,217,.04);border-color:rgba(39,87,217,.12);color:#576882}
+html[data-theme="light"] .landing-notice-replies{border-left-color:rgba(39,87,217,.18)}
+html[data-theme="light"] .landing-notice-reply{background:rgba(39,87,217,.04);border-color:rgba(39,87,217,.10)}
+html[data-theme="light"] .landing-notice-reply-top{color:#6b7c95}
+html[data-theme="light"] .landing-notice-reply-text{color:#25364e}
 html[data-theme="light"] .landing-notice-empty{background:#fff;border-color:rgba(39,87,217,.18)}
 html[data-theme="light"] .landing-notice-empty strong{color:#11203a}
 html[data-theme="light"] .landing-notice-empty span{color:#6b7c95}
@@ -1139,6 +1150,17 @@ function normalizeMentionToken(raw){
 function parseMentions(text=''){
   return [...new Set((String(text||'').match(/@([\w.-]+)/g)||[]).map(item=>normalizeMentionToken(item.slice(1))).filter(Boolean))];
 }
+function getAllowedMentionTokens(){
+  return new Set(MENTION_USER_EMAILS.map(email=>normalizeMentionToken(String(email).split('@')[0])).filter(Boolean));
+}
+function filterAllowedMentions(tokens=[]){
+  const allowed=getAllowedMentionTokens();
+  return [...new Set((Array.isArray(tokens)?tokens:[]).map(normalizeMentionToken).filter(token=>token&&allowed.has(token)))];
+}
+function getInvalidMentions(text=''){
+  const allowed=getAllowedMentionTokens();
+  return parseMentions(text).filter(token=>!allowed.has(token));
+}
 function fmtRelativeTime(ts){
   const time=new Date(ts||Date.now()).getTime();
   if(!Number.isFinite(time))return 'agora';
@@ -1317,8 +1339,20 @@ function commercialCompanyMetaLines(company){
 function proposalLogoPreviewHtml(data=''){
   return data?`<img src="${esc(data)}" alt="Logo do cliente">`:'<span>Sem<br>logo</span>';
 }
-// Fallback somente com identificadores curtos; e-mails reais vêm do Supabase quando existirem no cadastro.
-const MENTION_FALLBACK_HANDLES=Object.freeze(['caio','cesar','claraadm','douglas.assis','eduardo.freitas','emille','fabio','felippe','gustavo','jp.gasparini','mariaclara','vanuza']);
+const MENTION_USER_EMAILS=Object.freeze([
+  'caio@jetmanutencoes.com',
+  'cesar@jetmanutencoes.com',
+  'claraadm@jetmanutencoes.com',
+  'douglas.assis@jetmanutencoes.com',
+  'eduardo.freitas@jetmanutencoes.com',
+  'emille@jetmanutencoes.com',
+  'fabio@jetmanutencoes.com',
+  'felippe@jetmanutencoes.com',
+  'gustavo@jetmanutencoes.com',
+  'jp.gasparini@jetmanutencoes.com',
+  'mariaclara@jetmanutencoes.com',
+  'vanuza@jetmanutencoes.com'
+]);
 const ALMOX_TRANSFER_MAP={Separado:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em transito':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'}};
 const ALMOX_MOVEMENT_MAP={
   Entrada:{bg:'rgba(16,185,129,.14)',c:'#34d399',d:'#10b981'},
@@ -1474,11 +1508,25 @@ function cleanBaixadas(list){return(Array.isArray(list)?list:[]).map(cleanBaixad
 function getLocalBaixadas(){try{return cleanBaixadas(JSON.parse(localStorage.getItem('jet-baixadas')||'[]'));}catch{return[];}}
 function saveLocalBaixadas(list){localStorage.setItem('jet-baixadas',JSON.stringify(cleanBaixadas(list)));}
 function noticePriorityRank(priority){return priority==='Alta'?3:priority==='Baixa'?1:2;}
+function cleanNoticeReply(row={}){
+  const texto=String(row?.texto||'').trim();
+  const autorRaw=String(row?.autor||'').trim()||'sistema';
+  const autor=normalizeMentionToken(autorRaw)||'sistema';
+  return{
+    id:String(row?.id||('hr-'+uid())),
+    texto,
+    autor,
+    autorLabel:String(row?.autorLabel||autorRaw||autor).trim()||autor,
+    mentions:filterAllowedMentions([...(Array.isArray(row?.mentions)?row.mentions:[]),...parseMentions(texto)]),
+    created_at:row?.created_at||new Date().toISOString()
+  };
+}
 function cleanNotice(row={}){
   const texto=String(row?.texto||'').trim();
   const autorRaw=String(row?.autor||'').trim()||'sistema';
   const autor=normalizeMentionToken(autorRaw)||'sistema';
-  const mentions=[...new Set([...(Array.isArray(row?.mentions)?row.mentions:[]).map(normalizeMentionToken),...parseMentions(texto)])].filter(Boolean);
+  const replies=(Array.isArray(row?.replies)?row.replies:[]).map(cleanNoticeReply).filter(reply=>reply.texto).slice(0,80);
+  const mentions=filterAllowedMentions([...(Array.isArray(row?.mentions)?row.mentions:[]),...parseMentions(texto),...replies.flatMap(reply=>reply.mentions||[])]);
   const readBy=[...new Set((Array.isArray(row?.readBy)?row.readBy:[]).map(normalizeMentionToken).filter(Boolean))];
   return{
     id:String(row?.id||('hv-'+uid())),
@@ -1489,6 +1537,7 @@ function cleanNotice(row={}){
     prioridade:HOME_NOTICE_PRIORITIES.includes(row?.prioridade)?row.prioridade:'Media',
     pinned:!!row?.pinned,
     readBy,
+    replies,
     created_at:row?.created_at||new Date().toISOString(),
     updated_at:row?.updated_at||new Date().toISOString(),
   };
@@ -2418,9 +2467,8 @@ function renderPageHero(icon,title,subtitle,actionsHtml){
 
 // ─── HOME ─────────────────────────────────────────────────────────────────
 function getMentionDirectory(){
-  const fromFuncionarios=(DB.funcionarios||[]).flatMap(f=>[f.email,f.usuario,f.user,f.nome]).filter(Boolean);
   const seen=new Set();
-  return [...fromFuncionarios,...MENTION_FALLBACK_HANDLES]
+  return MENTION_USER_EMAILS
     .map(value=>{
       const raw=String(value||'').trim().toLowerCase();
       if(!raw)return null;
@@ -2464,7 +2512,7 @@ function hideMentionMenus(){
   });
 }
 function isNoticeRead(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.readBy||[]).includes(userToken);}
-function isNoticeMention(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.mentions||[]).includes(userToken);}
+function isNoticeMention(item,userToken=normalizeMentionToken(getCurrentUserHandle())){return(item.mentions||[]).includes(userToken)||(item.replies||[]).some(reply=>(reply.mentions||[]).includes(userToken));}
 function sortHomeNotices(list=[]){
   const userToken=normalizeMentionToken(getCurrentUserHandle());
   return cleanNotices(list).sort((a,b)=>
@@ -2476,7 +2524,8 @@ function sortHomeNotices(list=[]){
   );
 }
 function renderNoticeText(text=''){
-  return esc(text).replace(/\n/g,'<br>').replace(/@([\w.-]+)/g,'<span class="comment-mention">@$1</span>');
+  const allowed=getAllowedMentionTokens();
+  return esc(text).replace(/\n/g,'<br>').replace(/@([\w.-]+)/g,(match,token)=>allowed.has(normalizeMentionToken(token))?`<span class="comment-mention">@${token}</span>`:match);
 }
 function getHomeNoticeStats(){
   const userToken=normalizeMentionToken(getCurrentUserHandle());
@@ -2554,6 +2603,20 @@ window._openHomeNoticeModal=(event)=>{
   renderApp();
   setTimeout(()=>document.getElementById('m-home-aviso-text')?.focus(),0);
 };
+window._replyNotice=(id,event)=>{
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const item=(DB.avisos||[]).find(entry=>entry.id===id);
+  if(!item)return;
+  S.homeNoticeOpen=false;
+  S.modal='home-notice';
+  S.modalData={replyTo:id,prefill:`@${item.autorLabel||item.autor} `};
+  renderApp();
+  setTimeout(()=>{
+    const el=document.getElementById('m-home-aviso-text');
+    if(el){el.focus();el.selectionStart=el.selectionEnd=el.value.length;}
+  },0);
+};
 window._setHomeNoticeFilter=(filter)=>{S.homeNoticeFilter=filter;renderApp();};
 window._postHomeNotice=async(event)=>{
   event?.preventDefault?.();
@@ -2569,29 +2632,48 @@ window._postHomeNotice=async(event)=>{
     }
     const texto=textEl.value.trim();
     if(!texto){toast('Escreva um aviso antes de publicar.','#f59e0b');textEl.focus();return;}
+    const invalidMentions=getInvalidMentions(texto);
+    if(invalidMentions.length){
+      toast(`Menção não cadastrada: @${invalidMentions[0]}. Use apenas usuários autorizados.`, '#ef4444');
+      textEl.focus();
+      return;
+    }
     const autorLabel=getCurrentUserHandle();
     const autor=normalizeMentionToken(autorLabel)||'sistema';
-    const notice=cleanNotice({
-      id:'hv-'+uid(),
-      texto,
-      autor,
-      autorLabel,
-      prioridade:priorityEl?.value||'Media',
-      pinned:!!pinEl?.checked,
-      readBy:[autor],
-      mentions:parseMentions(texto),
-      created_at:new Date().toISOString(),
-      updated_at:new Date().toISOString()
-    });
-    DB.avisos=cleanNotices([notice,...(DB.avisos||[])]);
+    const replyTo=String(S.modalData?.replyTo||'').trim();
+    if(replyTo){
+      const reply=cleanNoticeReply({id:'hr-'+uid(),texto,autor,autorLabel,mentions:parseMentions(texto),created_at:new Date().toISOString()});
+      let found=false;
+      DB.avisos=cleanNotices((DB.avisos||[]).map(item=>{
+        if(item.id!==replyTo)return item;
+        found=true;
+        return cleanNotice({...item,replies:[...(item.replies||[]),reply],readBy:[autor],updated_at:new Date().toISOString()});
+      }));
+      if(!found){toast('Aviso original não encontrado.','#ef4444');return;}
+    }else{
+      const notice=cleanNotice({
+        id:'hv-'+uid(),
+        texto,
+        autor,
+        autorLabel,
+        prioridade:priorityEl?.value||'Media',
+        pinned:!!pinEl?.checked,
+        readBy:[autor],
+        mentions:parseMentions(texto),
+        created_at:new Date().toISOString(),
+        updated_at:new Date().toISOString()
+      });
+      DB.avisos=cleanNotices([notice,...(DB.avisos||[])]);
+    }
     saveLocalHomeNotices(DB.avisos);
-    queueHomeNoticesSync(true);
+    const synced=await saveRemoteHomeNotices(DB.avisos,{silent:false});
     if(textEl){textEl.value='';textEl.style.height='auto';}
     if(priorityEl)priorityEl.value='Media';
     if(pinEl)pinEl.checked=false;
     if(inModal)S.modal=null;
     S.homeNoticeOpen=true;
-    toast('Aviso publicado.','#22c55e');
+    S.homeNoticeFilter='all';
+    toast(replyTo?(synced?'Resposta publicada.':'Resposta salva neste aparelho.'):(synced?'Aviso publicado.':'Aviso salvo neste aparelho.'),synced?'#22c55e':'#f59e0b');
     renderApp();
   }catch(err){
     console.error('[JET] Erro ao publicar aviso:',err);
@@ -2726,6 +2808,10 @@ function renderHome(){
     const isMention=isNoticeMention(item);
     const mentionTags=(item.mentions||[]).map(token=>`<span class="landing-notice-tag">@${esc(directoryMap[token]||token)}</span>`).join('');
     const canDelete=normalizeMentionToken(item.autor)===normalizeMentionToken(currentHandle);
+    const replies=(item.replies||[]).map(reply=>`<div class="landing-notice-reply">
+      <div class="landing-notice-reply-top"><span>@${esc(reply.autorLabel||reply.autor)}</span><span>${fmtRelativeTime(reply.created_at)}</span></div>
+      <div class="landing-notice-reply-text">${renderNoticeText(reply.texto)}</div>
+    </div>`).join('');
     return `<article class="landing-notice-item${isRead?'':' unread'}${isMention?' mention':''}">
       <div class="landing-notice-top">
         <div class="landing-notice-author">
@@ -2742,9 +2828,11 @@ function renderHome(){
         </div>
       </div>
       <div class="landing-notice-text">${renderNoticeText(item.texto)}</div>
+      ${replies?`<div class="landing-notice-replies">${replies}</div>`:''}
       <div class="landing-notice-meta">
         <div class="landing-notice-tags">${mentionTags||'<span class="landing-notice-tag">Sem mencoes</span>'}</div>
         <div class="landing-notice-actions">
+          <button class="btn btn-secondary btn-sm" onclick="window._replyNotice('${escJs(item.id)}',event)">Responder</button>
           <button class="btn btn-secondary btn-sm" onclick="window._toggleNoticeRead('${escJs(item.id)}')">${isRead?'Marcar nao lido':'Marcar lido'}</button>
           <button class="btn btn-secondary btn-sm" onclick="window._toggleNoticePinned('${escJs(item.id)}')">${item.pinned?'Soltar topo':'Fixar'}</button>
           ${canDelete?`<button class="btn btn-danger btn-sm" onclick="window._deleteNotice('${escJs(item.id)}')">Excluir</button>`:''}
@@ -6609,18 +6697,20 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     onSave=`window._importFuncionariosPlanilha(event)`;
   }
   else if(m==='home-notice'){
-    title='Novo Aviso';
-    saveLabel='Publicar aviso';
+    const replyTarget=d.replyTo?(DB.avisos||[]).find(item=>item.id===d.replyTo):null;
+    title=replyTarget?'Responder aviso':'Novo Aviso';
+    saveLabel=replyTarget?'Publicar resposta':'Publicar aviso';
     body=`<div class="form-grid-2">
+${replyTarget?`<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);font-size:12px;color:var(--text2)"><strong style="color:var(--text)">Respondendo @${esc(replyTarget.autorLabel||replyTarget.autor)}</strong><br>${renderNoticeText(replyTarget.texto).replace(/<br>/g,' ')}</div></div>`:''}
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0">
-  <label>Aviso *</label>
+  <label>${replyTarget?'Resposta':'Aviso'} *</label>
   <div class="comment-input-wrap">
     <div id="home-modal-mention-menu" class="mention-menu"></div>
-    <textarea id="m-home-aviso-text" class="comment-input" rows="4" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)" onblur="setTimeout(()=>window._hideMentionMenus&&window._hideMentionMenus(),120)"></textarea>
+    <textarea id="m-home-aviso-text" class="comment-input" rows="4" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)" onblur="setTimeout(()=>window._hideMentionMenus&&window._hideMentionMenus(),120)">${esc(d.prefill||'')}</textarea>
   </div>
 </div>
-<div class="form-group" style="margin-bottom:0"><label>Prioridade</label><select id="m-home-aviso-priority">${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>${esc(priority)}</option>`).join('')}</select></div>
-<div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end"><label class="landing-notice-pin" style="width:100%;justify-content:center"><input type="checkbox" id="m-home-aviso-pin"> Fixar no topo</label></div>
+${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><input type="hidden" id="m-home-aviso-pin" value="">':`<div class="form-group" style="margin-bottom:0"><label>Prioridade</label><select id="m-home-aviso-priority">${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>${esc(priority)}</option>`).join('')}</select></div>
+<div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end"><label class="landing-notice-pin" style="width:100%;justify-content:center"><input type="checkbox" id="m-home-aviso-pin"> Fixar no topo</label></div>`}
 </div>`;
     onSave=`window._postHomeNotice(event)`;
   }
