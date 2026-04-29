@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429161116">
+<meta name="jet-build" content="20260429163102">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -2530,9 +2530,11 @@ function renderNoticeText(text=''){
 function getHomeNoticeStats(){
   const userToken=normalizeMentionToken(getCurrentUserHandle());
   const list=DB.avisos||[];
+  const attention=list.filter(item=>!isNoticeRead(item,userToken)||isNoticeMention(item,userToken)).length;
   return{
     unread:list.filter(item=>!isNoticeRead(item,userToken)).length,
     mentions:list.filter(item=>isNoticeMention(item,userToken)).length,
+    attention,
     pinned:list.filter(item=>item.pinned).length
   };
 }
@@ -2854,7 +2856,7 @@ function renderHome(){
     <div class="landing-notice-shell" onclick="event.stopPropagation()">
       <button type="button" class="theme-toggle notice-toggle landing-notice-trigger${S.homeNoticeOpen?' open':''}" onclick="window._toggleHomeNotices(event)" title="Abrir avisos">
         <span class="landing-notice-trigger-icon">${bellIconSvg()}</span>
-        ${(stats.unread+stats.mentions)>0?`<span class="landing-notice-trigger-count">${stats.unread+stats.mentions}</span>`:''}
+        ${stats.attention>0?`<span class="landing-notice-trigger-count">${stats.attention}</span>`:''}
       </button>
       ${S.homeNoticeOpen?`<div class="landing-notices" onclick="event.stopPropagation()">
         <div class="landing-notices-head">
