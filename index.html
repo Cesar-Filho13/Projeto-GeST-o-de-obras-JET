@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260428175504">
+<meta name="jet-build" content="20260429080105">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1511,7 +1511,7 @@ function normalizeCommercialItem(row={}){
     nome:String(raw.nome||raw.item||'').trim(),
     descricao:String(raw.descricao||raw.desc||raw.observacao||'').trim(),
     quantidade,
-    unidade:String(raw.unidade||raw.unid||'un').trim()||'un',
+    unidade:normalizeMaterialUnit(raw.unidade||raw.unid||'un'),
     valor_unitario:valor==null?'':valor,
     observacao:String(raw.obs||raw.observacao_item||'').trim()
   };
@@ -2044,7 +2044,7 @@ function normalizePedidoItem(item={}){
   return{
     nome:String(raw.nome??raw.item??'').trim(),
     qtd:raw.qtd===''?'':(raw.qtd??''),
-    unidade:String(raw.unidade??raw.unid??'un').trim()||'un',
+    unidade:normalizeMaterialUnit(raw.unidade??raw.unid??'un'),
     valor:raw.valor===''?'':(raw.valor??''),
     obs:String(raw.obs??raw.observacao??'').trim()
   };
@@ -2851,7 +2851,7 @@ function renderPedidoExpanded(p){
   const pedidoId=escJs(p.id);
   const items=normalizePedidoItems(p.itens||[]);
   const total=(p.total!=null&&p.total!=='')?Number(p.total):calcPedidoTotal(items);
-  return `<tr><td colspan="11" style="padding:0 14px 14px;background:var(--bg2)"><div class="pedido-inline-shell"><div class="pedido-inline-summary"><div class="pedido-inline-card"><label>Número do Pedido</label><input class="ci field-strong" value="${esc(p.numero||'')}" placeholder="PED-2026-001" onblur="if(this.value.trim())updateField('pedidos','${pedidoId}','numero',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"><div class="pedido-inline-hint">Ajuste o número sem abrir o popup.</div></div><div class="pedido-inline-card"><label>Data do Pedido</label><input class="ci field-muted" type="date" value="${esc(p.data||'')}" onblur="updateField('pedidos','${pedidoId}','data',this.value||null)"><div class="pedido-inline-hint">Calendário rápido para correções do documento.</div></div><div class="pedido-inline-card"><label>Observação Geral</label><textarea class="ci field-muted" style="min-height:76px" placeholder="Observações do pedido..." onblur="updateField('pedidos','${pedidoId}','observacao',this.value)">${esc(p.observacao||'')}</textarea></div><div class="pedido-inline-card"><label>Total calculado</label><div class="pedido-inline-total"><span>R$</span><span data-pedido-total="${pedidoId}">${fmtV(total)}</span></div><div class="pedido-inline-hint">Atualiza quando você edita os itens abaixo.</div></div></div><div class="pedido-inline-toolbar"><div class="section-sub">Itens do pedido (${items.length}) · você pode ajustar descrição, quantidade, unidade, valor e observação aqui mesmo.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window.pedidoXLSX('${pedidoId}')">📊 Excel deste pedido</button><button class="btn btn-secondary btn-sm" onclick="window._printPedidoPDF('${pedidoId}')">📄 PDF</button><button class="btn btn-secondary btn-sm" onclick="S.modal='edit-pedido';S.modalData={id:'${pedidoId}'};renderApp()">↗ Abrir completo</button></div></div><button class="btn btn-primary btn-sm pedido-inline-add" onclick="window._addPedidoItemInline('${pedidoId}')">+ Adicionar item</button><div class="pedido-inline-table"><table><thead><tr><th>Descrição</th><th style="width:72px;text-align:center">Qtd</th><th style="width:72px;text-align:center">Unid</th><th style="width:110px;text-align:right">Valor Un.</th><th>Obs</th><th style="width:54px;text-align:center">Ações</th></tr></thead><tbody>${items.length?items.map((item,idx)=>`<tr><td><input class="ci field-strong" value="${esc(item.nome||'')}" placeholder="Descrição do item" onblur="window._updatePedidoItem('${pedidoId}',${idx},'nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci ci-num" type="number" step="0.01" value="${item.qtd!==''?esc(String(item.qtd)):''}" placeholder="0" onblur="window._updatePedidoItem('${pedidoId}',${idx},'qtd',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.unidade||'un')}" placeholder="un" onblur="window._updatePedidoItem('${pedidoId}',${idx},'unidade',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci ci-num" type="number" step="0.01" value="${item.valor!==''?esc(String(item.valor)):''}" placeholder="0,00" onblur="window._updatePedidoItem('${pedidoId}',${idx},'valor',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.obs||'')}" placeholder="Observação do item" onblur="window._updatePedidoItem('${pedidoId}',${idx},'obs',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><div class="pedido-inline-row-actions"><button class="btn btn-danger btn-sm btn-icon" title="Remover item" onclick="window._removePedidoItemInline('${pedidoId}',${idx})">×</button></div></td></tr>`).join(''):`<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--text3)">Nenhum item neste pedido.</td></tr>`}</tbody></table></div></div></td></tr>`;
+  return `<tr><td colspan="11" style="padding:0 14px 14px;background:var(--bg2)"><div class="pedido-inline-shell"><div class="pedido-inline-summary"><div class="pedido-inline-card"><label>Número do Pedido</label><input class="ci field-strong" value="${esc(p.numero||'')}" placeholder="PED-2026-001" onblur="if(this.value.trim())updateField('pedidos','${pedidoId}','numero',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"><div class="pedido-inline-hint">Ajuste o número sem abrir o popup.</div></div><div class="pedido-inline-card"><label>Data do Pedido</label><input class="ci field-muted" type="date" value="${esc(p.data||'')}" onblur="updateField('pedidos','${pedidoId}','data',this.value||null)"><div class="pedido-inline-hint">Calendário rápido para correções do documento.</div></div><div class="pedido-inline-card"><label>Observação Geral</label><textarea class="ci field-muted" style="min-height:76px" placeholder="Observações do pedido..." onblur="updateField('pedidos','${pedidoId}','observacao',this.value)">${esc(p.observacao||'')}</textarea></div><div class="pedido-inline-card"><label>Total calculado</label><div class="pedido-inline-total"><span>R$</span><span data-pedido-total="${pedidoId}">${fmtV(total)}</span></div><div class="pedido-inline-hint">Atualiza quando você edita os itens abaixo.</div></div></div><div class="pedido-inline-toolbar"><div class="section-sub">Itens do pedido (${items.length}) · você pode ajustar descrição, quantidade, unidade, valor e observação aqui mesmo.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window.pedidoXLSX('${pedidoId}')">📊 Excel deste pedido</button><button class="btn btn-secondary btn-sm" onclick="window._printPedidoPDF('${pedidoId}')">📄 PDF</button><button class="btn btn-secondary btn-sm" onclick="S.modal='edit-pedido';S.modalData={id:'${pedidoId}'};renderApp()">↗ Abrir completo</button></div></div><button class="btn btn-primary btn-sm pedido-inline-add" onclick="window._addPedidoItemInline('${pedidoId}')">+ Adicionar item</button><div class="pedido-inline-table"><table><thead><tr><th>Descrição</th><th style="width:72px;text-align:center">Qtd</th><th style="width:72px;text-align:center">Unid</th><th style="width:110px;text-align:right">Valor Un.</th><th>Obs</th><th style="width:54px;text-align:center">Ações</th></tr></thead><tbody>${items.length?items.map((item,idx)=>`<tr><td><input class="ci field-strong" value="${esc(item.nome||'')}" placeholder="Descrição do item" onblur="window._updatePedidoItem('${pedidoId}',${idx},'nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci ci-num" type="number" step="0.01" value="${item.qtd!==''?esc(String(item.qtd)):''}" placeholder="0" onblur="window._updatePedidoItem('${pedidoId}',${idx},'qtd',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td>${materialUnitSelect('ci field-muted',item.unidade||'un','width:100%',`onchange="window._updatePedidoItem('${pedidoId}',${idx},'unidade',this.value)"`)}</td><td><input class="ci ci-num" type="number" step="0.01" value="${item.valor!==''?esc(String(item.valor)):''}" placeholder="0,00" onblur="window._updatePedidoItem('${pedidoId}',${idx},'valor',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci field-muted" value="${esc(item.obs||'')}" placeholder="Observação do item" onblur="window._updatePedidoItem('${pedidoId}',${idx},'obs',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><div class="pedido-inline-row-actions"><button class="btn btn-danger btn-sm btn-icon" title="Remover item" onclick="window._removePedidoItemInline('${pedidoId}',${idx})">×</button></div></td></tr>`).join(''):`<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--text3)">Nenhum item neste pedido.</td></tr>`}</tbody></table></div></div></td></tr>`;
 }
 function renderComprasModule(pedidos,fornecedores,cotacoes){
   const tab=S.comprasTab||'pedidos';
@@ -5285,6 +5285,7 @@ async function exportMateriaisPDF(obra,ids){
   const attachmentExt=file=>getExt(String(file?.name||file?.path||file?.url||'').split('?')[0].split('#')[0]);
   const attachmentLabel=(file,index)=>String(file?.name||`Anexo ${String(index+1).padStart(2,'0')}`);
   const isPrintableImageFile=file=>printableImageExts.has(attachmentExt(file));
+  const isPdfAttachment=file=>attachmentExt(file)==='pdf';
 
   function drawLogo(){
     doc.setFillColor(26,46,107);
@@ -5464,6 +5465,47 @@ async function exportMateriaisPDF(obra,ids){
     }
   }
 
+  function ensurePdfJs(){
+    const configure=lib=>{
+      if(lib?.GlobalWorkerOptions&&!lib.GlobalWorkerOptions.workerSrc){
+        lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      return lib;
+    };
+    if(window.pdfjsLib)return Promise.resolve(configure(window.pdfjsLib));
+    if(window._jetPdfJsPromise)return window._jetPdfJsPromise.then(configure);
+    window._jetPdfJsPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload=()=>window.pdfjsLib?resolve(window.pdfjsLib):reject(new Error('pdf.js indisponível'));
+      script.onerror=()=>reject(new Error('não foi possível carregar pdf.js'));
+      document.head.appendChild(script);
+    });
+    return window._jetPdfJsPromise.then(configure);
+  }
+
+  async function loadPdfAttachmentPages(file){
+    const lib=await ensurePdfJs();
+    const response=await fetch(file.url,{mode:'cors',credentials:'omit',cache:'no-store'});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.arrayBuffer();
+    const pdf=await lib.getDocument({data}).promise;
+    const pages=[];
+    for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){
+      const page=await pdf.getPage(pageNumber);
+      const viewport=page.getViewport({scale:1.35});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.ceil(viewport.width);
+      canvas.height=Math.ceil(viewport.height);
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      await page.render({canvasContext:ctx,viewport}).promise;
+      pages.push({dataUrl:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height,pageNumber,totalPages:pdf.numPages});
+    }
+    return pages;
+  }
+
   function drawAttachmentPlaceholder(file,index,errorMsg=''){
     doc.addPage('a4','portrait');
     drawHeader(`ANEXO ${String(index+1).padStart(2,'0')} - ${obraLabel}`,false);
@@ -5509,13 +5551,34 @@ async function exportMateriaisPDF(obra,ids){
       doc.setFont('helvetica','normal');
       doc.setFontSize(7.5);
       doc.setTextColor(100,110,130);
-      doc.text(`${fmtSz(file?.size||0)} · ${isPrintableImageFile(file)?'prévia incluída nas páginas seguintes':'arquivo original listado com link'}`,M,y+5,{maxWidth:W-M*2});
+      doc.text(`${fmtSz(file?.size||0)} · ${(isPrintableImageFile(file)||isPdfAttachment(file))?'prévia incluída nas páginas seguintes':'arquivo original listado com link'}`,M,y+5,{maxWidth:W-M*2});
       y+=13;
     });
 
     for(let i=0;i<reqFiles.length;i++){
       const file=reqFiles[i];
-      if(isPrintableImageFile(file)&&file?.url){
+      if(isPdfAttachment(file)&&file?.url){
+        try{
+          const pages=await loadPdfAttachmentPages(file);
+          for(const page of pages){
+            doc.addPage('a4','portrait');
+            drawHeader(`ANEXO ${String(i+1).padStart(2,'0')} - ${obraLabel}`,false);
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(9);
+            doc.setTextColor(26,46,107);
+            doc.text(`${attachmentLabel(file,i)} - página ${page.pageNumber}/${page.totalPages}`,M,43,{maxWidth:W-M*2});
+            const maxW=W-M*2;
+            const maxH=224;
+            const fit=fitIntoBox(page.width,page.height,maxW,maxH);
+            const x=M+(maxW-fit.w)/2;
+            const yPdf=50;
+            doc.addImage(page.dataUrl,'PNG',x,yPdf,fit.w,fit.h);
+            if(file.url&&typeof doc.link==='function')doc.link(x,yPdf,fit.w,fit.h,{url:file.url});
+          }
+        }catch(err){
+          drawAttachmentPlaceholder(file,i,err?.message||'PDF indisponível');
+        }
+      }else if(isPrintableImageFile(file)&&file?.url){
         try{
           const image=await loadImageAttachment(file);
           doc.addPage('a4','portrait');
@@ -6365,7 +6428,7 @@ function commercialItemRowHtml(item={},prefix='prop'){
     <input class="commercial-item-name commercial-item-wide" value="${esc(it.nome||'')}" placeholder="Nome do item/serviço" oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
     <input class="commercial-item-desc commercial-item-wide" value="${esc(it.descricao||'')}" placeholder="Descrição detalhada">
     <input class="commercial-item-qtd" type="number" step="0.01" value="${it.quantidade!==''?esc(String(it.quantidade)):''}" placeholder="Qtd" oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
-    <input class="commercial-item-unit" value="${esc(it.unidade||'un')}" placeholder="Unid">
+    ${materialUnitSelect('commercial-item-unit',it.unidade||'un','')}
     <input class="commercial-item-value" type="number" step="0.01" value="${it.valor_unitario!==''?esc(String(it.valor_unitario)):''}" placeholder="R$ unit." oninput="window._recalcCommercialTotal('${escJs(prefix)}')">
     <button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.closest('.commercial-item-row')?.remove();window._recalcCommercialTotal('${escJs(prefix)}')">×</button>
   </div>`;
@@ -6390,7 +6453,7 @@ window._getCommercialModalItems=(prefix='prop')=>{
     nome:row.querySelector('.commercial-item-name')?.value?.trim()||'',
     descricao:row.querySelector('.commercial-item-desc')?.value?.trim()||'',
     quantidade:row.querySelector('.commercial-item-qtd')?.value||'',
-    unidade:row.querySelector('.commercial-item-unit')?.value?.trim()||'un',
+    unidade:normalizeMaterialUnit(row.querySelector('.commercial-item-unit')?.value||'un'),
     valor_unitario:row.querySelector('.commercial-item-value')?.value||''
   })).map(normalizeCommercialItem).filter(item=>item.nome||item.descricao);
 };
@@ -6764,7 +6827,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div class="form-group"><label>Somar em item existente</label><select id="m-ent-item-id" onchange="window._syncAlmoxEntradaSelection()">${getAlmoxSelectOptions(selectedId)}</select><div style="margin-top:6px;font-size:11px;color:var(--text3)">Selecione um item para somar ao saldo ou deixe em branco para cadastrar um material novo.</div></div>
 <div class="form-group"><label>Saldo atual</label><input id="m-ent-saldo" value="${selectedId?`${est.qtd||0} ${est.unidade||'un'}`:'Novo recebimento'}" disabled></div>
 <div class="form-group"><label>Item do material *</label><input id="m-ent-item" value="${esc(est.item||'')}" placeholder="Ex: Cabo Flexivel 4mm"></div>
-<div class="form-group"><label>Unidade</label><input id="m-ent-unit" value="${esc(est.unidade||'un')}" placeholder="un"></div>
+<div class="form-group"><label>Unidade</label><select id="m-ent-unit">${materialUnitOptions(est.unidade||'un')}</select></div>
 <div class="form-group"><label>Obra / centro *</label><input id="m-ent-obra" list="almox-centros" value="${esc(d.obra||est.obra||getAllObras()[0]||'GLOBAL')}" placeholder="Ex: APL - Paulista"><datalist id="almox-centros">${obrasOpts}</datalist></div>
 <div class="form-group"><label>Quantidade recebida *</label><input id="m-ent-qtd" type="number" min="1" step="1" placeholder="0"><div class="almox-inline-note">Esse valor sera somado ao saldo do item selecionado.</div></div>
 <div class="form-group"><label>Data da entrada *</label><input id="m-ent-data" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
@@ -6850,7 +6913,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="est-item-row" style="display:grid;grid-template-columns:2fr 55px 65px 1fr 28px;gap:4px;margin-bottom:6px">
     <input class="est-item-name" placeholder="Ex: Cimento CP II-32..." style="${inpSt}" value="${esc(est.item||'')}">
     <input class="est-item-qtd" type="number" step="1" placeholder="0" style="${inpSt};text-align:center" value="${est.qtd||''}">
-    <input class="est-item-unit" placeholder="un" style="${inpSt};text-align:center" value="${esc(est.unidade||'')}">
+    ${materialUnitSelect('est-item-unit',est.unidade||'un',`${inpSt};text-align:center`)}
     <input class="est-item-obs" placeholder="Obs..." style="${inpSt}" value="${esc(est.observacao_item||'')}">
     <div></div>
   </div>
@@ -6866,8 +6929,8 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     title=(m==='edit-pedido'?'Editar':'Novo')+' Pedido de Compra';
     const inpSt='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
     const existingItems=pd.itens||[];
-    const rowTpl=(it)=>'<div class="ped-item-row" style="display:grid;grid-template-columns:2fr 55px 55px 85px 1fr 28px;gap:4px;margin-bottom:6px"><input class="ped-item-desc" placeholder="Descrição..." style="'+inpSt+'" value="'+esc(typeof it==='string'?it:it.nome||'')+'"><input class="ped-item-qtd" type="number" placeholder="0" style="'+inpSt+';text-align:center" value="'+(it.qtd||'')+'"><input class="ped-item-unit" placeholder="un" style="'+inpSt+';text-align:center" value="'+esc(it.unidade||'')+'"><input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="'+inpSt+';text-align:right" value="'+(it.valor||'')+'" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="'+inpSt+'" value="'+esc(it.obs||'')+'"><button onclick="this.closest(\'.ped-item-row\').remove();window._calcPedidoTotal()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button></div>';
-    const emptyRow='<div class="ped-item-row" style="display:grid;grid-template-columns:2fr 55px 55px 85px 1fr 28px;gap:4px;margin-bottom:6px"><input class="ped-item-desc" placeholder="Descrição..." style="'+inpSt+'"><input class="ped-item-qtd" type="number" placeholder="0" style="'+inpSt+';text-align:center"><input class="ped-item-unit" placeholder="un" style="'+inpSt+';text-align:center"><input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="'+inpSt+';text-align:right" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="'+inpSt+'"><div></div></div>';
+    const rowTpl=(it)=>'<div class="ped-item-row" style="display:grid;grid-template-columns:2fr 55px 55px 85px 1fr 28px;gap:4px;margin-bottom:6px"><input class="ped-item-desc" placeholder="Descrição..." style="'+inpSt+'" value="'+esc(typeof it==='string'?it:it.nome||'')+'"><input class="ped-item-qtd" type="number" placeholder="0" style="'+inpSt+';text-align:center" value="'+(it.qtd||'')+'">'+materialUnitSelect('ped-item-unit',it.unidade||'un',inpSt+';text-align:center')+'<input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="'+inpSt+';text-align:right" value="'+(it.valor||'')+'" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="'+inpSt+'" value="'+esc(it.obs||'')+'"><button onclick="this.closest(\'.ped-item-row\').remove();window._calcPedidoTotal()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button></div>';
+    const emptyRow='<div class="ped-item-row" style="display:grid;grid-template-columns:2fr 55px 55px 85px 1fr 28px;gap:4px;margin-bottom:6px"><input class="ped-item-desc" placeholder="Descrição..." style="'+inpSt+'"><input class="ped-item-qtd" type="number" placeholder="0" style="'+inpSt+';text-align:center">'+materialUnitSelect('ped-item-unit','un',inpSt+';text-align:center')+'<input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="'+inpSt+';text-align:right" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="'+inpSt+'"><div></div></div>';
     const itemsHtml=existingItems.length>0?existingItems.map(rowTpl).join(''):emptyRow;
     const fornOpts=DB.fornecedores.map(f=>'<option value="'+esc(f.nome)+'">').join('');
     body=`<div>
@@ -7929,13 +7992,13 @@ window._addEstoqueRow=()=>{
   const st='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
   const row=document.createElement('div');row.className='est-item-row';
   row.style.cssText='display:grid;grid-template-columns:2fr 55px 65px 1fr 28px;gap:4px;margin-bottom:6px';
-  row.innerHTML='<input class="est-item-name" placeholder="Ex: Cimento..." style="'+st+'"><input class="est-item-qtd" type="number" step="1" placeholder="0" style="'+st+';text-align:center"><input class="est-item-unit" placeholder="un" style="'+st+';text-align:center"><input class="est-item-obs" placeholder="Obs..." style="'+st+'"><button onclick="this.closest(\'.est-item-row\').remove()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>';
+  row.innerHTML='<input class="est-item-name" placeholder="Ex: Cimento..." style="'+st+'"><input class="est-item-qtd" type="number" step="1" placeholder="0" style="'+st+';text-align:center">'+materialUnitSelect('est-item-unit','un',st+';text-align:center')+'<input class="est-item-obs" placeholder="Obs..." style="'+st+'"><button onclick="this.closest(\'.est-item-row\').remove()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>';
   list.appendChild(row);row.querySelector('.est-item-name').focus();
 };
 
 window._saveEstoque=async()=>{
   const rows=Array.from(document.querySelectorAll('.est-item-row'));
-  const items=rows.map(r=>({name:r.querySelector('.est-item-name')?.value?.trim(),qtd:r.querySelector('.est-item-qtd')?.value,unit:r.querySelector('.est-item-unit')?.value||'un',obs:r.querySelector('.est-item-obs')?.value?.trim()||''})).filter(i=>i.name&&i.qtd);
+  const items=rows.map(r=>({name:r.querySelector('.est-item-name')?.value?.trim(),qtd:r.querySelector('.est-item-qtd')?.value,unit:normalizeMaterialUnit(r.querySelector('.est-item-unit')?.value||'un'),obs:r.querySelector('.est-item-obs')?.value?.trim()||''})).filter(i=>i.name&&i.qtd);
   if(!items.length){toast('Adicione pelo menos um item com quantidade.','#ef4444');return;}
   const tipo=document.getElementById('m-etipo-val')?.value||document.getElementById('m-etipo')?.value||'Inventário';
   const obra=document.getElementById('m-eobra')?.value||'';
@@ -7960,7 +8023,7 @@ window._editEstoque=async(id)=>{
   const qtd=row?.querySelector('.est-item-qtd')?.value;
   if(!item||!qtd){toast('Preencha item e quantidade.','#ef4444');return;}
   const tipo=document.getElementById('m-etipo-val')?.value||document.getElementById('m-etipo')?.value||'Inventário';
-  const obj={obra:document.getElementById('m-eobra')?.value||'',item,qtd:Number(qtd),unidade:row?.querySelector('.est-item-unit')?.value||'un',tipo,numero_controle:document.getElementById('m-enum')?.value||'',responsavel:document.getElementById('m-eresp')?.value||'',observacao:[document.getElementById('m-eobsg')?.value||'',row?.querySelector('.est-item-obs')?.value?.trim()||''].filter(Boolean).join(' | '),entrada:document.getElementById('m-eentrada')?.value||null,saida:document.getElementById('m-esaida')?.value||null};
+  const obj={obra:document.getElementById('m-eobra')?.value||'',item,qtd:Number(qtd),unidade:normalizeMaterialUnit(row?.querySelector('.est-item-unit')?.value||'un'),tipo,numero_controle:document.getElementById('m-enum')?.value||'',responsavel:document.getElementById('m-eresp')?.value||'',observacao:[document.getElementById('m-eobsg')?.value||'',row?.querySelector('.est-item-obs')?.value?.trim()||''].filter(Boolean).join(' | '),entrada:document.getElementById('m-eentrada')?.value||null,saida:document.getElementById('m-esaida')?.value||null};
   const{error}=await sb.from('estoque').update(obj).eq('id',id);
   if(error){toast('Erro: '+error.message,'#ef4444');return;}
   DB.estoque=DB.estoque.map(e=>e.id===id?{...e,...obj}:e);
@@ -8015,7 +8078,7 @@ window._saveAlmoxEntrada=async(id)=>withAlmoxActionLock(async()=>{
   const min=Math.max(0,Number(document.getElementById('m-ent-min')?.value||0)||0);
   const data=document.getElementById('m-ent-data')?.value;
   const itemName=(document.getElementById('m-ent-item')?.value||selected?.item||'').trim();
-  const unidade=(document.getElementById('m-ent-unit')?.value||selected?.unidade||'un').trim()||'un';
+  const unidade=normalizeMaterialUnit(document.getElementById('m-ent-unit')?.value||selected?.unidade||'un');
   const obra=(document.getElementById('m-ent-obra')?.value||selected?.obra||'GLOBAL').trim()||'GLOBAL';
   const resp=document.getElementById('m-ent-resp')?.value||selected?.responsavel||'';
   const num=document.getElementById('m-ent-num')?.value?.trim()||selected?.numero_controle||'';
@@ -8115,7 +8178,7 @@ window._addPedidoRow=()=>{
   const st='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
   const row=document.createElement('div');row.className='ped-item-row';
   row.style.cssText='display:grid;grid-template-columns:2fr 55px 55px 85px 1fr 28px;gap:4px;margin-bottom:6px';
-  row.innerHTML=`<input class="ped-item-desc" placeholder="Descrição..." style="${st}"><input class="ped-item-qtd" type="number" placeholder="0" style="${st};text-align:center"><input class="ped-item-unit" placeholder="un" style="${st};text-align:center"><input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="${st};text-align:right" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="${st}"><button onclick="this.closest('.ped-item-row').remove();window._calcPedidoTotal()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>`;
+  row.innerHTML=`<input class="ped-item-desc" placeholder="Descrição..." style="${st}"><input class="ped-item-qtd" type="number" placeholder="0" style="${st};text-align:center">${materialUnitSelect('ped-item-unit','un',`${st};text-align:center`)}<input class="ped-item-valor" type="number" step="0.01" placeholder="0,00" style="${st};text-align:right" oninput="window._calcPedidoTotal()"><input class="ped-item-obs" placeholder="Obs..." style="${st}"><button onclick="this.closest('.ped-item-row').remove();window._calcPedidoTotal()" style="background:#200c0c;border:none;border-radius:7px;color:#f87171;cursor:pointer;font-size:16px;padding:0;width:28px">×</button>`;
   list.appendChild(row);row.querySelector('.ped-item-desc').focus();
 };
 
@@ -8135,7 +8198,7 @@ window._getPedidoItems=()=>{
   return Array.from(document.querySelectorAll('.ped-item-row')).map(r=>({
     nome:r.querySelector('.ped-item-desc')?.value?.trim()||'',
     qtd:parseFloat(r.querySelector('.ped-item-qtd')?.value)||0,
-    unidade:r.querySelector('.ped-item-unit')?.value||'un',
+    unidade:normalizeMaterialUnit(r.querySelector('.ped-item-unit')?.value||'un'),
     valor:parseFloat(r.querySelector('.ped-item-valor')?.value)||0,
     obs:r.querySelector('.ped-item-obs')?.value||''
   })).filter(i=>i.nome);
@@ -8154,7 +8217,7 @@ window._updatePedidoItem=async(pedidoId,index,field,value)=>{
   const items=normalizePedidoItems(pedido.itens||[]);
   if(!items[index])return;
   if(field==='qtd'||field==='valor')items[index][field]=value===''?'':Number(value);
-  else if(field==='unidade')items[index][field]=String(value||'').trim()||'un';
+  else if(field==='unidade')items[index][field]=normalizeMaterialUnit(value||'un');
   else items[index][field]=String(value||'').trim();
   const total=calcPedidoTotal(items);
   const ok=await savePedidoPatch(pedidoId,{itens:items,total});
