@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429163102">
+<meta name="jet-build" content="20260429170919">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4179,18 +4179,83 @@ function despesaDisplayDesc(item={}){
   }
   return desc;
 }
+function despesaCanonicalText(value='',kind='desc'){
+  let key=despImportTextKey(value);
+  if(kind==='loja'){
+    key=key.replace(/\b(s\s*a|sa|s\/a|ltda|me|eireli|epp|mei|comercio|servicos|servico|participacoes|industria)\b/g,' ');
+  }else{
+    key=key.replace(/\b(de|da|do|das|dos|a|o|os|as|e|para|pela|pelo)\b/g,' ');
+  }
+  return key.replace(/\s+/g,' ').trim();
+}
+function despesaDuplicateAmount(item={}){
+  const tipo=String(item.tipo||'Despesa');
+  const value=tipo==='Adiantamento'
+    ?(item.movimento_adiantamento??item.importCredit??item.entrada_adiantamento??item.valor_adiantamento)
+    :item.valor_conta;
+  const parsed=moneyNumber(value);
+  return parsed==null?null:Number(parsed);
+}
+function despesaDuplicateKey(item={}){
+  const tipo=String(item.tipo||'Despesa');
+  const amount=despesaDuplicateAmount(item);
+  const desc=despesaCanonicalText(despesaDisplayDesc(item)||item.descricao||'','desc');
+  const loja=despesaCanonicalText(item.loja||'','loja');
+  const nfe=despImportTextKey(item.nfe||'');
+  return[
+    item.obra||'',
+    item.data||'',
+    tipo,
+    amount!=null?amount.toFixed(2):'',
+    desc,
+    loja,
+    nfe
+  ].join('|');
+}
+function collapseDuplicateDespesaItems(items=[]){
+  const sorted=sortDespesaItems(items);
+  const groups=new Map();
+  const output=[];
+  const score=item=>(String(item.loja||'').trim()?4:0)+(String(item.nfe||'').trim()?2:0)+(typeof getDespesaFiles==='function'&&getDespesaFiles(item.id).length?16:0)+(String(item.created_at||item.id||'').trim()?1:0);
+  sorted.forEach(item=>{
+    if(String(item.tipo||'Despesa')==='Adiantamento'){
+      output.push(item);
+      return;
+    }
+    const amount=despesaDuplicateAmount(item);
+    if(amount==null||Math.abs(amount)<=0.005){
+      output.push(item);
+      return;
+    }
+    const key=despesaDuplicateKey(item);
+    const existing=groups.get(key);
+    if(!existing){
+      const row={...item,_source_ids:[item.id].filter(Boolean),_duplicate_count:1};
+      groups.set(key,row);
+      output.push(row);
+      return;
+    }
+    const mergedIds=[...new Set([...(existing._source_ids||[]),item.id].filter(Boolean))];
+    const chosen=score(item)>score(existing)?{...item}:existing;
+    Object.assign(existing,chosen,{
+      _source_ids:mergedIds,
+      _duplicate_count:mergedIds.length
+    });
+  });
+  return output;
+}
 function buildDespesaLedger(items=[]){
   let saldoAtual=0;
   let totalEntradas=0;
   const rows=[];
-  const sorted=sortDespesaItems(items);
+  const sorted=sortDespesaItems(collapseDuplicateDespesaItems(items));
   const adiantKey=item=>[item.data||'',despImportTextKey(item.descricao||'')].join('|');
   const hasExplicitCredit=item=>moneyNumber(item.movimento_adiantamento??item.importCredit)>0;
   const repScore=item=>(String(item.loja||'').trim()?4:0)+(String(item.nfe||'').trim()?2:0)+(typeof getDespesaFiles==='function'&&getDespesaFiles(item.id).length?8:0);
   for(let i=0;i<sorted.length;i++){
     let item=sorted[i];
     let isAdiant=String(item.tipo||'Despesa')==='Adiantamento';
-    let sourceIds=[item.id].filter(Boolean);
+    let sourceIds=(Array.isArray(item._source_ids)?item._source_ids:[item.id]).filter(Boolean);
     const descKey=despImportTextKey(item.descricao||'');
     if(isAdiant&&/^(saldo|saldo final|saldo total|total de creditos|total de créditos|total de despesas|tarifa|abatimento)/.test(descKey)){
       continue;
@@ -4209,7 +4274,7 @@ function buildDespesaLedger(items=[]){
         while(i+1<sorted.length&&String(sorted[i+1].tipo||'Despesa')==='Adiantamento'&&!hasExplicitCredit(sorted[i+1])&&adiantKey(sorted[i+1])===adiantKey(item)){
           group.push(sorted[++i]);
         }
-        sourceIds=group.map(x=>x.id).filter(Boolean);
+        sourceIds=[...new Set(group.flatMap(x=>Array.isArray(x._source_ids)?x._source_ids:[x.id]).filter(Boolean))];
         const rawMax=Math.max(...group.map(x=>Number(moneyNumber(x.valor_adiantamento)||0)));
         entradaAdiant=rawMax-totalEntradas>0.005?rawMax-totalEntradas:0;
         item=[...group].sort((a,b)=>repScore(b)-repScore(a))[0]||item;
@@ -4220,7 +4285,7 @@ function buildDespesaLedger(items=[]){
     }else if(conta>0){
       saldoAtual-=conta;
     }
-    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0,_source_ids:sourceIds};
+    const row={...item,tipo:isAdiant?'Adiantamento':'Despesa',valor_conta:conta||null,movimento_adiantamento:entradaAdiant||0,entrada_adiantamento:entradaAdiant||0,saldo:saldoAtual||0,_source_ids:sourceIds,_duplicate_count:sourceIds.length};
     row.descricao=despesaDisplayDesc(row)||row.descricao;
     rows.push(row);
   }
@@ -4541,8 +4606,7 @@ function despImportAttachFiles(draft,attachments=[],used=new Set()){
   return matches.map(a=>a.file).filter(Boolean);
 }
 function despImportDuplicateKey(item){
-  const value=item.tipo==='Adiantamento'?item.valor_adiantamento:item.valor_conta;
-  return[item.obra,item.data,despImportTextKey(item.descricao),despImportTextKey(item.loja),despImportTextKey(item.nfe),item.tipo,value!=null?Number(value).toFixed(2):''].join('|');
+  return despesaDuplicateKey(item);
 }
 function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
   const mainName=despImportMainSheetName(workbook);
@@ -4831,16 +4895,20 @@ function renderDespesas(despesas,obra){
     const saida=Number(item.valor_conta)||0;
     const entradaCell=isAdiant&&entrada>0?`<strong style="color:#22c55e">${fmtV(entrada)}</strong>`:'<span style="color:var(--text3)">—</span>';
     const saidaCell=!isAdiant&&saida>0?`<strong style="color:#ef4444">${fmtV(saida)}</strong>`:'<span style="color:var(--text3)">—</span>';
-    const sourceIds=(item._source_ids||[item.id]).filter(Boolean).join(',');
+    const sourceIdArr=[...new Set((item._source_ids||[item.id]).filter(Boolean))];
+    const sourceIds=sourceIdArr.join(',');
+    const fileCount=sourceIdArr.reduce((sum,id)=>sum+getDespesaFiles(id).length,0);
+    const fileOwnerId=sourceIdArr.find(id=>getDespesaFiles(id).length)||item.id;
+    const duplicateTag=sourceIdArr.length>1?` <span class="tag" title="Lançamento duplicado agrupado automaticamente">agrupado</span>`:'';
     return`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:7px 10px;white-space:nowrap;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px">${fmtD(item.data)}</td>
-<td style="padding:7px 10px;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}">${esc(item.descricao||'—')}</td>
+<td style="padding:7px 10px;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}">${esc(item.descricao||'—')}${duplicateTag}</td>
 <td style="padding:7px 10px;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(item.nfe||'—')}</td>
 <td style="padding:7px 10px;color:var(--text2)">${esc(item.loja||'—')}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${entradaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${saidaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap;font-weight:800;color:${item.saldo<0?'#ef4444':'#14956b'}">${fmtV(item.saldo)}</td>
-<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${item.id}')" title="Anexos">${getDespesaFiles(item.id).length?`Arquivos (${getDespesaFiles(item.id).length})`:'Anexar'}</button></td>
+<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${escJs(fileOwnerId)}')" title="Anexos">${fileCount?`Arquivos (${fileCount})`:'Anexar'}</button></td>
 <td style="padding:7px 10px;text-align:center"><div style="display:flex;gap:6px;justify-content:center;align-items:center"><button class="btn btn-secondary btn-sm" onclick="_openModal('edit-despesa',{id:'${escJs(item.id)}',entrada:${entrada},saida:${saida}})" title="Editar lançamento">${actionIconSvg('edit')} Editar</button><button class="btn btn-sm btn-danger btn-icon" onclick="_deleteDespesa('${escJs(item.id)}','${escJs(sourceIds)}')" title="Excluir com trava de segurança">${actionIconSvg('trash')}</button></div></td>
 </tr>`;
   }).join('');
