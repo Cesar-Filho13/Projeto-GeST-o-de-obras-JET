@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429170919">
+<meta name="jet-build" content="20260429204804">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4230,14 +4230,21 @@ function collapseDuplicateDespesaItems(items=[]){
     const key=despesaDuplicateKey(item);
     const existing=groups.get(key);
     if(!existing){
-      const row={...item,_source_ids:[item.id].filter(Boolean),_duplicate_count:1};
+      const row={...item,_source_ids:[item.id].filter(Boolean),_duplicate_count:1,_group_amount_total:amount};
       groups.set(key,row);
       output.push(row);
       return;
     }
     const mergedIds=[...new Set([...(existing._source_ids||[]),item.id].filter(Boolean))];
+    const attachedOwners=mergedIds.filter(id=>typeof getDespesaFiles==='function'&&getDespesaFiles(id).length).length;
+    const existingTotal=Number(existing._group_amount_total??despesaDuplicateAmount(existing)??0);
+    // Se há comprovantes distintos, o agrupamento representa várias despesas iguais no mesmo dia.
+    // Se não há anexos, tratamos como espelho/duplicidade de importação e não dobramos o valor.
+    const mergedAmount=attachedOwners>1?existingTotal+amount:Math.max(existingTotal,amount);
     const chosen=score(item)>score(existing)?{...item}:existing;
     Object.assign(existing,chosen,{
+      valor_conta:mergedAmount,
+      _group_amount_total:mergedAmount,
       _source_ids:mergedIds,
       _duplicate_count:mergedIds.length
     });
@@ -4898,8 +4905,7 @@ function renderDespesas(despesas,obra){
     const sourceIdArr=[...new Set((item._source_ids||[item.id]).filter(Boolean))];
     const sourceIds=sourceIdArr.join(',');
     const fileCount=sourceIdArr.reduce((sum,id)=>sum+getDespesaFiles(id).length,0);
-    const fileOwnerId=sourceIdArr.find(id=>getDespesaFiles(id).length)||item.id;
-    const duplicateTag=sourceIdArr.length>1?` <span class="tag" title="Lançamento duplicado agrupado automaticamente">agrupado</span>`:'';
+    const duplicateTag=sourceIdArr.length>1?` <span class="tag" title="Comprovantes semelhantes agrupados; o valor exibido é a soma quando há anexos distintos">${sourceIdArr.length} comprov.</span>`:'';
     return`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:7px 10px;white-space:nowrap;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px">${fmtD(item.data)}</td>
 <td style="padding:7px 10px;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}">${esc(item.descricao||'—')}${duplicateTag}</td>
@@ -4908,7 +4914,7 @@ function renderDespesas(despesas,obra){
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${entradaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${saidaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap;font-weight:800;color:${item.saldo<0?'#ef4444':'#14956b'}">${fmtV(item.saldo)}</td>
-<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${escJs(fileOwnerId)}')" title="Anexos">${fileCount?`Arquivos (${fileCount})`:'Anexar'}</button></td>
+<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${escJs(item.id)}','${escJs(sourceIds)}')" title="Anexos">${fileCount?`Arquivos (${fileCount})`:'Anexar'}</button></td>
 <td style="padding:7px 10px;text-align:center"><div style="display:flex;gap:6px;justify-content:center;align-items:center"><button class="btn btn-secondary btn-sm" onclick="_openModal('edit-despesa',{id:'${escJs(item.id)}',entrada:${entrada},saida:${saida}})" title="Editar lançamento">${actionIconSvg('edit')} Editar</button><button class="btn btn-sm btn-danger btn-icon" onclick="_deleteDespesa('${escJs(item.id)}','${escJs(sourceIds)}')" title="Excluir com trava de segurança">${actionIconSvg('trash')}</button></div></td>
 </tr>`;
   }).join('');
@@ -6827,9 +6833,10 @@ ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><in
     onSave=desp?`_saveDespesaEdit()`:`_closeModal()`;
   }
   else if(m==='desp-files'){
-    const desp=DB.despesas.find(x=>x.id===d.id);
+    const sourceIds=[...new Set(String(d.sourceIds||d.id||'').split(',').map(s=>s.trim()).filter(Boolean))];
+    const desp=DB.despesas.find(x=>x.id===d.id)||DB.despesas.find(x=>sourceIds.includes(x.id));
     title='Arquivos do Lancamento';
-    body=desp?renderDespesaFilesPanel(desp):`<div class="empty-state"><p>Lancamento nao encontrado.</p></div>`;
+    body=desp?renderDespesaFilesPanel(desp,sourceIds):`<div class="empty-state"><p>Lancamento nao encontrado.</p></div>`;
     onSave=`_closeModal()`;
   }
   else if(m==='import-despesas'){
@@ -8636,9 +8643,12 @@ window._rdoRemoveFoto=(idx)=>{
 };
 
 function sanitizeStorageName(name){return String(name||'arquivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_');}
-function renderDespesaFilesPanel(item){
-  const files=getDespesaFiles(item?.id||'');
-  return `<div><div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${item.id}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${item.id}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
+function renderDespesaFilesPanel(item,sourceIds=[]){
+  const ids=[...new Set((sourceIds.length?sourceIds:[item?.id]).filter(Boolean))];
+  const uploadId=item?.id||ids[0]||'';
+  const files=ids.flatMap(ownerId=>getDespesaFiles(ownerId).map(file=>({...file,_ownerId:ownerId})));
+  const groupedNote=ids.length>1?`<div style="margin:0 0 10px;padding:10px 12px;border:1px solid rgba(96,165,250,.22);border-radius:10px;background:rgba(59,130,246,.08);font-size:12px;color:var(--text2)">Este lançamento agrupa ${ids.length} comprovante(s). Todos os anexos aparecem abaixo.</div>`:'';
+  return `<div>${groupedNote}<div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${uploadId}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}${ids.length>1?` · origem ${ids.indexOf(file._ownerId)+1}`:''}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${file._ownerId}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
 }
 function renderMaterialReqFilesPanel(reqKey){
   const files=getMaterialReqFiles(reqKey);
@@ -8689,7 +8699,7 @@ async function saveMaterialReqFilesForKey(reqKey,files){
   if(uploaded)toast(`${uploaded} anexo(s) vinculado(s) à solicitação.`,'#22c55e');
   return uploaded===queue.length;
 }
-window._openDespesaFiles=id=>{S.modal='desp-files';S.modalData={id};renderApp();};
+window._openDespesaFiles=(id,sourceIds='')=>{S.modal='desp-files';S.modalData={id,sourceIds};renderApp();};
 window._uploadDespesaFiles=async(e,id)=>{await saveDespesaFilesForId(id,e?.target?.files||[]);if(e?.target)e.target.value='';renderApp();};
 window._removeDespesaFile=async(id,fileId)=>{
   if(!confirm('Remover arquivo deste lançamento?'))return;
@@ -8796,9 +8806,9 @@ window._saveDespesaEdit=async()=>{
     patch.valor_conta=null;
     patch.valor_adiantamento=before+valor;
   }else{
-    patch.valor_conta=valor;
+    patch.valor_conta=sourceIds.length>1?Number((valor/sourceIds.length).toFixed(2)):valor;
   }
-  const targetIds=isAdiant&&sourceIds.length?sourceIds:[id];
+  const targetIds=sourceIds.length>1?sourceIds:[id];
   const query=targetIds.length>1?sb.from('despesas').update(patch).in('id',targetIds):sb.from('despesas').update(patch).eq('id',id);
   const{error}=await query;
   if(error){toast('Erro ao atualizar: '+error.message,'#ef4444');return;}
