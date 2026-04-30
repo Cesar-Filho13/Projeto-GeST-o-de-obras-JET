@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430054401">
+<meta name="jet-build" content="20260430060129">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1841,14 +1841,10 @@ async function loadRemoteDespesaFiles(){
       if(/not found|404/i.test(msg)){DB.despesaFiles=localMap;return;}
       throw error;
     }
-    const remoteMap=cleanDespesaFileMap(JSON.parse(await data.text()));
-    // Protege contra perda por abas/navegadores defasados: nunca deixa o JSON remoto apagar anexos locais válidos.
-    const merged=mergeDespesaFileMaps(remoteMap,localMap);
-    DB.despesaFiles=merged;
+    // Fonte de verdade: Storage remoto. LocalStorage serve só como fallback se o remoto falhar.
+    // Isso evita que um anexo removido volte sozinho por cache antigo do navegador.
+    DB.despesaFiles=cleanDespesaFileMap(JSON.parse(await data.text()));
     saveLocalDespesaFiles(DB.despesaFiles);
-    if(JSON.stringify(merged)!==JSON.stringify(remoteMap)){
-      await saveRemoteDespesaFiles(merged,{silent:true,mergeRemote:false});
-    }
   }catch(err){
     DB.despesaFiles=localMap;
     console.warn('[JET] Arquivos de adiantamento não carregados:',err?.message||err);
