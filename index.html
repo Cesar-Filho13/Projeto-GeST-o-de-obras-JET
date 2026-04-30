@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430071238">
+<meta name="jet-build" content="20260430091923">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4321,6 +4321,117 @@ function getUniqueDespesaFilesForIds(ids=[]){
   });
   return files;
 }
+function isMetroDespesaItem(item={}){
+  const key=despImportTextKey([item.descricao,item.loja,item.nfe].filter(Boolean).join(' '));
+  return /\b(metro|metr[oô]|autopass|bilhete|transporte)\b/.test(key);
+}
+function despesaFileDateISO(file={}){
+  const raw=String([file.name,file.path,file.url].filter(Boolean).join(' '));
+  const iso=raw.match(/(20\d{2})[-_](\d{2})[-_](\d{2})/);
+  if(iso)return`${iso[1]}-${iso[2]}-${iso[3]}`;
+  return'';
+}
+function groupDespesaFilesByDate(files=[]){
+  const groups=new Map();
+  (files||[]).forEach(file=>{
+    const date=despesaFileDateISO(file);
+    if(!date)return;
+    if(!groups.has(date))groups.set(date,[]);
+    groups.get(date).push(file);
+  });
+  return[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([date,items])=>({date,files:items}));
+}
+function canSplitMetroDespesaFiles(item={},files=[]){
+  if(String(item.tipo||'Despesa')==='Adiantamento'||!isMetroDespesaItem(item))return false;
+  const unique=(files||[]).filter(Boolean);
+  if(unique.length<2)return false;
+  const groups=groupDespesaFilesByDate(unique);
+  if(groups.length<2)return false;
+  if(groups.reduce((sum,g)=>sum+g.files.length,0)!==unique.length)return false;
+  const amount=Number(despesaDuplicateAmount(item)||0);
+  const each=amount/unique.length;
+  return amount>0&&Number.isFinite(each)&&each>0.005&&Math.abs(each*unique.length-amount)<0.02;
+}
+function splitMetroDespesaDraftByFiles(draft={}){
+  const files=[...(draft.files||[])];
+  if(!canSplitMetroDespesaFiles(draft,files))return[draft];
+  const perFile=Number(((Number(draft.valor_conta)||0)/files.length).toFixed(2));
+  return groupDespesaFilesByDate(files).map((group,idx)=>({
+    ...draft,
+    id:idx===0?draft.id:uid(),
+    data:group.date,
+    valor_conta:Number((perFile*group.files.length).toFixed(2)),
+    valor_adiantamento:null,
+    files:group.files,
+    _split_from:draft.id
+  }));
+}
+function findGroupedMetroDespesaTargets(items=[]){
+  return(Array.isArray(items)?items:[]).filter(item=>{
+    const files=getUniqueDespesaFilesForIds([item.id]).map(cleanDespesaFile);
+    return canSplitMetroDespesaFiles(item,files);
+  });
+}
+async function repairGroupedMetroDespesas(obra='',{silent=false}={}){
+  if(window._metroDespRepairRunning)return 0;
+  const scope=(DB.despesas||[]).filter(d=>!obra||d.obra===obra);
+  const targets=findGroupedMetroDespesaTargets(scope);
+  if(!targets.length)return 0;
+  window._metroDespRepairRunning=true;
+  try{
+    const backup={createdAt:new Date().toISOString(),targets:targets.map(t=>({...t,files:getDespesaFiles(t.id)})),fileMap:DB.despesaFiles||{}};
+    try{localStorage.setItem(`jet-metro-despesa-split-backup-${Date.now()}`,JSON.stringify(backup));}catch{}
+    const nextFileMap={...(DB.despesaFiles||{})};
+    const changedIds=[];
+    const inserts=[];
+    for(const target of targets){
+      const files=getUniqueDespesaFilesForIds([target.id]).map(cleanDespesaFile);
+      const groups=groupDespesaFilesByDate(files);
+      if(groups.length<2)continue;
+      const perFile=Number(((Number(target.valor_conta)||0)/files.length).toFixed(2));
+      const first=groups[0];
+      const patch={data:first.date,valor_conta:Number((perFile*first.files.length).toFixed(2)),valor_adiantamento:null};
+      const{error:updateError}=await sb.from('despesas').update(patch).eq('id',target.id);
+      if(updateError)throw updateError;
+      DB.despesas=(DB.despesas||[]).map(row=>row.id===target.id?{...row,...patch}:row);
+      nextFileMap[target.id]=first.files.map(cleanDespesaFile);
+      changedIds.push(target.id);
+      groups.slice(1).forEach(group=>{
+        const newId=uid();
+        const row={...target,id:newId,data:group.date,valor_conta:Number((perFile*group.files.length).toFixed(2)),valor_adiantamento:null,tipo:'Despesa'};
+        delete row.created_at;delete row._source_ids;delete row._duplicate_count;delete row._group_amount_total;
+        inserts.push(row);
+        nextFileMap[newId]=group.files.map(cleanDespesaFile);
+        changedIds.push(newId);
+      });
+    }
+    if(inserts.length){
+      const{error:insertError}=await sb.from('despesas').insert(inserts);
+      if(insertError)throw insertError;
+      DB.despesas.push(...inserts);
+    }
+    DB.despesas.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    await saveRemoteDespesaFiles(nextFileMap,{silent:true,replaceIds:changedIds});
+    if(!silent)toast(`Corrigi ${targets.length} lançamento(s) de metrô agrupado(s) por datas diferentes.`,'#22c55e');
+    return targets.length;
+  }catch(err){
+    console.warn('[JET] Falha ao corrigir metrô agrupado:',err?.message||err);
+    if(!silent)toast(`Não consegui corrigir os agrupamentos automaticamente: ${err?.message||err}`,'#ef4444');
+    return 0;
+  }finally{
+    window._metroDespRepairRunning=false;
+  }
+}
+function scheduleGroupedMetroDespesaRepair(despesas=[],obra=''){
+  const targets=findGroupedMetroDespesaTargets(despesas);
+  if(!targets.length||window._metroDespRepairRunning)return'';
+  const fingerprint=targets.map(t=>`${t.id}:${Number(t.valor_conta)||0}:${getUniqueDespesaFilesForIds([t.id]).map(f=>despesaFileMergeKey(f)).join(',')}`).join('|');
+  const key=`jet-metro-despesa-split-v1:${obra}:${fingerprint}`;
+  if(sessionStorage.getItem(key))return'';
+  sessionStorage.setItem(key,'1');
+  setTimeout(()=>repairGroupedMetroDespesas(obra,{silent:false}).then(()=>renderApp()),400);
+  return`<div style="margin:0 0 12px;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.10);color:var(--text2);font-size:12px"><strong style="color:#f59e0b">Correção automática:</strong> encontrei comprovantes de metrô agrupados com datas diferentes e estou separando em lançamentos individuais.</div>`;
+}
 function collapseDuplicateDespesaItems(items=[]){
   const sorted=sortDespesaItems(items);
   const groups=new Map();
@@ -4824,7 +4935,7 @@ function despImportBuildDrafts(workbook,zipFiles,obra,responsavel){
       importCredit,sourceRow:i+1,files:[]
     };
     draft.files=despImportAttachFiles(draft,attachments,usedFiles);
-    drafts.push(draft);
+    drafts.push(...splitMetroDespesaDraftByFiles(draft));
   }
   return{drafts,attachments,mainName};
 }
@@ -4995,6 +5106,7 @@ window._despExportPDF=(obra,dt)=>{
 // ─── ADIANTAMENTO DE DESPESAS ─────────────────────────────────────────────
 function renderDespesas(despesas,obra){
   if(!window._despCollapsed)window._despCollapsed={};
+  const repairNotice=scheduleGroupedMetroDespesaRepair(despesas,obra);
   const ledger=buildDespesaLedger(despesas);
   const byMonth={};
   ledger.forEach(item=>{const month=(item.data||'9999-99').slice(0,7);if(!byMonth[month])byMonth[month]=[];byMonth[month].push(item);});
@@ -5048,7 +5160,7 @@ function renderDespesas(despesas,obra){
 ${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1040px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:100px">Data</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:90px">NFe Nº</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Loja</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Entrada PIX</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;text-align:right;width:120px">Saída</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right;width:130px">Saldo</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:120px">Anexos</th><th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:center;width:150px">Ações</th></tr></thead><tbody>${rows(items)}</tbody><tfoot><tr style="border-top:2px solid var(--border2);background:rgba(79,140,255,.04)"><td colspan="4" style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--text3)">TOTAL ${despesaMonthLabel(month)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#22c55e">${fmtV(mAdiant)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#ef4444">${fmtV(mTotalConta)}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:${mSaldo<0?'#ef4444':'#14956b'}">${fmtV(mSaldo)}</td><td></td><td></td></tr></tfoot></table></div>`}
 </div>`;
   }).join('');
-  return`<div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#22c55e;border-radius:10px 0 0 10px"></div><div class="stat-label">Entradas PIX</div><div class="stat-value" style="color:#22c55e">${fmtV(totalAdiant)}</div><div class="stat-sub">${pixCount} adiantamento${pixCount!==1?'s':''} recebido${pixCount!==1?'s':''}</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ef4444;border-radius:10px 0 0 10px"></div><div class="stat-label">Saídas</div><div class="stat-value" style="color:#ef4444">${fmtV(totalConta)}</div><div class="stat-sub">Despesas pagas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Entradas menos saídas</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
+  return`<div>${repairNotice}<div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#22c55e;border-radius:10px 0 0 10px"></div><div class="stat-label">Entradas PIX</div><div class="stat-value" style="color:#22c55e">${fmtV(totalAdiant)}</div><div class="stat-sub">${pixCount} adiantamento${pixCount!==1?'s':''} recebido${pixCount!==1?'s':''}</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ef4444;border-radius:10px 0 0 10px"></div><div class="stat-label">Saídas</div><div class="stat-value" style="color:#ef4444">${fmtV(totalConta)}</div><div class="stat-sub">Despesas pagas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Entradas menos saídas</div></div></div><div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" onclick="_openModal('new-adiantamento')">+ Adiantamento</button><button class="btn btn-primary" onclick="_openModal('new-despesa')">+ Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-primary" onclick="_openModal('new-adiantamento')">+ Primeiro Adiantamento</button></div>`:groups}</div>`;
 }
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
