@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430122114">
+<meta name="jet-build" content="20260430171308">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4660,11 +4660,25 @@ function scheduleGroupedMetroDespesaRepair(despesas=[],obra=''){
   setTimeout(()=>repairGroupedMetroDespesas(obra,{silent:false}).then(()=>renderApp()),400);
   return`<div style="margin:0 0 12px;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.10);color:var(--text2);font-size:12px"><strong style="color:#f59e0b">Correção automática:</strong> encontrei comprovantes de metrô agrupados com datas diferentes e estou separando em lançamentos individuais.</div>`;
 }
+function despesaFileSignatureSetForIds(ids=[]){
+  return new Set(getUniqueDespesaFilesForIds(ids).map(despesaFileMergeKey).filter(Boolean));
+}
+function despesaSetsOverlap(a=new Set(),b=new Set()){
+  for(const value of a){if(b.has(value))return true;}
+  return false;
+}
 function collapseDuplicateDespesaItems(items=[]){
   const sorted=sortDespesaItems(items);
   const groups=new Map();
   const output=[];
   const score=item=>(String(item.loja||'').trim()?4:0)+(String(item.nfe||'').trim()?2:0)+(typeof getDespesaFiles==='function'&&getDespesaFiles(item.id).length?16:0)+(String(item.created_at||item.id||'').trim()?1:0);
+  const pushAsIndependent=(item,amount,key)=>{
+    const row={...item,_source_ids:[item.id].filter(Boolean),_duplicate_count:1,_group_amount_total:amount};
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(row);
+    output.push(row);
+    return row;
+  };
   sorted.forEach(item=>{
     if(String(item.tipo||'Despesa')==='Adiantamento'){
       output.push(item);
@@ -4676,18 +4690,27 @@ function collapseDuplicateDespesaItems(items=[]){
       return;
     }
     const key=despesaDuplicateKey(item);
-    const existing=groups.get(key);
+    const itemIds=[item.id].filter(Boolean);
+    const itemSigs=despesaFileSignatureSetForIds(itemIds);
+    const candidates=groups.get(key)||[];
+    const existing=candidates.find(row=>{
+      const existingSigs=despesaFileSignatureSetForIds(row._source_ids||[row.id].filter(Boolean));
+      return existingSigs.size>0&&itemSigs.size>0&&despesaSetsOverlap(existingSigs,itemSigs);
+    });
+    // Financeiro não pode perder valor por semelhança de texto/data/valor.
+    // Só agrupamos quando há prova forte: o MESMO arquivo/comprovante já está em outro lançamento.
     if(!existing){
-      const row={...item,_source_ids:[item.id].filter(Boolean),_duplicate_count:1,_group_amount_total:amount};
-      groups.set(key,row);
-      output.push(row);
+      pushAsIndependent(item,amount,key);
       return;
     }
-    const mergedIds=[...new Set([...(existing._source_ids||[]),item.id].filter(Boolean))];
-    const uniqueFileCount=typeof getDespesaFiles==='function'?getUniqueDespesaFilesForIds(mergedIds).length:0;
-    const existingTotal=Number(existing._group_amount_total??despesaDuplicateAmount(existing)??0);
-    // Comprovante repetido não dobra valor. Comprovantes distintos no mesmo grupo somam.
-    const mergedAmount=uniqueFileCount>0?amount*uniqueFileCount:Math.max(existingTotal,amount);
+    const previousIds=(existing._source_ids||[]).filter(Boolean);
+    const previousFiles=getUniqueDespesaFilesForIds(previousIds);
+    const previousFileCount=previousFiles.length||1;
+    const existingTotal=Number(existing._group_amount_total??despesaDuplicateAmount(existing)??amount);
+    const perFile=previousFileCount>0?existingTotal/previousFileCount:amount;
+    const mergedIds=[...new Set([...previousIds,...itemIds])];
+    const uniqueFileCount=getUniqueDespesaFilesForIds(mergedIds).length;
+    const mergedAmount=uniqueFileCount>0?Number((perFile*uniqueFileCount).toFixed(2)):Math.max(existingTotal,amount);
     const chosen=score(item)>score(existing)?{...item}:existing;
     Object.assign(existing,chosen,{
       valor_conta:mergedAmount,
