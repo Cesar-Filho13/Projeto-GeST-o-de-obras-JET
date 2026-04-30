@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429215427">
+<meta name="jet-build" content="20260430054401">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1629,6 +1629,23 @@ function saveLocalHomeNotices(list){
 }
 function cleanDespesaFile(file={}){return{id:String(file?.id||uid()),name:String(file?.name||file?.nome||'').trim(),size:Number(file?.size||0)||0,path:String(file?.path||'').trim(),url:String(file?.url||'').trim()};}
 function cleanDespesaFileMap(map={}){const out={};Object.entries(map||{}).forEach(([despId,files])=>{const cleaned=(Array.isArray(files)?files:[]).map(cleanDespesaFile).filter(f=>f.name&&f.path&&f.url);if(cleaned.length)out[despId]=cleaned;});return out;}
+function despesaFileMergeKey(file={}){return String(file.path||'').trim()||`${despImportFileKey(file.name||'')}|${Number(file.size||0)||0}`;}
+function mergeDespesaFileMaps(...maps){
+  const out={};
+  maps.map(cleanDespesaFileMap).forEach(map=>{
+    Object.entries(map).forEach(([despId,files])=>{
+      if(!out[despId])out[despId]=[];
+      const seen=new Set(out[despId].map(despesaFileMergeKey));
+      files.forEach(file=>{
+        const key=despesaFileMergeKey(file);
+        if(!key||seen.has(key))return;
+        seen.add(key);
+        out[despId].push(file);
+      });
+    });
+  });
+  return cleanDespesaFileMap(out);
+}
 function getLocalDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem('jet-despesa-files')||'{}'));}catch{return{};}}
 function saveLocalDespesaFiles(map){localStorage.setItem('jet-despesa-files',JSON.stringify(cleanDespesaFileMap(map)));}
 function normalizeMaterialUnit(value='un'){
@@ -1816,31 +1833,57 @@ async function saveRemotePropostas(list,{silent=false}={}){
   }
 }
 async function loadRemoteDespesaFiles(){
+  const localMap=getLocalDespesaFiles();
   try{
     const {data,error}=await sb.storage.from(BUCKET).download(DESPESA_FILES_PATH);
     if(error){
       const msg=String(error.message||'');
-      if(/not found|404/i.test(msg)){DB.despesaFiles=getLocalDespesaFiles();return;}
+      if(/not found|404/i.test(msg)){DB.despesaFiles=localMap;return;}
       throw error;
     }
-    DB.despesaFiles=cleanDespesaFileMap(JSON.parse(await data.text()));
+    const remoteMap=cleanDespesaFileMap(JSON.parse(await data.text()));
+    // Protege contra perda por abas/navegadores defasados: nunca deixa o JSON remoto apagar anexos locais válidos.
+    const merged=mergeDespesaFileMaps(remoteMap,localMap);
+    DB.despesaFiles=merged;
     saveLocalDespesaFiles(DB.despesaFiles);
+    if(JSON.stringify(merged)!==JSON.stringify(remoteMap)){
+      await saveRemoteDespesaFiles(merged,{silent:true,mergeRemote:false});
+    }
   }catch(err){
-    DB.despesaFiles=getLocalDespesaFiles();
+    DB.despesaFiles=localMap;
     console.warn('[JET] Arquivos de adiantamento não carregados:',err?.message||err);
   }
 }
-async function saveRemoteDespesaFiles(map,{silent=false}={}){
+async function saveRemoteDespesaFiles(map,{silent=false,mergeRemote=true,replaceIds=[]}={}){
   const cleaned=cleanDespesaFileMap(map);
-  DB.despesaFiles={...cleaned};
-  saveLocalDespesaFiles(DB.despesaFiles);
+  const forceIds=[...new Set((replaceIds||[]).filter(Boolean).map(String))];
+  let finalMap=cleaned;
   try{
-    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    if(mergeRemote){
+      try{
+        const {data,error}=await sb.storage.from(BUCKET).download(DESPESA_FILES_PATH);
+        if(!error&&data){
+          const remoteMap=cleanDespesaFileMap(JSON.parse(await data.text()));
+          finalMap=mergeDespesaFileMaps(remoteMap,cleaned);
+          forceIds.forEach(id=>{
+            if(cleaned[id]?.length)finalMap[id]=cleaned[id];
+            else delete finalMap[id];
+          });
+        }
+      }catch(err){
+        console.warn('[JET] Merge remoto de anexos ignorado:',err?.message||err);
+      }
+    }
+    DB.despesaFiles={...finalMap};
+    saveLocalDespesaFiles(DB.despesaFiles);
+    const blob=new Blob([JSON.stringify(finalMap,null,2)],{type:'application/json'});
     const {error}=await sb.storage.from(BUCKET).upload(DESPESA_FILES_PATH,blob,{upsert:true,contentType:'application/json'});
     if(error)throw error;
     return true;
   }catch(err){
     console.warn('[JET] Arquivos de adiantamento não salvos:',err?.message||err);
+    DB.despesaFiles={...cleaned};
+    saveLocalDespesaFiles(DB.despesaFiles);
     if(!silent)toast('Arquivos salvos apenas neste aparelho. A sincronização online falhou.','#f59e0b');
     return false;
   }
@@ -5000,7 +5043,7 @@ window._deleteDespesa=async(id,sourceIdsCsv='')=>{
   DB.despesas=DB.despesas.filter(d=>!ids.includes(d.id));
   const files={...(DB.despesaFiles||{})};
   ids.forEach(x=>delete files[x]);
-  await saveRemoteDespesaFiles(files,{silent:true});
+  await saveRemoteDespesaFiles(files,{silent:true,replaceIds:ids});
   toast('Lançamento excluído com segurança.','#22c55e');
   renderApp();
 };
@@ -8730,8 +8773,8 @@ async function saveDespesaFilesForId(despId,files){
     next.push(cleanDespesaFile({id:uid(),name:file.name,size:file.size||0,path,url:ud.publicUrl}));
     uploaded++;
   }
-  await saveRemoteDespesaFiles({...DB.despesaFiles,[despId]:next},{silent:true});
-  if(uploaded)toast(`${uploaded} arquivo(s) vinculado(s) ao lançamento.`,'#22c55e');
+  const synced=await saveRemoteDespesaFiles({...DB.despesaFiles,[despId]:next},{silent:true});
+  if(uploaded)toast(synced?`${uploaded} arquivo(s) vinculado(s) ao lançamento e salvo(s) online.`:`${uploaded} arquivo(s) salvo(s) neste aparelho. A sincronização online falhou.` ,synced?'#22c55e':'#f59e0b');
   return uploaded===queue.length;
 }
 async function saveMaterialReqFilesForKey(reqKey,files){
@@ -8773,7 +8816,7 @@ window._removeDespesaFile=async(id,fileId)=>{
   const next=current.filter(item=>item.id!==fileId);
   const map={...DB.despesaFiles};
   if(next.length)map[id]=next;else delete map[id];
-  await saveRemoteDespesaFiles(map,{silent:true});
+  await saveRemoteDespesaFiles(map,{silent:true,replaceIds:[id]});
   toast('Arquivo removido.','#f59e0b');
   renderApp();
 };
