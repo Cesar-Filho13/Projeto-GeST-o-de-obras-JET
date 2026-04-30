@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430091923">
+<meta name="jet-build" content="20260430122114">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4321,6 +4321,53 @@ function getUniqueDespesaFilesForIds(ids=[]){
   });
   return files;
 }
+const METRO_RECEIPT_REFERENCE={
+  "00003794-PHOTO-2026-02-28-21-05-02.jpg":{data:"2026-02-28",descricao:"Passagem metr\u00f4 Pade",valor:54.00},
+  "00003791-PHOTO-2026-02-28-21-01-08.jpg":{data:"2026-02-28",descricao:"Passagem metr\u00f4 Vell",valor:54.00},
+  "00003796-PHOTO-2026-02-28-21-12-52.jpg":{data:"2026-02-28",descricao:"Metr\u00f4 Nicassio",valor:54.00},
+  "00003792-PHOTO-2026-02-28-21-02-08.jpg":{data:"2026-02-28",descricao:"Passagem metr\u00f4 Nilson",valor:54.00},
+  "00003968-PHOTO-2026-03-03-19-45-44.jpg":{data:"2026-03-03",descricao:"Passagem metr\u00f4 Ney",valor:54.00},
+  "00003984-PHOTO-2026-03-03-20-38-42.jpg":{data:"2026-03-03",descricao:"Metro de Alan",valor:54.00},
+  "00004046-PHOTO-2026-03-05-20-42-45.jpg":{data:"2026-03-05",descricao:"Metr\u00f4 Vell",valor:54.00},
+  "00004204-PHOTO-2026-03-10-10-07-32.jpg":{data:"2026-03-10",descricao:"Comprovante de metr\u00f4 C\u00e9sar",valor:54.00},
+  "00004327-PHOTO-2026-03-13-19-49-31.jpg":{data:"2026-03-13",descricao:"Metr\u00f4 Dicio",valor:54.00},
+  "00004372-PHOTO-2026-03-14-18-52-37.jpg":{data:"2026-03-14",descricao:"Metr\u00f4 Cotia",valor:54.00},
+  "00004384-PHOTO-2026-03-14-23-13-31.jpg":{data:"2026-03-14",descricao:"Metr\u00f4 Alan",valor:54.00},
+  "00004418-PHOTO-2026-03-16-12-28-20.jpg":{data:"2026-03-16",descricao:"Casa metr\u00f4",valor:25.99},
+  "00004427-PHOTO-2026-03-16-12-50-52.jpg":{data:"2026-03-16",descricao:"Metr\u00f4 Pade",valor:54.00},
+  "00004476-PHOTO-2026-03-16-23-34-38.jpg":{data:"2026-03-16",descricao:"Metr\u00f4 - Casa",valor:15.98},
+  "00004460-PHOTO-2026-03-16-16-59-54.jpg":{data:"2026-03-16",descricao:"Metr\u00f4 C\u00e9sar",valor:54.00},
+  "00004428-PHOTO-2026-03-16-12-51-55.jpg":{data:"2026-03-16",descricao:"Metr\u00f4 nen\u00e9m",valor:54.00},
+  "00004521-PHOTO-2026-03-17-12-33-33.jpg":{data:"2026-03-17",descricao:"Casa - Metr\u00f4",valor:54.00},
+  "00004522-PHOTO-2026-03-17-12-33-35.jpg":{data:"2026-03-17",descricao:"Casa - Metr\u00f4",valor:54.00},
+  "00004625-PHOTO-2026-03-18-12-52-12.jpg":{data:"2026-03-18",descricao:"Metr\u00f4 nenem",valor:54.00},
+  "00004628-PHOTO-2026-03-18-13-34-45.jpg":{data:"2026-03-18",descricao:"Metr\u00f4 Janderson",valor:54.00},
+  "00004624-PHOTO-2026-03-18-12-51-09.jpg":{data:"2026-03-18",descricao:"Metr\u00f4 Nilson",valor:54.00},
+  "00004619-PHOTO-2026-03-18-12-32-38.jpg":{data:"2026-03-18",descricao:"Metr\u00f4 Rafael",valor:54.00},
+  "2026-03-19_autopass_5.40.png":{data:"2026-03-19",descricao:"Comprovante Autopass (upload avulso)",valor:5.40},
+  "00004704-PHOTO-2026-03-19-05-38-54.jpg":{data:"2026-03-19",descricao:"Metr\u00f4 Ney",valor:54.00},
+  "00004807-PHOTO-2026-03-21-10-25-49.jpg":{data:"2026-03-21",descricao:"Comprovante metr\u00f4 Dicio",valor:54.00},
+  "00004820-PHOTO-2026-03-23-09-55-05.jpg":{data:"2026-03-23",descricao:"Metr\u00f4 C\u00e9sar",valor:54.00},
+  "00004874-PHOTO-2026-03-23-20-04-35.jpg":{data:"2026-03-23",descricao:"Metr\u00f4 Rai",valor:54.00},
+  "00005365-PHOTO-2026-04-06-20-46-58.jpg":{data:"2026-04-06",descricao:"Metr\u00f4 Rai",valor:54.00},
+  "00005363-PHOTO-2026-04-06-20-16-11.jpg":{data:"2026-04-06",descricao:"Metr\u00f4 Nilson",valor:54.00},
+  "00005360-PHOTO-2026-04-06-20-00-40.jpg":{data:"2026-04-06",descricao:"Metr\u00f4 Alan",valor:54.00},
+  "00005644-PHOTO-2026-04-10-22-06-33.jpg":{data:"2026-04-10",descricao:"Metr\u00f4 Rai",valor:54.00},
+  "00005909-PHOTO-2026-04-14-21-19-40.jpg":{data:"2026-04-14",descricao:"Metr\u00f4 Ray",valor:54.00},
+  "00006098-PHOTO-2026-04-16-20-52-12.jpg":{data:"2026-04-16",descricao:"Metr\u00f4 Rafael",valor:54.00},
+  "00006099-PHOTO-2026-04-16-20-53-18.jpg":{data:"2026-04-16",descricao:"Metr\u00f4 Pade",valor:54.00},
+  "00006155-PHOTO-2026-04-17-20-37-45.jpg":{data:"2026-04-17",descricao:"Metr\u00f4 Ney",valor:54.00},
+  "00006157-PHOTO-2026-04-17-21-12-25.jpg":{data:"2026-04-17",descricao:"Metr\u00f4 Rai",valor:54.00},
+  "00006196-PHOTO-2026-04-18-06-21-23.jpg":{data:"2026-04-18",descricao:"Metr\u00f4 Caio",valor:16.20},
+  "2026-04-20_autopass_severino_54.00.png":{data:"2026-04-20",descricao:"Metr\u00f4 Severino",valor:54.00},
+  "2026-04-20_autopass_janderson_54.00.png":{data:"2026-04-20",descricao:"Metr\u00f4 Janderson",valor:54.00}
+};
+function metroReceiptReferenceKey(file={}){
+  return despImportBasename(file.name||file.path||file.url||'').replace(/^\d{3}_/,'');
+}
+function getMetroReceiptReference(file={}){
+  return METRO_RECEIPT_REFERENCE[metroReceiptReferenceKey(file)]||null;
+}
 function isMetroDespesaItem(item={}){
   const key=despImportTextKey([item.descricao,item.loja,item.nfe].filter(Boolean).join(' '));
   return /\b(metro|metr[oô]|autopass|bilhete|transporte)\b/.test(key);
@@ -4365,6 +4412,187 @@ function splitMetroDespesaDraftByFiles(draft={}){
     files:group.files,
     _split_from:draft.id
   }));
+}
+
+function metroReceiptReferenceAmount(ref={}){
+  return Number(ref.valor||0)||0;
+}
+function metroReceiptReferenceDescKey(ref={}){
+  return despesaCanonicalText(ref.descricao||'','desc');
+}
+function metroReceiptRowDescKey(row={}){
+  return despesaCanonicalText(despesaDisplayDesc(row)||row.descricao||'','desc');
+}
+function metroReceiptReferenceMatchesRow(row={},ref={},opts={}){
+  if(!row||!ref)return false;
+  const sameDate=String(row.data||'').slice(0,10)===String(ref.data||'').slice(0,10);
+  const sameDesc=metroReceiptRowDescKey(row)===metroReceiptReferenceDescKey(ref);
+  if(!sameDate||!sameDesc)return false;
+  if(opts.ignoreAmount)return true;
+  const amount=Number(despesaDuplicateAmount(row)||0);
+  return Math.abs(amount-metroReceiptReferenceAmount(ref))<0.02;
+}
+function metroReceiptReferencePatch(ref={},row={}){
+  return{
+    data:String(ref.data||row.data||todayISO()).slice(0,10),
+    descricao:String(ref.descricao||row.descricao||'Metrô').trim(),
+    nfe:row.nfe||'',
+    loja:row.loja||'AUTOPASS S.A.',
+    valor_conta:metroReceiptReferenceAmount(ref),
+    valor_adiantamento:null,
+    tipo:'Despesa'
+  };
+}
+function metroReceiptReferenceInsert(ref={},base={},obra=''){
+  const row={...base,id:uid(),obra:base.obra||obra||S?.obra||'',...metroReceiptReferencePatch(ref,base),responsavel:base.responsavel||despesaExportResponsible(),created_at:new Date().toISOString()};
+  ['_source_ids','_duplicate_count','_group_amount_total','movimento_adiantamento','importCredit','sourceRow','files','_split_from'].forEach(k=>delete row[k]);
+  return row;
+}
+function getMetroReceiptReferenceEntries(rows=[]){
+  const scopedIds=new Set((Array.isArray(rows)?rows:[]).map(row=>String(row.id||'')).filter(Boolean));
+  const entries=[];
+  Object.entries(DB.despesaFiles||{}).forEach(([ownerId,files])=>{
+    const id=String(ownerId||'');
+    if(!scopedIds.has(id))return;
+    (Array.isArray(files)?files:[]).forEach(file=>{
+      const cleaned=cleanDespesaFile(file);
+      const ref=getMetroReceiptReference(cleaned);
+      if(!ref)return;
+      entries.push({ownerId:id,file:cleaned,ref,fileKey:despesaFileMergeKey(cleaned),refKey:metroReceiptReferenceKey(cleaned)});
+    });
+  });
+  return entries;
+}
+function findMetroReceiptReferenceIssues(rows=[]){
+  const rowMap=new Map((Array.isArray(rows)?rows:[]).map(row=>[String(row.id||''),row]));
+  const entries=getMetroReceiptReferenceEntries(rows);
+  const byOwner=new Map();
+  entries.forEach(entry=>{
+    if(!byOwner.has(entry.ownerId))byOwner.set(entry.ownerId,[]);
+    byOwner.get(entry.ownerId).push(entry);
+  });
+  return entries.filter(entry=>{
+    const row=rowMap.get(entry.ownerId);
+    if(!row)return false;
+    const ownerEntries=byOwner.get(entry.ownerId)||[];
+    return ownerEntries.length>1||!metroReceiptReferenceMatchesRow(row,entry.ref);
+  });
+}
+async function repairMetroReceiptReferences(obra='',{silent=false}={}){
+  if(window._metroReceiptRepairRunning)return 0;
+  const scope=(DB.despesas||[]).filter(row=>!obra||row.obra===obra);
+  const issues=findMetroReceiptReferenceIssues(scope);
+  if(!issues.length)return 0;
+  window._metroReceiptRepairRunning=true;
+  try{
+    const backup={createdAt:new Date().toISOString(),obra,issues:issues.map(e=>({ownerId:e.ownerId,file:e.file,ref:e.ref,owner:(DB.despesas||[]).find(row=>String(row.id)===e.ownerId)||null})),fileMap:DB.despesaFiles||{}};
+    try{localStorage.setItem(`jet-metro-receipt-reference-backup-${Date.now()}`,JSON.stringify(backup));}catch{}
+    const rowsById=new Map(scope.map(row=>[String(row.id||''),row]));
+    const entries=getMetroReceiptReferenceEntries(scope).filter(entry=>issues.some(issue=>issue.ownerId===entry.ownerId));
+    const byOwner=new Map();
+    entries.forEach(entry=>{
+      if(!byOwner.has(entry.ownerId))byOwner.set(entry.ownerId,[]);
+      byOwner.get(entry.ownerId).push(entry);
+    });
+    const ownerHasDescMatch=new Map();
+    byOwner.forEach((ownerEntries,ownerId)=>{
+      const row=rowsById.get(ownerId);
+      ownerHasDescMatch.set(ownerId,ownerEntries.some(entry=>metroReceiptReferenceMatchesRow(row,entry.ref,{ignoreAmount:true})));
+    });
+    const nextFileMap=cleanDespesaFileMap(DB.despesaFiles||{});
+    const changedIds=new Set();
+    entries.forEach(entry=>{
+      const current=(nextFileMap[entry.ownerId]||[]).filter(file=>despesaFileMergeKey(file)!==entry.fileKey);
+      if(current.length)nextFileMap[entry.ownerId]=current;
+      else delete nextFileMap[entry.ownerId];
+      changedIds.add(entry.ownerId);
+    });
+    const targetUsed=new Set();
+    const ownerAssigned=new Set();
+    const updates=new Map();
+    const inserts=[];
+    const scopedRows=[...rowsById.values()];
+    const ordered=[...entries].sort((a,b)=>{
+      const ar=rowsById.get(a.ownerId),br=rowsById.get(b.ownerId);
+      const ad=metroReceiptReferenceMatchesRow(ar,a.ref,{ignoreAmount:true})?1:0;
+      const bd=metroReceiptReferenceMatchesRow(br,b.ref,{ignoreAmount:true})?1:0;
+      if(ad!==bd)return bd-ad;
+      const ownerCmp=String(a.ownerId).localeCompare(String(b.ownerId));
+      if(ownerCmp)return ownerCmp;
+      return String(a.ref.descricao||'').localeCompare(String(b.ref.descricao||''))||String(a.file.name||'').localeCompare(String(b.file.name||''));
+    });
+    const chooseTargetId=(entry)=>{
+      const ownerRow=rowsById.get(entry.ownerId);
+      const ownerEntries=byOwner.get(entry.ownerId)||[];
+      const ownerDescMatch=metroReceiptReferenceMatchesRow(ownerRow,entry.ref,{ignoreAmount:true});
+      const ownerCan=ownerRow&&!targetUsed.has(entry.ownerId)&&(ownerDescMatch||ownerEntries.length===1||(!ownerAssigned.has(entry.ownerId)&&ownerHasDescMatch.get(entry.ownerId)===false));
+      if(ownerCan)return entry.ownerId;
+      const exact=scopedRows.find(row=>{
+        const id=String(row.id||'');
+        if(!id||targetUsed.has(id))return false;
+        if(!metroReceiptReferenceMatchesRow(row,entry.ref))return false;
+        const refFiles=(nextFileMap[id]||[]).filter(file=>getMetroReceiptReference(file));
+        return refFiles.length===0;
+      });
+      if(exact)return String(exact.id);
+      const loose=scopedRows.find(row=>{
+        const id=String(row.id||'');
+        return id&&!targetUsed.has(id)&&metroReceiptReferenceMatchesRow(row,entry.ref,{ignoreAmount:true})&&!(nextFileMap[id]||[]).length;
+      });
+      return loose?String(loose.id):'';
+    };
+    for(const entry of ordered){
+      let targetId=chooseTargetId(entry);
+      if(targetId){
+        const row=rowsById.get(targetId)||{};
+        const patch=metroReceiptReferencePatch(entry.ref,row);
+        updates.set(targetId,patch);
+        nextFileMap[targetId]=[cleanDespesaFile(entry.file)];
+        targetUsed.add(targetId);
+        changedIds.add(targetId);
+        if(targetId===entry.ownerId)ownerAssigned.add(entry.ownerId);
+      }else{
+        const base=rowsById.get(entry.ownerId)||{};
+        const row=metroReceiptReferenceInsert(entry.ref,base,obra);
+        inserts.push(row);
+        rowsById.set(String(row.id),row);
+        scopedRows.push(row);
+        nextFileMap[row.id]=[cleanDespesaFile(entry.file)];
+        targetUsed.add(String(row.id));
+        changedIds.add(row.id);
+      }
+    }
+    for(const [id,patch] of updates.entries()){
+      const {error}=await sb.from('despesas').update(patch).eq('id',id);
+      if(error)throw error;
+      DB.despesas=(DB.despesas||[]).map(row=>String(row.id)===String(id)?{...row,...patch}:row);
+    }
+    if(inserts.length){
+      const {error}=await sb.from('despesas').insert(inserts);
+      if(error)throw error;
+      DB.despesas.push(...inserts);
+    }
+    DB.despesas.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    await saveRemoteDespesaFiles(nextFileMap,{silent:true,replaceIds:[...changedIds]});
+    if(!silent)toast(`Pente-fino concluído: ${entries.length} comprovante(s) de metrô conferido(s) pelo arquivo de referência.`,'#22c55e');
+    return entries.length;
+  }catch(err){
+    console.warn('[JET] Falha no pente-fino de comprovantes de metrô:',err?.message||err);
+    if(!silent)toast(`Não consegui concluir o pente-fino dos comprovantes: ${err?.message||err}`,'#ef4444');
+    return 0;
+  }finally{
+    window._metroReceiptRepairRunning=false;
+  }
+}
+function scheduleMetroReceiptReferenceRepair(despesas=[],obra=''){
+  const issues=findMetroReceiptReferenceIssues(despesas);
+  if(!issues.length||window._metroReceiptRepairRunning)return'';
+  const fingerprint=issues.map(entry=>`${entry.ownerId}:${entry.refKey}:${entry.fileKey}`).sort().join('|');
+  const key=`jet-metro-receipt-reference-v2:${obra}:${fingerprint}`;
+  if(sessionStorage.getItem(key))return'';
+  sessionStorage.setItem(key,'1');
+  setTimeout(()=>repairMetroReceiptReferences(obra,{silent:false}).then(()=>renderApp()),500);
+  return`<div style="margin:0 0 12px;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.10);color:var(--text2);font-size:12px"><strong style="color:#f59e0b">Pente-fino automático:</strong> encontrei comprovantes de metrô anexados no lançamento errado e estou separando por pessoa/data usando a planilha de referência.</div>`;
 }
 function findGroupedMetroDespesaTargets(items=[]){
   return(Array.isArray(items)?items:[]).filter(item=>{
@@ -4822,9 +5050,17 @@ function despImportAttachFiles(draft,attachments=[],used=new Set()){
   const value=draft.tipo==='Adiantamento'?(draft.importCredit??draft.valor_adiantamento):draft.valor_conta;
   const exact=[draft.data,draft.tipo,value!=null?Number(value).toFixed(2):'',despImportTextKey(draft.descricao)].join('|');
   const loose=[draft.data,draft.tipo,value!=null?Number(value).toFixed(2):''].join('|');
+  const isMetroDraft=isMetroDespesaItem(draft);
   let matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.keyExact===exact);
-  if(!matches.length)matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.keyLoose===loose);
-  if(!matches.length){
+  if(!matches.length&&isMetroDraft){
+    matches=attachments.filter(a=>{
+      if(!a.file||used.has(a.name))return false;
+      const ref=getMetroReceiptReference(a.file);
+      return !!ref&&metroReceiptReferenceMatchesRow(draft,ref);
+    });
+  }
+  if(!matches.length&&!isMetroDraft)matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.keyLoose===loose);
+  if(!matches.length&&!isMetroDraft){
     const desc=despImportTextKey(draft.descricao);
     matches=attachments.filter(a=>a.file&&!used.has(a.name)&&a.tipo===draft.tipo&&a.valor!=null&&value!=null&&Math.abs(Number(a.valor)-Number(value))<0.01&&despImportTextKey(a.descricao)===desc);
   }
@@ -5106,7 +5342,8 @@ window._despExportPDF=(obra,dt)=>{
 // ─── ADIANTAMENTO DE DESPESAS ─────────────────────────────────────────────
 function renderDespesas(despesas,obra){
   if(!window._despCollapsed)window._despCollapsed={};
-  const repairNotice=scheduleGroupedMetroDespesaRepair(despesas,obra);
+  const referenceNotice=scheduleMetroReceiptReferenceRepair(despesas,obra);
+  const repairNotice=referenceNotice||scheduleGroupedMetroDespesaRepair(despesas,obra);
   const ledger=buildDespesaLedger(despesas);
   const byMonth={};
   ledger.forEach(item=>{const month=(item.data||'9999-99').slice(0,7);if(!byMonth[month])byMonth[month]=[];byMonth[month].push(item);});
