@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430060129">
+<meta name="jet-build" content="20260430071238">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1235,6 +1235,7 @@ const LEGACY_OBRA_RE=/^UFV\s*Manga\s*(I|II)$/i;
 const OBRA_REGISTRY_PATH='meta/obras-registry.json';
 const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
+const DESPESA_PENDING_FILES_KEY='jet-despesa-files-pending-sync';
 const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
 const ALMOX_META_PATH='meta/almox-meta.json';
 const HOME_NOTICES_PATH='meta/home-avisos.json';
@@ -1648,6 +1649,21 @@ function mergeDespesaFileMaps(...maps){
 }
 function getLocalDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem('jet-despesa-files')||'{}'));}catch{return{};}}
 function saveLocalDespesaFiles(map){localStorage.setItem('jet-despesa-files',JSON.stringify(cleanDespesaFileMap(map)));}
+function getPendingDespesaFiles(){try{return cleanDespesaFileMap(JSON.parse(localStorage.getItem(DESPESA_PENDING_FILES_KEY)||'{}'));}catch{return{};}}
+function savePendingDespesaFiles(map){const cleaned=cleanDespesaFileMap(map);if(Object.keys(cleaned).length)localStorage.setItem(DESPESA_PENDING_FILES_KEY,JSON.stringify(cleaned));else localStorage.removeItem(DESPESA_PENDING_FILES_KEY);}
+function rememberPendingDespesaFiles(ids=[],map=DB.despesaFiles||{}){
+  const pending=getPendingDespesaFiles();
+  const next={...pending};
+  [...new Set((ids||[]).filter(Boolean).map(String))].forEach(id=>{
+    if(map[id]?.length)next[id]=mergeDespesaFileMaps({[id]:next[id]||[]},{[id]:map[id]})[id]||[];
+  });
+  savePendingDespesaFiles(next);
+}
+function clearPendingDespesaFiles(ids=[]){
+  const pending=getPendingDespesaFiles();
+  [...new Set((ids||[]).filter(Boolean).map(String))].forEach(id=>delete pending[id]);
+  savePendingDespesaFiles(pending);
+}
 function normalizeMaterialUnit(value='un'){
   const raw=String(value||'un').trim();
   const key=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,'');
@@ -1834,19 +1850,26 @@ async function saveRemotePropostas(list,{silent=false}={}){
 }
 async function loadRemoteDespesaFiles(){
   const localMap=getLocalDespesaFiles();
+  const pendingMap=getPendingDespesaFiles();
   try{
     const {data,error}=await sb.storage.from(BUCKET).download(DESPESA_FILES_PATH);
     if(error){
       const msg=String(error.message||'');
-      if(/not found|404/i.test(msg)){DB.despesaFiles=localMap;return;}
+      if(/not found|404/i.test(msg)){DB.despesaFiles=mergeDespesaFileMaps(localMap,pendingMap);saveLocalDespesaFiles(DB.despesaFiles);return;}
       throw error;
     }
     // Fonte de verdade: Storage remoto. LocalStorage serve só como fallback se o remoto falhar.
     // Isso evita que um anexo removido volte sozinho por cache antigo do navegador.
-    DB.despesaFiles=cleanDespesaFileMap(JSON.parse(await data.text()));
+    DB.despesaFiles=mergeDespesaFileMaps(cleanDespesaFileMap(JSON.parse(await data.text())),pendingMap);
     saveLocalDespesaFiles(DB.despesaFiles);
+    const pendingIds=Object.keys(pendingMap);
+    if(pendingIds.length){
+      const synced=await saveRemoteDespesaFiles(DB.despesaFiles,{silent:true,replaceIds:pendingIds});
+      if(synced)clearPendingDespesaFiles(pendingIds);
+    }
   }catch(err){
-    DB.despesaFiles=localMap;
+    DB.despesaFiles=mergeDespesaFileMaps(localMap,pendingMap);
+    saveLocalDespesaFiles(DB.despesaFiles);
     console.warn('[JET] Arquivos de adiantamento não carregados:',err?.message||err);
   }
 }
@@ -1881,6 +1904,20 @@ async function saveRemoteDespesaFiles(map,{silent=false,mergeRemote=true,replace
     DB.despesaFiles={...cleaned};
     saveLocalDespesaFiles(DB.despesaFiles);
     if(!silent)toast('Arquivos salvos apenas neste aparelho. A sincronização online falhou.','#f59e0b');
+    return false;
+  }
+}
+async function verifyRemoteDespesaFiles(despId,files=[]){
+  const expected=Array.from(files||[]).map(f=>String(f?.path||'')).filter(Boolean);
+  if(!despId||!expected.length)return true;
+  try{
+    const {data,error}=await sb.storage.from(BUCKET).download(DESPESA_FILES_PATH);
+    if(error||!data)return false;
+    const remote=cleanDespesaFileMap(JSON.parse(await data.text()));
+    const paths=new Set((remote[despId]||[]).map(f=>String(f.path||'')).filter(Boolean));
+    return expected.every(path=>paths.has(path));
+  }catch(err){
+    console.warn('[JET] Verificação de anexos ignorada:',err?.message||err);
     return false;
   }
 }
@@ -8760,18 +8797,31 @@ async function saveDespesaFilesForId(despId,files){
   const queue=selected.filter(file=>validateUploadFile(file));
   if(!queue.length)return false;
   const next=[...getDespesaFiles(despId)];
+  const added=[];
   let uploaded=0;
   for(const file of queue){
     const path=`despesas/${despId}/${uid()}_${sanitizeStorageName(file.name)}`;
     const {error:ue}=await sb.storage.from(BUCKET).upload(path,file);
     if(ue){toast(`Erro ao enviar ${file.name}: ${ue.message}`,'#ef4444');continue;}
     const {data:ud}=sb.storage.from(BUCKET).getPublicUrl(path);
-    next.push(cleanDespesaFile({id:uid(),name:file.name,size:file.size||0,path,url:ud.publicUrl}));
+    const item=cleanDespesaFile({id:uid(),name:file.name,size:file.size||0,path,url:ud.publicUrl});
+    next.push(item);
+    added.push(item);
     uploaded++;
   }
-  const synced=await saveRemoteDespesaFiles({...DB.despesaFiles,[despId]:next},{silent:true});
-  if(uploaded)toast(synced?`${uploaded} arquivo(s) vinculado(s) ao lançamento e salvo(s) online.`:`${uploaded} arquivo(s) salvo(s) neste aparelho. A sincronização online falhou.` ,synced?'#22c55e':'#f59e0b');
-  return uploaded===queue.length;
+  if(!uploaded)return false;
+  DB.despesaFiles=cleanDespesaFileMap({...DB.despesaFiles,[despId]:next});
+  saveLocalDespesaFiles(DB.despesaFiles);
+  rememberPendingDespesaFiles([despId],DB.despesaFiles);
+  const synced=await saveRemoteDespesaFiles(DB.despesaFiles,{silent:true,replaceIds:[despId]});
+  const verified=synced&&await verifyRemoteDespesaFiles(despId,added);
+  if(verified){
+    clearPendingDespesaFiles([despId]);
+    toast(`${uploaded} arquivo(s) vinculado(s) ao lançamento e confirmado(s) online.`,'#22c55e');
+  }else{
+    toast(`${uploaded} arquivo(s) enviado(s), mas o vínculo online não foi confirmado. Ele ficará pendente e será sincronizado novamente ao abrir o sistema.`,'#f59e0b');
+  }
+  return uploaded===queue.length&&verified;
 }
 async function saveMaterialReqFilesForKey(reqKey,files){
   const key=String(reqKey||'').trim();
