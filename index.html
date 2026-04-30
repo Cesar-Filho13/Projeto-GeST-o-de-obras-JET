@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260429204804">
+<meta name="jet-build" content="20260429212749">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4212,6 +4212,24 @@ function despesaDuplicateKey(item={}){
     nfe
   ].join('|');
 }
+function despesaFileSignature(file={}){
+  const name=despImportFileKey(file.name||file.path||file.url||'');
+  const size=Number(file.size||0)||0;
+  return `${name}|${size}`;
+}
+function getUniqueDespesaFilesForIds(ids=[]){
+  const seen=new Set();
+  const files=[];
+  [...new Set((ids||[]).filter(Boolean))].forEach(ownerId=>{
+    getDespesaFiles(ownerId).forEach(file=>{
+      const sig=despesaFileSignature(file);
+      if(!sig||seen.has(sig))return;
+      seen.add(sig);
+      files.push({...file,_ownerId:ownerId,_signature:sig});
+    });
+  });
+  return files;
+}
 function collapseDuplicateDespesaItems(items=[]){
   const sorted=sortDespesaItems(items);
   const groups=new Map();
@@ -4236,11 +4254,10 @@ function collapseDuplicateDespesaItems(items=[]){
       return;
     }
     const mergedIds=[...new Set([...(existing._source_ids||[]),item.id].filter(Boolean))];
-    const attachedOwners=mergedIds.filter(id=>typeof getDespesaFiles==='function'&&getDespesaFiles(id).length).length;
+    const uniqueFileCount=typeof getDespesaFiles==='function'?getUniqueDespesaFilesForIds(mergedIds).length:0;
     const existingTotal=Number(existing._group_amount_total??despesaDuplicateAmount(existing)??0);
-    // Se há comprovantes distintos, o agrupamento representa várias despesas iguais no mesmo dia.
-    // Se não há anexos, tratamos como espelho/duplicidade de importação e não dobramos o valor.
-    const mergedAmount=attachedOwners>1?existingTotal+amount:Math.max(existingTotal,amount);
+    // Comprovante repetido não dobra valor. Comprovantes distintos no mesmo grupo somam.
+    const mergedAmount=uniqueFileCount>0?amount*uniqueFileCount:Math.max(existingTotal,amount);
     const chosen=score(item)>score(existing)?{...item}:existing;
     Object.assign(existing,chosen,{
       valor_conta:mergedAmount,
@@ -4904,8 +4921,10 @@ function renderDespesas(despesas,obra){
     const saidaCell=!isAdiant&&saida>0?`<strong style="color:#ef4444">${fmtV(saida)}</strong>`:'<span style="color:var(--text3)">—</span>';
     const sourceIdArr=[...new Set((item._source_ids||[item.id]).filter(Boolean))];
     const sourceIds=sourceIdArr.join(',');
-    const fileCount=sourceIdArr.reduce((sum,id)=>sum+getDespesaFiles(id).length,0);
-    const duplicateTag=sourceIdArr.length>1?` <span class="tag" title="Comprovantes semelhantes agrupados; o valor exibido é a soma quando há anexos distintos">${sourceIdArr.length} comprov.</span>`:'';
+    const uniqueFiles=getUniqueDespesaFilesForIds(sourceIdArr);
+    const rawFileCount=sourceIdArr.reduce((sum,id)=>sum+getDespesaFiles(id).length,0);
+    const fileCount=uniqueFiles.length;
+    const duplicateTag=sourceIdArr.length>1?` <span class="tag" title="Comprovantes semelhantes agrupados; arquivos repetidos não dobram o valor">${fileCount} comprov.</span>`:'';
     return`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
 <td style="padding:7px 10px;white-space:nowrap;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px">${fmtD(item.data)}</td>
 <td style="padding:7px 10px;font-weight:${isAdiant?'800':'500'};color:${isAdiant?'#22c55e':'var(--text)'}">${esc(item.descricao||'—')}${duplicateTag}</td>
@@ -4914,7 +4933,7 @@ function renderDespesas(despesas,obra){
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${entradaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap">${saidaCell}</td>
 <td style="padding:7px 10px;text-align:right;white-space:nowrap;font-weight:800;color:${item.saldo<0?'#ef4444':'#14956b'}">${fmtV(item.saldo)}</td>
-<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${escJs(item.id)}','${escJs(sourceIds)}')" title="Anexos">${fileCount?`Arquivos (${fileCount})`:'Anexar'}</button></td>
+<td style="padding:7px 10px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="window._openDespesaFiles('${escJs(item.id)}','${escJs(sourceIds)}')" title="${rawFileCount>fileCount?'Há anexos repetidos ocultados automaticamente':'Anexos'}">${fileCount?`Arquivos (${fileCount})`:'Anexar'}</button></td>
 <td style="padding:7px 10px;text-align:center"><div style="display:flex;gap:6px;justify-content:center;align-items:center"><button class="btn btn-secondary btn-sm" onclick="_openModal('edit-despesa',{id:'${escJs(item.id)}',entrada:${entrada},saida:${saida}})" title="Editar lançamento">${actionIconSvg('edit')} Editar</button><button class="btn btn-sm btn-danger btn-icon" onclick="_deleteDespesa('${escJs(item.id)}','${escJs(sourceIds)}')" title="Excluir com trava de segurança">${actionIconSvg('trash')}</button></div></td>
 </tr>`;
   }).join('');
@@ -6839,6 +6858,13 @@ ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><in
     body=desp?renderDespesaFilesPanel(desp,sourceIds):`<div class="empty-state"><p>Lancamento nao encontrado.</p></div>`;
     onSave=`_closeModal()`;
   }
+  else if(m==='desp-file-preview'){
+    const file=d.file||{};
+    title='Comprovante';
+    body=`<div><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap"><div><div style="font-weight:800;color:var(--text);font-size:14px">${esc(file.name||'Arquivo')}</div><div style="font-size:12px;color:var(--text3)">${fmtSz(file.size||0)}</div></div><a href="${esc(file.url||'#')}" download="${esc(file.name||'comprovante')}" class="btn btn-primary btn-sm" style="text-decoration:none">Baixar</a></div>${renderDespesaFilePreview(file)}</div>`;
+    onSave=`_closeModal()`;
+    saveLabel='Fechar';
+  }
   else if(m==='import-despesas'){
     title='Importar prestação de despesas';
     saveLabel='Importar lançamentos';
@@ -7215,7 +7241,7 @@ ${commercialItemsHeaderHtml()}
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
+<div class="modal${m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -8646,9 +8672,23 @@ function sanitizeStorageName(name){return String(name||'arquivo').normalize('NFD
 function renderDespesaFilesPanel(item,sourceIds=[]){
   const ids=[...new Set((sourceIds.length?sourceIds:[item?.id]).filter(Boolean))];
   const uploadId=item?.id||ids[0]||'';
-  const files=ids.flatMap(ownerId=>getDespesaFiles(ownerId).map(file=>({...file,_ownerId:ownerId})));
-  const groupedNote=ids.length>1?`<div style="margin:0 0 10px;padding:10px 12px;border:1px solid rgba(96,165,250,.22);border-radius:10px;background:rgba(59,130,246,.08);font-size:12px;color:var(--text2)">Este lançamento agrupa ${ids.length} comprovante(s). Todos os anexos aparecem abaixo.</div>`:'';
-  return `<div>${groupedNote}<div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${uploadId}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}${ids.length>1?` · origem ${ids.indexOf(file._ownerId)+1}`:''}</div></div><a href="${esc(file.url)}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Abrir</a><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${file._ownerId}','${file.id}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
+  const rawCount=ids.reduce((sum,id)=>sum+getDespesaFiles(id).length,0);
+  const files=getUniqueDespesaFilesForIds(ids);
+  const repeated=rawCount-files.length;
+  const groupedNote=ids.length>1?`<div style="margin:0 0 10px;padding:10px 12px;border:1px solid rgba(96,165,250,.22);border-radius:10px;background:rgba(59,130,246,.08);font-size:12px;color:var(--text2)">Este lançamento agrupa ${ids.length} registro(s). ${repeated>0?`${repeated} anexo(s) repetido(s) foram ocultados e não dobram o valor.`:'Todos os anexos distintos aparecem abaixo.'}</div>`:'';
+  return `<div>${groupedNote}<div style="margin-bottom:12px;padding:12px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg2)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Anexos do lançamento</div><div style="font-size:11px;color:var(--text3)">Envie notas, recibos, comprovantes ou fotos vinculadas a este adiantamento.</div></div><label class="btn btn-secondary btn-sm" style="cursor:pointer"><input type="file" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._uploadDespesaFiles(event,'${escJs(uploadId)}')">+ Enviar arquivos</label></div></div>${files.length?`<div style="display:flex;flex-direction:column;gap:8px">${files.map(file=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px"><div style="width:34px;height:34px;border-radius:9px;background:rgba(37,99,235,.12);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">ARQ</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file.name)}</div><div style="font-size:11px;color:var(--text3)">${fmtSz(file.size||0)}${ids.length>1?` · origem ${ids.indexOf(file._ownerId)+1}`:''}</div></div><button class="btn btn-secondary btn-sm" onclick="window._previewDespesaFile('${escJs(file._ownerId)}','${escJs(file.id)}','${escJs(ids.join(','))}')">Abrir</button><button class="btn btn-danger btn-sm" onclick="window._removeDespesaFile('${escJs(file._ownerId)}','${escJs(file.id)}')">Remover</button></div>`).join('')}</div>`:`<div class="empty-state" style="padding:18px 14px"><p>Nenhum arquivo anexado ainda.</p></div>`}</div>`;
+}
+function renderDespesaFilePreview(file={}){
+  const url=esc(file.url||'');
+  const name=esc(file.name||'Comprovante');
+  const ext=getExt(file.name||file.url||'');
+  if(['jpg','jpeg','png','webp','gif','svg'].includes(ext)){
+    return `<div style="display:flex;justify-content:center;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;max-height:68vh;overflow:auto"><img src="${url}" alt="${name}" style="max-width:100%;height:auto;border-radius:10px"></div>`;
+  }
+  if(ext==='pdf'){
+    return `<iframe src="${url}" title="${name}" style="width:100%;height:68vh;border:1px solid var(--border);border-radius:14px;background:white"></iframe>`;
+  }
+  return `<div class="empty-state"><p>Pré-visualização indisponível para este formato.</p><p style="font-size:12px;color:var(--text3)">${name}</p></div>`;
 }
 function renderMaterialReqFilesPanel(reqKey){
   const files=getMaterialReqFiles(reqKey);
@@ -8700,6 +8740,14 @@ async function saveMaterialReqFilesForKey(reqKey,files){
   return uploaded===queue.length;
 }
 window._openDespesaFiles=(id,sourceIds='')=>{S.modal='desp-files';S.modalData={id,sourceIds};renderApp();};
+window._previewDespesaFile=(ownerId,fileId,sourceIds='')=>{
+  const ids=[...new Set(String(sourceIds||ownerId||'').split(',').map(s=>s.trim()).filter(Boolean))];
+  const file=ids.flatMap(id=>getDespesaFiles(id).map(f=>({...f,_ownerId:id}))).find(f=>f._ownerId===ownerId&&f.id===fileId)||getDespesaFiles(ownerId).find(f=>f.id===fileId);
+  if(!file){toast('Comprovante não encontrado.','#ef4444');return;}
+  S.modal='desp-file-preview';
+  S.modalData={file:{...file,_ownerId:ownerId},sourceIds:ids.join(',')};
+  renderApp();
+};
 window._uploadDespesaFiles=async(e,id)=>{await saveDespesaFilesForId(id,e?.target?.files||[]);if(e?.target)e.target.value='';renderApp();};
 window._removeDespesaFile=async(id,fileId)=>{
   if(!confirm('Remover arquivo deste lançamento?'))return;
