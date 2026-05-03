@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260430171308">
+<meta name="jet-build" content="20260502212857">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4667,6 +4667,19 @@ function despesaSetsOverlap(a=new Set(),b=new Set()){
   for(const value of a){if(b.has(value))return true;}
   return false;
 }
+function isSaldoPlanilhaDespesa(item={}){
+  if(String(item.tipo||'Despesa')==='Adiantamento')return false;
+  const key=despImportTextKey([item.descricao,item.loja,item.nfe].filter(Boolean).join(' '));
+  return /saldo/.test(key)&&/planilha/.test(key)&&/obra/.test(key);
+}
+function saldoPlanilhaDuplicateKey(item={}){
+  const amount=despesaDuplicateAmount(item);
+  const text=despesaCanonicalText([item.descricao,item.loja].filter(Boolean).join(' '),'desc')
+    .replace(/(saldo|planilha|obra)/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+  return [item.obra||'',String(item.data||'').slice(0,10),'saldo-planilha',amount!=null?amount.toFixed(2):'',text].join('|');
+}
 function collapseDuplicateDespesaItems(items=[]){
   const sorted=sortDespesaItems(items);
   const groups=new Map();
@@ -4689,16 +4702,18 @@ function collapseDuplicateDespesaItems(items=[]){
       output.push(item);
       return;
     }
-    const key=despesaDuplicateKey(item);
+    const key=isSaldoPlanilhaDespesa(item)?saldoPlanilhaDuplicateKey(item):despesaDuplicateKey(item);
     const itemIds=[item.id].filter(Boolean);
     const itemSigs=despesaFileSignatureSetForIds(itemIds);
     const candidates=groups.get(key)||[];
     const existing=candidates.find(row=>{
+      if(isSaldoPlanilhaDespesa(item)&&isSaldoPlanilhaDespesa(row))return true;
       const existingSigs=despesaFileSignatureSetForIds(row._source_ids||[row.id].filter(Boolean));
       return existingSigs.size>0&&itemSigs.size>0&&despesaSetsOverlap(existingSigs,itemSigs);
     });
     // Financeiro não pode perder valor por semelhança de texto/data/valor.
     // Só agrupamos quando há prova forte: o MESMO arquivo/comprovante já está em outro lançamento.
+    // Exceção segura: linhas sintéticas "Saldo da planilha da obra" não são comprovantes reais e podem vir duplicadas da importação.
     if(!existing){
       pushAsIndependent(item,amount,key);
       return;
@@ -4710,7 +4725,7 @@ function collapseDuplicateDespesaItems(items=[]){
     const perFile=previousFileCount>0?existingTotal/previousFileCount:amount;
     const mergedIds=[...new Set([...previousIds,...itemIds])];
     const uniqueFileCount=getUniqueDespesaFilesForIds(mergedIds).length;
-    const mergedAmount=uniqueFileCount>0?Number((perFile*uniqueFileCount).toFixed(2)):Math.max(existingTotal,amount);
+    const mergedAmount=isSaldoPlanilhaDespesa(item)?Math.max(existingTotal,amount):(uniqueFileCount>0?Number((perFile*uniqueFileCount).toFixed(2)):Math.max(existingTotal,amount));
     const chosen=score(item)>score(existing)?{...item}:existing;
     Object.assign(existing,chosen,{
       valor_conta:mergedAmount,
@@ -4720,6 +4735,62 @@ function collapseDuplicateDespesaItems(items=[]){
     });
   });
   return output;
+}
+
+function findSaldoPlanilhaDuplicateGroups(items=[]){
+  const groups=new Map();
+  (Array.isArray(items)?items:[]).filter(isSaldoPlanilhaDespesa).forEach(row=>{
+    const key=saldoPlanilhaDuplicateKey(row);
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(row);
+  });
+  const score=row=>(getUniqueDespesaFilesForIds([row.id]).length?100:0)+(String(row.loja||'').trim()?8:0)+(String(row.descricao||'').length/100)+(String(row.created_at||row.id||'').trim()?1:0);
+  return [...groups.entries()].map(([key,rows])=>{
+    if(rows.length<2)return null;
+    const sorted=[...rows].sort((a,b)=>score(b)-score(a));
+    const keep=sorted[0];
+    const remove=sorted.slice(1).filter(row=>getUniqueDespesaFilesForIds([row.id]).length===0);
+    if(!remove.length)return null;
+    return{key,keep,remove};
+  }).filter(Boolean);
+}
+async function repairSaldoPlanilhaDuplicates(obra='',{silent=false}={}){
+  if(window._saldoPlanilhaRepairRunning)return 0;
+  const scope=(DB.despesas||[]).filter(row=>!obra||row.obra===obra);
+  const groups=findSaldoPlanilhaDuplicateGroups(scope);
+  if(!groups.length)return 0;
+  window._saldoPlanilhaRepairRunning=true;
+  try{
+    const removeIds=[...new Set(groups.flatMap(group=>group.remove.map(row=>row.id)).filter(Boolean))];
+    if(!removeIds.length)return 0;
+    const backup={createdAt:new Date().toISOString(),obra,removed:scope.filter(row=>removeIds.includes(row.id)),fileMap:DB.despesaFiles||{}};
+    try{localStorage.setItem(`jet-saldo-planilha-duplicates-backup-${Date.now()}`,JSON.stringify(backup));}catch{}
+    const query=removeIds.length>1?sb.from('despesas').delete().in('id',removeIds):sb.from('despesas').delete().eq('id',removeIds[0]);
+    const {error}=await query;
+    if(error)throw error;
+    DB.despesas=(DB.despesas||[]).filter(row=>!removeIds.includes(row.id));
+    const files={...(DB.despesaFiles||{})};
+    removeIds.forEach(id=>delete files[id]);
+    await saveRemoteDespesaFiles(files,{silent:true,replaceIds:removeIds});
+    if(!silent)toast(`Removi ${removeIds.length} duplicidade(s) de saldo de planilha sem comprovante.`,'#22c55e');
+    return removeIds.length;
+  }catch(err){
+    console.warn('[JET] Falha ao remover duplicidades de saldo de planilha:',err?.message||err);
+    if(!silent)toast(`Não consegui limpar duplicidades de saldo: ${err?.message||err}`,'#ef4444');
+    return 0;
+  }finally{
+    window._saldoPlanilhaRepairRunning=false;
+  }
+}
+function scheduleSaldoPlanilhaDuplicateRepair(despesas=[],obra=''){
+  const groups=findSaldoPlanilhaDuplicateGroups(despesas);
+  if(!groups.length||window._saldoPlanilhaRepairRunning)return'';
+  const fingerprint=groups.map(group=>group.remove.map(row=>row.id).join(',')).join('|');
+  const key=`jet-saldo-planilha-duplicates-v1:${obra}:${fingerprint}`;
+  if(sessionStorage.getItem(key))return'';
+  sessionStorage.setItem(key,'1');
+  setTimeout(()=>repairSaldoPlanilhaDuplicates(obra,{silent:false}).then(()=>renderApp()),450);
+  return`<div style="margin:0 0 12px;padding:10px 12px;border:1px solid rgba(239,68,68,.35);border-radius:12px;background:rgba(239,68,68,.10);color:var(--text2);font-size:12px"><strong style="color:#ef4444">Correção financeira:</strong> encontrei saldo de planilha duplicado sem comprovante e estou removendo a cópia extra.</div>`;
 }
 function buildDespesaLedger(items=[]){
   let saldoAtual=0;
@@ -5365,7 +5436,8 @@ window._despExportPDF=(obra,dt)=>{
 // ─── ADIANTAMENTO DE DESPESAS ─────────────────────────────────────────────
 function renderDespesas(despesas,obra){
   if(!window._despCollapsed)window._despCollapsed={};
-  const referenceNotice=scheduleMetroReceiptReferenceRepair(despesas,obra);
+  const saldoNotice=scheduleSaldoPlanilhaDuplicateRepair(despesas,obra);
+  const referenceNotice=saldoNotice||scheduleMetroReceiptReferenceRepair(despesas,obra);
   const repairNotice=referenceNotice||scheduleGroupedMetroDespesaRepair(despesas,obra);
   const ledger=buildDespesaLedger(despesas);
   const byMonth={};
