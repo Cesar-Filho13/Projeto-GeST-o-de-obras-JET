@@ -7452,13 +7452,14 @@ ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><in
   else if(m==='new-despesa'){
     title='Nova Despesa';
     body=`<div class="form-grid-2">
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0;padding:12px;border:1px dashed var(--border2);border-radius:14px;background:var(--bg2)"><label>Inserir comprovante da despesa (PDF ou imagem)</label><input id="m-dcomprovante" type="file" accept=".pdf,image/*" onchange="window._previewDespFiles(this,'m-dcomprovante-list')"><div class="section-sub" style="margin-top:6px">Selecione o recibo, nota ou comprovante para anexar automaticamente a esta despesa.</div><div id="m-dcomprovante-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum comprovante selecionado.</span></div></div>
 <div class="form-group"><label>Data *</label><input id="m-ddata" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Valor pago (Conta Bancaria, R$)</label><input id="m-dconta" type="number" step="0.01" placeholder="0,00"></div>
 <div class="form-group" style="grid-column:1/-1"><label>Descricao *</label><input id="m-ddesc" placeholder="Ex: Cabo eletrico 2,5mm..." ></div>
 <div class="form-group"><label>NFe No</label><input id="m-dnfe" placeholder="000000000"></div>
 <div class="form-group"><label>Loja / Fornecedor</label><input id="m-dloja" placeholder="Ex: Leroy Merlin, PIX..."></div>
 <div class="form-group"><label>Responsavel</label><input id="m-dresp" value="${esc(currentUser?.email?.split('@')[0]||'')}" list="m-dresp-list2"><datalist id="m-dresp-list2">${DB.funcionarios.filter(f=>f.obra===S.obra).map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div>
-<div class="form-group" style="grid-column:1/-1"><label>Anexos</label><input id="m-dfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo selecionado.</span></div></div>
+<div class="form-group" style="grid-column:1/-1"><label>Anexos extras</label><input id="m-dfiles" type="file" multiple accept="${UPLOAD_ACCEPT}" onchange="window._previewDespFiles(this,'m-dfiles-list')"><div id="m-dfiles-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum arquivo extra selecionado.</span></div></div>
 </div>`;
     onSave=`_saveDespesa()`;
   }
@@ -9580,11 +9581,8 @@ window._previewAdiantamentoPixPdf=async(file)=>{
   }
 };
 
-function selectedAdiantamentoFiles(){
-  const all=[
-    ...Array.from(document.getElementById('m-dpixpdf')?.files||[]),
-    ...Array.from(document.getElementById('m-dfiles')?.files||[])
-  ].filter(Boolean);
+function collectUniqueFilesFromInputs(ids=[]){
+  const all=ids.flatMap(id=>Array.from(document.getElementById(id)?.files||[])).filter(Boolean);
   const seen=new Set();
   return all.filter(file=>{
     const key=[file.name,file.size,file.lastModified].join('|');
@@ -9592,6 +9590,12 @@ function selectedAdiantamentoFiles(){
     seen.add(key);
     return true;
   });
+}
+function selectedAdiantamentoFiles(){
+  return collectUniqueFilesFromInputs(['m-dpixpdf','m-dfiles']);
+}
+function selectedDespesaFiles(){
+  return collectUniqueFilesFromInputs(['m-dcomprovante','m-dfiles']);
 }
 
 window._saveAdiantamento=async()=>{
@@ -9621,7 +9625,7 @@ window._saveAdiantamento=async()=>{
 window._saveDespesa=async()=>{
   const data=document.getElementById('m-ddata')?.value;
   const desc=document.getElementById('m-ddesc')?.value?.trim();
-  const files=document.getElementById('m-dfiles')?.files||[];
+  const files=selectedDespesaFiles();
   if(!data||!desc){toast('Data e descrição obrigatórios.','#ef4444');return;}
   const conta=parseFloat(document.getElementById('m-dconta')?.value||0)||null;
   const prevLedger=buildDespesaLedger(DB.despesas.filter(d=>d.obra===S.obra));
