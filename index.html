@@ -7452,7 +7452,7 @@ ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><in
   else if(m==='new-despesa'){
     title='Nova Despesa';
     body=`<div class="form-grid-2">
-<div class="form-group" style="grid-column:1/-1;margin-bottom:0;padding:12px;border:1px dashed var(--border2);border-radius:14px;background:var(--bg2)"><label>Inserir comprovante da despesa (PDF ou imagem)</label><input id="m-dcomprovante" type="file" accept=".pdf,image/*" onchange="window._previewDespFiles(this,'m-dcomprovante-list')"><div class="section-sub" style="margin-top:6px">Selecione o recibo, nota ou comprovante para anexar automaticamente a esta despesa.</div><div id="m-dcomprovante-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum comprovante selecionado.</span></div></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0;padding:12px;border:1px dashed var(--border2);border-radius:14px;background:var(--bg2)"><label>Inserir comprovante da despesa (PDF ou imagem)</label><input id="m-dcomprovante" type="file" accept=".pdf,image/*" onchange="window._previewDespesaComprovante(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Selecione o recibo, nota ou comprovante para anexar automaticamente a esta despesa.</div><div id="m-dcomprovante-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><span style="font-size:11px;color:var(--text3)">Nenhum comprovante selecionado.</span></div></div>
 <div class="form-group"><label>Data *</label><input id="m-ddata" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Valor pago (Conta Bancaria, R$)</label><input id="m-dconta" type="number" step="0.01" placeholder="0,00"></div>
 <div class="form-group" style="grid-column:1/-1"><label>Descricao *</label><input id="m-ddesc" placeholder="Ex: Cabo eletrico 2,5mm..." ></div>
@@ -9578,6 +9578,110 @@ window._previewAdiantamentoPixPdf=async(file)=>{
   }catch(err){
     console.error('[JET] Falha ao ler comprovante PIX:',err);
     renderAdiantamentoPixPreview(null,file,err?.message||'Não consegui ler o PDF.');
+  }
+};
+
+
+function despesaReceiptISODate(text=''){
+  const raw=String(text||'').replace(/ /g,' ');
+  const br=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(br)return `${br[3]}-${br[2]}-${br[1]}`;
+  const months={JAN:'01',FEV:'02',MAR:'03',ABR:'04',MAI:'05',JUN:'06',JUL:'07',AGO:'08',SET:'09',OUT:'10',NOV:'11',DEZ:'12'};
+  const long=raw.toUpperCase().match(/(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(\d{4})/);
+  if(long)return `${long[3]}-${months[long[2]]}-${String(long[1]).padStart(2,'0')}`;
+  return '';
+}
+function despesaReceiptLineValue(lines,labelRegex){
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i]||'';
+    if(!labelRegex.test(line))continue;
+    const inline=line.replace(labelRegex,'').replace(/^[:\-–]+/,'').trim();
+    if(inline&&inline.length>2)return inline;
+    for(let j=i+1;j<Math.min(lines.length,i+5);j++){
+      const candidate=(lines[j]||'').trim();
+      if(!candidate||/^(cpf|cnpj|valor|data|vencimento|institui[cç][aã]o|tipo|identificador|autentica[cç][aã]o|ag[eê]ncia|conta)$/i.test(candidate))continue;
+      return candidate;
+    }
+  }
+  return '';
+}
+function parseDespesaReceiptText(text){
+  const clean=String(text||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ');
+  const lines=adiantPixCleanLines(clean);
+  const joined=lines.join('\n');
+  const valorLabel=joined.match(/Valor\s*(?:final|pago|do pagamento)?\s*\n?\s*R\$\s*([\d.\s]+,\d{2})/i);
+  const allValues=[...joined.matchAll(/R\$\s*([\d.\s]+,\d{2})/g)].map(m=>parseBrMoneyStrict(m[1])).filter(v=>v!=null&&v>0);
+  const valor=parseBrMoneyStrict(valorLabel?.[1]||'')??allValues[0]??null;
+  const data=despesaReceiptISODate(joined);
+  let loja='';
+  if(/autopass/i.test(joined))loja='AUTOPASS S.A.';
+  else if(/uber/i.test(joined))loja='UBER DO BRASIL TECNOLOGIA LTDA.';
+  else if(/santander/i.test(joined)&&/pix/i.test(joined))loja='Santander / Pix';
+  else loja=despesaReceiptLineValue(lines,/^(?:loja|estabelecimento|recebedor|benefici[aá]rio|favorecido|destinat[aá]rio|para)(?:\s|:|$)/i);
+  const debtor=despesaReceiptLineValue(lines,/^nome do devedor(?:\s|:|$)/i)||despesaReceiptLineValue(lines,/^pagador(?:\s|:|$)/i);
+  const transaction=(joined.match(/(?:ID\/?Transa[cç][aã]o|Autentica[cç][aã]o|Identificador)\s*\n?\s*([A-Z0-9.\-]{8,})/i)?.[1]||'').trim();
+  let descricao='Despesa';
+  if(/autopass|metr[oô]/i.test(joined)){
+    const first=(debtor||'').split(/\s+/).filter(Boolean)[0]||'';
+    descricao=`Metrô${first?' '+first:''}`.trim();
+  }else if(/uber/i.test(joined))descricao='Uber';
+  else if(loja)descricao=`Despesa - ${loja}`;
+  return{data,valor,loja,descricao,nfe:transaction,devedor:debtor,rawText:joined};
+}
+function ensureTesseractJs(){
+  if(window.Tesseract)return Promise.resolve(window.Tesseract);
+  if(window._jetTesseractPromise)return window._jetTesseractPromise;
+  window._jetTesseractPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('OCR indisponível'));
+    script.onerror=()=>reject(new Error('não foi possível carregar OCR'));
+    document.head.appendChild(script);
+  });
+  return window._jetTesseractPromise;
+}
+async function extractDespesaReceiptText(file){
+  const ext=getExt(file?.name||'');
+  if(ext==='pdf')return extractAdiantamentoPdfText(file);
+  if(isImg(file?.name||'')){
+    const T=await ensureTesseractJs();
+    const result=await T.recognize(file,'por+eng');
+    return result?.data?.text||'';
+  }
+  return '';
+}
+function renderDespesaReceiptPreview(parsed,file,errorMsg=''){
+  const box=document.getElementById('m-dcomprovante-list');
+  if(!box)return;
+  if(errorMsg){
+    box.innerHTML=`<div style="padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.08);color:#f59e0b;font-size:12px">${esc(errorMsg)} O arquivo continuará anexado; confira os campos manualmente.</div>`;
+    return;
+  }
+  box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card)"><div><div class="stat-label">Arquivo</div><div style="font-size:12px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(file?.name||'Comprovante')}</div></div><div><div class="stat-label">Data</div><div style="font-size:13px;color:var(--text);font-weight:800">${esc(parsed?.data?fmtD(parsed.data):'-')}</div></div><div><div class="stat-label">Valor</div><div style="font-size:13px;color:#ef4444;font-weight:900">${parsed?.valor?fmtV(parsed.valor):'-'}</div></div><div><div class="stat-label">Fornecedor</div><div style="font-size:12px;color:var(--text2);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(parsed?.loja||'-')}</div></div></div>`;
+}
+window._previewDespesaComprovante=async(file)=>{
+  const box=document.getElementById('m-dcomprovante-list');
+  if(!file){if(box)box.innerHTML='<span style="font-size:11px;color:var(--text3)">Nenhum comprovante selecionado.</span>';return;}
+  if(box)box.innerHTML=`<div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);font-size:12px;color:var(--text3)">Lendo comprovante e tentando preencher os campos...</div>`;
+  try{
+    const text=await extractDespesaReceiptText(file);
+    const parsed=parseDespesaReceiptText(text);
+    if(!parsed.data&&!parsed.valor&&!parsed.loja)throw new Error('Não consegui identificar dados com segurança.');
+    const dataEl=document.getElementById('m-ddata');
+    const valorEl=document.getElementById('m-dconta');
+    const descEl=document.getElementById('m-ddesc');
+    const nfeEl=document.getElementById('m-dnfe');
+    const lojaEl=document.getElementById('m-dloja');
+    if(dataEl&&parsed.data)dataEl.value=parsed.data;
+    if(valorEl&&parsed.valor)valorEl.value=Number(parsed.valor).toFixed(2);
+    if(descEl&&parsed.descricao&&(!descEl.value.trim()||descEl.dataset.autofill==='1')){descEl.value=parsed.descricao;descEl.dataset.autofill='1';}
+    if(nfeEl&&parsed.nfe&&!nfeEl.value)nfeEl.value=parsed.nfe;
+    if(lojaEl&&parsed.loja&&!lojaEl.value)lojaEl.value=parsed.loja;
+    renderDespesaReceiptPreview(parsed,file);
+    toast('Comprovante lido. Confira os campos antes de salvar.','#22c55e');
+  }catch(err){
+    console.warn('[JET] Leitura automatica da despesa falhou:',err);
+    renderDespesaReceiptPreview(null,file,err?.message||'Não consegui ler automaticamente.');
   }
 };
 
