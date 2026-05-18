@@ -3914,9 +3914,9 @@ function renderFuncionarios(func,obra){
   const sortClick=(col)=>`S.funcSort=S.funcSort&&S.funcSort.col==='${col}'?{col:'${col}',asc:!S.funcSort.asc}:{col:'${col}',asc:true};renderApp()`;
   const filterBtns=['Todos','Ativo','Ausente','Afastado','Desligado'].map(s=>`<button class="obra-nav-btn${filter===s?' active':''}" onclick="S.funcFilter='${s}';renderApp()" style="padding:6px 14px;font-size:12px">${s==='Todos'?'Todos ('+func.length+')':s+' ('+func.filter(f=>(f.status||'Ativo')===s).length+')'}</button>`).join('');
   const obraSafe=escJs(obra);
-  const actionBar=`<div class="func-actions-bar"><div class="func-action-group"><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosCSV('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">⬇</span><span class="func-toolbar-copy"><strong>CSV</strong><small>Lista rápida</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosXLSX('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📊</span><span class="func-toolbar-copy"><strong>Excel</strong><small>Planilha formatada</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosPDF('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📑</span><span class="func-toolbar-copy"><strong>PDF</strong><small>Relatório pronto</small></span></button></div><label class="func-toggle-card"><input type="checkbox" id="hide-doc-funcionarios" ${hideDocs?'checked':''} onchange="S.funcHideDocs=this.checked"><span class="func-toolbar-icon">👁</span><span class="func-toolbar-copy"><strong>Ocultar CPF/Doc</strong><small>Aplica nos exports desta aba</small></span></label><button class="btn btn-primary func-create-btn" onclick="_openModal('new-func')"><span class="func-toolbar-icon">+</span><span class="func-toolbar-copy"><strong>Novo Funcionário</strong><small>Cadastro rápido da equipe</small></span></button></div>`;
+  const actionBar=`<div class="func-actions-bar"><div class="func-action-group"><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosCSV('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">⬇</span><span class="func-toolbar-copy"><strong>CSV</strong><small>Lista rápida</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosXLSX('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📊</span><span class="func-toolbar-copy"><strong>Excel</strong><small>Planilha formatada</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosPDF('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📑</span><span class="func-toolbar-copy"><strong>PDF</strong><small>Relatório pronto</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="_openModal('import-funcionarios',{obra:'${obraSafe}',scope:'obra'})"><span class="func-toolbar-icon">⬆</span><span class="func-toolbar-copy"><strong>Importar</strong><small>Planilha .xlsx</small></span></button></div><label class="func-toggle-card"><input type="checkbox" id="hide-doc-funcionarios" ${hideDocs?'checked':''} onchange="S.funcHideDocs=this.checked"><span class="func-toolbar-icon">👁</span><span class="func-toolbar-copy"><strong>Ocultar CPF/Doc</strong><small>Aplica nos exports desta aba</small></span></label><button class="btn btn-primary func-create-btn" onclick="_openModal('new-func')"><span class="func-toolbar-icon">+</span><span class="func-toolbar-copy"><strong>Novo Funcionário</strong><small>Cadastro rápido da equipe</small></span></button></div>`;
   const subTabs=`<div class="obra-nav" style="margin:0 0 20px;padding-bottom:12px"><button class="obra-nav-btn${section==='equipe'?' active':''}" onclick="S.funcSection='equipe';renderApp()"><span class="nav-icon">👥</span>Equipe<span class="nav-count">${func.length}</span></button><button class="obra-nav-btn${section==='baixadas'?' active':''}" onclick="S.funcSection='baixadas';renderApp()"><span class="nav-icon">🗓</span>Baixadas<span class="nav-count">${getActiveFuncionarios(obra).length}</span></button></div>`;
-  return`<div><div class="section-header"><div><div class="section-title">👷 Funcionários</div><div class="section-sub">${func.length} cadastrados · ${ativos} ativos</div></div>${actionBar}</div>${subTabs}${section==='baixadas'?renderBaixadasPanel(obra):`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${filterBtns}</div>${filtered.length===0?`<div class="empty-state"><p>${filter==='Todos'?'Nenhum funcionário cadastrado.':'Nenhum funcionário com status "'+filter+'".'}</p>${filter==='Todos'?`<button class="btn btn-primary" onclick="_openModal('new-func')">+ Primeiro Funcionário</button>`:''}</div>`:`<div class="tbl-wrap"><table><thead><tr><th style="cursor:pointer" onclick="${sortClick('nome')}">Nome ${sortIcon('nome')}</th><th style="cursor:pointer" onclick="${sortClick('funcao')}">Função ${sortIcon('funcao')}</th><th style="cursor:pointer" onclick="${sortClick('empresa')}">Empresa ${sortIcon('empresa')}</th><th>Telefone</th><th>Documento</th><th style="cursor:pointer" onclick="${sortClick('data_entrada')}">Entrada ${sortIcon('data_entrada')}</th><th style="cursor:pointer" onclick="${sortClick('status')}">Status ${sortIcon('status')}</th><th style="width:60px"></th></tr></thead><tbody>${filtered.map(f=>`<tr><td style="font-weight:600;color:var(--text)">${esc(f.nome)}</td><td><span class="tag">${esc(f.funcao||'—')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'—')}</td><td style="color:var(--text3)">${esc(f.telefone||'—')}</td><td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(f.documento||'—')}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,f.status||'Ativo',`updateField('funcionarios','${f.id}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="btn btn-secondary btn-sm btn-icon" title="Editar funcionário" onclick="_openModal('edit-func',{id:'${f.id}'})">✎</button><button class="btn btn-danger btn-sm btn-icon" title="Excluir funcionário" onclick="_deleteFuncionario('${f.id}')">🗑</button></div></td></tr>`).join('')}</tbody></table></div>`}`}</div>`;
+  return`<div><div class="section-header"><div><div class="section-title">👷 Funcionários</div><div class="section-sub">${func.length} cadastrados · ${ativos} ativos</div></div>${actionBar}</div>${subTabs}${section==='baixadas'?renderBaixadasPanel(obra):`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${filterBtns}</div>${filtered.length===0?`<div class="empty-state"><p>${filter==='Todos'?'Nenhum funcionário cadastrado.':'Nenhum funcionário com status "'+filter+'".'}</p>${filter==='Todos'?`<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn btn-primary" onclick="_openModal('new-func')">+ Primeiro Funcionário</button><button class="btn btn-secondary" onclick="_openModal('import-funcionarios',{obra:'${obraSafe}',scope:'obra'})">⬆ Importar planilha</button></div>`:''}</div>`:`<div class="tbl-wrap"><table><thead><tr><th style="cursor:pointer" onclick="${sortClick('nome')}">Nome ${sortIcon('nome')}</th><th style="cursor:pointer" onclick="${sortClick('funcao')}">Função ${sortIcon('funcao')}</th><th style="cursor:pointer" onclick="${sortClick('empresa')}">Empresa ${sortIcon('empresa')}</th><th>Telefone</th><th>Documento</th><th style="cursor:pointer" onclick="${sortClick('data_entrada')}">Entrada ${sortIcon('data_entrada')}</th><th style="cursor:pointer" onclick="${sortClick('status')}">Status ${sortIcon('status')}</th><th style="width:60px"></th></tr></thead><tbody>${filtered.map(f=>`<tr><td style="font-weight:600;color:var(--text)">${esc(f.nome)}</td><td><span class="tag">${esc(f.funcao||'—')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'—')}</td><td style="color:var(--text3)">${esc(f.telefone||'—')}</td><td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(f.documento||'—')}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,f.status||'Ativo',`updateField('funcionarios','${f.id}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="btn btn-secondary btn-sm btn-icon" title="Editar funcionário" onclick="_openModal('edit-func',{id:'${f.id}'})">✎</button><button class="btn btn-danger btn-sm btn-icon" title="Excluir funcionário" onclick="_deleteFuncionario('${f.id}')">🗑</button></div></td></tr>`).join('')}</tbody></table></div>`}`}</div>`;
 }
 
 // ─── RDO ──────────────────────────────────────────────────────────────────
@@ -7407,13 +7407,16 @@ ${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label>
     onSave=m==='edit-func'?`_editFuncionario('${d.id||''}')`:`_saveFuncionario()`;
   }
   else if(m==='import-funcionarios'){
-    title='Importar colaboradores';
-    saveLabel='Importar colaboradores';
+    const importObra=(d.obra||S.obra||'GERAL').trim();
+    const scopedImport=d.scope==='obra'||!!d.obra;
+    title=scopedImport?`Importar funcionários — ${importObra}`:'Importar colaboradores';
+    saveLabel=scopedImport?'Importar para a obra':'Importar colaboradores';
     body=`<div class="form-grid-2">
 <div class="form-group" style="margin-bottom:0"><label>Empresa padrão</label><input id="m-func-import-empresa" value="JET"></div>
-<div class="form-group" style="margin-bottom:0"><label>Vínculo / obra padrão</label><input id="m-func-import-obra" value="GERAL" placeholder="Ex: GERAL, APL - Paulista..."></div>
-<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-func-import-update-existing" checked onchange="window._refreshFuncionariosImportPreview&&window._refreshFuncionariosImportPreview()"> Atualizar cadastros já existentes pela planilha sem apagar vínculo de obra atual</label></div>
-<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de colaboradores</label><input id="m-func-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewFuncionariosImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Formato esperado: NOME, FUNÇÃO, DATA DE NASCIMENTO, RG e CPF. CPF/RG serão salvos no campo Documento; a importação não exclui ninguém.</div></div>
+<div class="form-group" style="margin-bottom:0"><label>${scopedImport?'Obra de destino':'Vínculo / obra padrão'}</label><input id="m-func-import-obra" value="${esc(importObra)}" placeholder="Ex: GERAL, APL - Paulista..." ${scopedImport?'readonly':''}></div>
+<input id="m-func-import-scope" type="hidden" value="${scopedImport?'obra':'geral'}">
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-func-import-update-existing" checked onchange="window._refreshFuncionariosImportPreview&&window._refreshFuncionariosImportPreview()"> ${scopedImport?'Atualizar cadastros já existentes e vincular à obra atual':'Atualizar cadastros já existentes pela planilha sem apagar vínculo de obra atual'}</label></div>
+<div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de funcionários</label><input id="m-func-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewFuncionariosImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Formato esperado: NOME e FUNÇÃO. Se existirem CPF, RG e DATA DE NASCIMENTO, o sistema também aproveita. A importação não exclui ninguém.</div></div>
 <div id="m-func-import-preview" class="tbl-wrap" style="grid-column:1/-1;max-height:320px;overflow:auto;border-radius:12px"><div style="padding:14px;color:var(--text3);font-size:13px">Selecione a planilha para ver a prévia.</div></div>
 </div>`;
     onSave=`window._importFuncionariosPlanilha(event)`;
@@ -7871,7 +7874,7 @@ ${commercialItemsHeaderHtml()}
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -8424,6 +8427,7 @@ function funcionarioImportOptions(){
   return{
     empresa:(document.getElementById('m-func-import-empresa')?.value||'JET').trim()||'JET',
     obra:(document.getElementById('m-func-import-obra')?.value||'GERAL').trim(),
+    scope:(document.getElementById('m-func-import-scope')?.value||'geral').trim(),
     updateExisting:!!document.getElementById('m-func-import-update-existing')?.checked
   };
 }
@@ -8478,7 +8482,7 @@ function funcionariosImportPreviewHtml(rows=[]){
   return`<table><thead><tr><th>Nome</th><th>Função</th><th>CPF</th><th>RG</th><th>Nascimento</th><th>Status</th></tr></thead><tbody>${rows.map(r=>{
     const status=r.duplicate?'<span class="tag" style="color:#f87171">Duplicado na planilha</span>':r.existingId?(opts.updateExisting?'<span class="tag">Atualizar existente</span>':'<span class="tag">Já existe</span>'):'<span class="tag" style="color:#34d399">Novo</span>';
     return`<tr><td><strong>${esc(r.nome)}</strong>${r.existingName&&r.existingName!==r.nome?`<div style="font-size:10px;color:var(--text3)">Atual: ${esc(r.existingName)}</div>`:''}</td><td>${esc(r.funcao||'Sem função')}</td><td style="white-space:nowrap">${esc(formatCPF(r.cpf)||'—')}</td><td>${esc(r.rg||'—')}</td><td style="white-space:nowrap">${esc(r.nascimento||'—')}</td><td>${status}</td></tr>`;
-  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} colaborador(es) · ${novos} novo(s) · ${atualizaveis} atualização(ões) · ${ignorados} ignorado(s). Empresa padrão: ${esc(opts.empresa)} · vínculo padrão: ${esc(opts.obra||'Sem obra')}.</div>`;
+  }).join('')}</tbody></table><div style="padding:10px 12px;color:var(--text3);font-size:12px;border-top:1px solid var(--border)">Prévia: ${rows.length} colaborador(es) · ${novos} novo(s) · ${atualizaveis} atualização(ões) · ${ignorados} ignorado(s). Empresa padrão: ${esc(opts.empresa)} · ${opts.scope==='obra'?'obra de destino':'vínculo padrão'}: ${esc(opts.obra||'Sem obra')}.</div>`;
 }
 window._refreshFuncionariosImportPreview=()=>{const target=document.getElementById('m-func-import-preview');if(target&&window._funcImportDrafts)target.innerHTML=funcionariosImportPreviewHtml(window._funcImportDrafts);};
 window._previewFuncionariosImport=async(file)=>{
@@ -8517,18 +8521,19 @@ window._importFuncionariosPlanilha=async(event)=>{
   if(btn){btn.disabled=true;btn.textContent='Importando...';}
   if(inserts.length){
     const{error}=await sb.from('funcionarios').insert(inserts);
-    if(error){if(btn){btn.disabled=false;btn.textContent='Importar colaboradores';}toast('Erro ao importar colaboradores: '+error.message,'#ef4444');return;}
+    if(error){if(btn){btn.disabled=false;btn.textContent=opts.scope==='obra'?'Importar para a obra':'Importar colaboradores';}toast('Erro ao importar colaboradores: '+error.message,'#ef4444');return;}
     DB.funcionarios=[...(DB.funcionarios||[]),...inserts];
   }
   if(updateDrafts.length){
     const updates=await Promise.all(updateDrafts.map(d=>{
       const atual=(DB.funcionarios||[]).find(f=>f.id===d.existingId)||{};
       const patch={nome:d.nome,funcao:d.funcao||atual.funcao||'',empresa:opts.empresa||atual.empresa||'JET',documento:d.documento||atual.documento||'',status:atual.status||'Ativo'};
-      if(!atual.obra&&opts.obra)patch.obra=opts.obra;
+      if(opts.scope==='obra'&&opts.obra)patch.obra=opts.obra;
+      else if(!atual.obra&&opts.obra)patch.obra=opts.obra;
       return sb.from('funcionarios').update(patch).eq('id',d.existingId).then(res=>({res,d,patch}));
     }));
     const failed=updates.find(u=>u.res.error);
-    if(failed){if(btn){btn.disabled=false;btn.textContent='Importar colaboradores';}toast('Erro ao atualizar colaborador: '+failed.res.error.message,'#ef4444');return;}
+    if(failed){if(btn){btn.disabled=false;btn.textContent=opts.scope==='obra'?'Importar para a obra':'Importar colaboradores';}toast('Erro ao atualizar colaborador: '+failed.res.error.message,'#ef4444');return;}
     DB.funcionarios=(DB.funcionarios||[]).map(f=>{const u=updates.find(x=>x.d.existingId===f.id);return u?{...f,...u.patch}:f;});
   }
   DB.funcionarios=(DB.funcionarios||[]).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
@@ -9424,6 +9429,7 @@ window._openModal=(type,data={})=>{
   S.modal=type;S.modalData=data||{};
   if(type==='new-rdo')window._rdoFotos=[];
   if(type==='new-adiantamento')window._adiantamentoPixImport=null;
+  if(type==='import-funcionarios')window._funcImportDrafts=[];
   if(type==='edit-rdo'){const r=DB.rdo.find(x=>x.id===data.id);window._rdoFotos=[...(r?.fotos||[])];}
   renderApp();
   setTimeout(()=>{
