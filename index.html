@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260523181134">
+<meta name="jet-build" content="20260523181919">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -10642,6 +10642,10 @@ function initDateInputs(){
     if(el._flatpickr)return;
     const val=el.value;
     flatpickr(el,{locale:'pt',dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',disableMobile:true,defaultDate:val||null,allowInput:true});
+  });
+  document.querySelectorAll('input.fp-modal-date').forEach(el=>{
+    if(el._flatpickr)return;
+    flatpickr(el,{locale:'pt',dateFormat:'d/m/Y',disableMobile:true,allowInput:true});
   });
 }
 
