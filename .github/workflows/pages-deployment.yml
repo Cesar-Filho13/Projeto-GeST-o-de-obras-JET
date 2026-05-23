@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/index.html
-          BUILD_ID=$(date -u +%Y%m%d%H%M%S)
+          BUILD_ID=$(TZ='America/Sao_Paulo' date +%Y%m%d%H%M%S)
           sed -i -E "s/<meta name=\"jet-build\" content=\"[^\"]*\">/<meta name=\"jet-build\" content=\"${BUILD_ID}\">/" dist/index.html
           if [ -d icons ]; then
             cp -R icons dist/icons
