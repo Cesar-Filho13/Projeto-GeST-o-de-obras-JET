@@ -3975,6 +3975,7 @@ ${rdos.length===0?`<div class="empty-state"><p>Nenhum RDO registrado.</p><button
   <div style="display:flex;gap:6px;flex-shrink:0">
     <div class="rdo-status-slot" onclick="event.stopPropagation()"><span class="rdo-status-label">Status</span>${makeCd(RDO_STATUS_LIST,RDO_STATUS_MAP,getRDOStatus(r),`window._setRDOStatus('${escJs(r.id)}',VAL)`)}</div>
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();exportRDOPDF('${escJs(obra)}','${r.id}')" title="Baixar PDF deste RDO">📑 PDF</button>
+    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_duplicateRdo('${r.id}')" title="Duplicar RDO (próximo dia)">⧉</button>
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-rdo',{id:'${r.id}'})">✎</button>
     <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteRdo('${r.id}')">×</button>
   </div>
@@ -8133,6 +8134,19 @@ window._saveMaterial=async()=>{
 };
 
 window._deleteRdo=async(id)=>{if(!confirm('Excluir este RDO?'))return;await sb.from('rdo').delete().eq('id',id);DB.rdo=DB.rdo.filter(r=>r.id!==id);toast('RDO excluído.','#f59e0b');renderApp();};
+window._duplicateRdo=async(id)=>{
+  const src=DB.rdo.find(r=>r.id===id);
+  if(!src)return;
+  const nextDate=(()=>{const d=new Date(src.data+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);})();
+  const diaSem=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(nextDate+'T12:00:00').getDay()];
+  const maxNum=Math.max(0,...(DB.rdo.filter(r=>r.obra===src.obra).map(r=>parseInt(r.rdo_numero)||0)));
+  const newItem={...src,id:uid(),data:nextDate,dia_semana:diaSem,rdo_numero:maxNum+1,fotos:[...(src.fotos||[])],status:'Elaboração'};
+  const{error}=await sb.from('rdo').insert(newItem);
+  if(error){toast('Erro ao duplicar: '+error.message,'#ef4444');return;}
+  DB.rdo.unshift(newItem);
+  toast(`RDO Nº ${newItem.rdo_numero} criado (${nextDate})`);
+  renderApp();
+};
 window._matCollapsed={};
 window._toggleMatGroup=(cid)=>{window._matCollapsed[cid]=window._matCollapsed[cid]===false?true:false;renderApp();};
 window._deleteMaterial=async(id)=>{if(!confirm('Excluir solicitação?'))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
