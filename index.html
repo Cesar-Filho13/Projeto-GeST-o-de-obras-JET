@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260523184508">
+<meta name="jet-build" content="20260523185304">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1074,7 +1074,7 @@ function appVersionLabel(){
   const raw=String(APP_BUILD||'').trim();
   if(!raw||raw===APP_BUILD_PLACEHOLDER||raw==='dev-build')return'v dev';
   const m=raw.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/);
-  if(m)return`v${m[1]}.${m[2]}.${m[3]}-${m[4]}h${m[5]}`;
+  if(m)return`v${m[3]}/${m[2]}/${m[1]}-${m[4]}h${m[5]}`;
   return`v ${raw.slice(0,12)}`;
 }
 
