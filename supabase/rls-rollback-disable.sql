@@ -18,6 +18,7 @@ declare
     'pedidos',
     'fornecedores',
     'cotacoes',
+    'ferramentas',
     'companies'
   ];
 begin
