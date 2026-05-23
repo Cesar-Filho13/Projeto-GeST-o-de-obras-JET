@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260523190658">
+<meta name="jet-build" content="20260523191559">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -9151,6 +9151,16 @@ window._saveAlmoxSaida=async(id)=>withAlmoxActionLock(async()=>{
   DB.estoque.unshift(mov);
   setAlmoxTransferMeta(num,{status:'Separado',obra_origem:origem,transito_em:'',recebido_em:'',recebido_por:'',recebimento_obs:''});
   logAlmoxMovimento({tipo:'Saida',itemId:est.id,item:est.item,obra_origem:origem,obra_destino:obra,qtd,unidade:est.unidade||'un',responsavel:resp,numero_controle:num,saldo_anterior:saldoAtual,saldo_atual:saldoAtual-qtd,observacao:obs||`Material separado para a transferencia ${num}.`,data,created_at:new Date().toISOString()});
+  const novoSaldo=saldoAtual-qtd;
+  const minimo=getAlmoxMinStock(est);
+  if(novoSaldo<=minimo){
+    const jaExiste=DB.cotacoes.find(c=>c.origem==='auto-reposicao'&&c.item===`Reposição: ${est.item}`&&c.status==='Solicitada');
+    if(!jaExiste){
+      const cot={id:uid(),obra:est.obra||obra,item:`Reposição: ${est.item}`,cotacoes:[],status:'Solicitada',data:todayISO(),origem:'auto-reposicao',created_at:new Date().toISOString()};
+      const{error:ce}=await sb.from('cotacoes').insert(cot);
+      if(!ce){if(!DB.cotacoes.find(c=>c.id===cot.id))DB.cotacoes.unshift(cot);toast(`⚠ Estoque mínimo atingido: cotação criada para "${est.item}"`,'#f59e0b');}
+    }
+  }
   toast('Saida registrada e transferencia criada.','#22c55e');
   _closeModal();renderApp();
 });
