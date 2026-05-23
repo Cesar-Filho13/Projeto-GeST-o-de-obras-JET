@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260523053945">
+<meta name="jet-build" content="20260523173931">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1084,6 +1084,8 @@ const PL=['EM ANÁLISE','APROVADO','NÃO APROVADO'];
 const MAT_STATUS=['Pendente','Em Análise','Aprovado','Comprado','Entregue','Cancelado'];
 const FUNC_STATUS=['Ativo','Ausente','Afastado','Desligado'];
 const RDO_STATUS_LIST=['Elaboração','Enviado','Concluído','Cancelado'];
+const FERR_STATUS_LIST=['Disponível','Alocado','Em Manutenção','Baixado'];
+const FERR_STATUS_MAP={'Disponível':{bg:'#062018',c:'#34d399',d:'#10b981'},'Alocado':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Em Manutenção':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Baixado':{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
 const URGENCIA=['Normal','Urgente','Crítico'];
 const TEMPO=['Bom','Nublado','Chuva Leve','Chuva Forte','Vento Forte','Parcialmente Nublado'];
 
@@ -1103,11 +1105,11 @@ const US={'Normal':{bg:'#161616',c:'#888',d:'#555'},'Urgente':{bg:'#2a1d06',c:'#
 const BS={'Solicitado':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Programado':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Aceito':{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},'Em baixada':{bg:'#1a0f3d',c:'#c084fc',d:'#8b5cf6'}};
 const COTACAO_STATUS_LIST=['Solicitada','Em análise','Negociando','Fechada','Cancelada'];
 const COTACAO_STATUS_MAP={Solicitada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em análise':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Negociando:{bg:'#1a0f3d',c:'#c084fc',d:'#8b5cf6'},Fechada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Cancelada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
-const DEFAULT_OBRA_TAB_ORDER=['aditivos','materiais','rdo','todo','funcionarios','despesas'];
+const DEFAULT_OBRA_TAB_ORDER=['aditivos','materiais','rdo','todo','funcionarios','despesas','ferramentas'];
 const PEDIDO_STATUS_LIST=['Pendente','Aprovado','Enviado','Recebido','Cancelado'];
 const PEDIDO_STATUS_MAP={Pendente:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovado:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Enviado:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#062018',c:'#34d399',d:'#10b981'},Cancelado:{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
 
-const OBRA_LINKED_TABLES=['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','cotacoes'];
+const OBRA_LINKED_TABLES=['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','cotacoes','ferramentas'];
 
 const OBRA_COLORS=[{bg:'#0e1f3d',c:'#60a5fa',bar:'#3b82f6'},{bg:'#1a0f2e',c:'#c084fc',bar:'#a855f7'},{bg:'#062018',c:'#34d399',bar:'#10b981'},{bg:'#2a1d06',c:'#fbbf24',bar:'#f59e0b'},{bg:'#200c18',c:'#f472b6',bar:'#ec4899'},{bg:'#0f1e20',c:'#2dd4bf',bar:'#14b8a6'},{bg:'#1f1200',c:'#fb923c',bar:'#f97316'}];
 function obraColor(nome){let h=0;for(let i=0;i<nome.length;i++)h=(h*31+nome.charCodeAt(i))>>>0;return OBRA_COLORS[h%OBRA_COLORS.length];}
@@ -2180,7 +2182,7 @@ window._copyTodoGroup=async(obra,idsCsv)=>{
 };
 
 // ─── SESSION TIMEOUT (20 minutos) ─────────────────────────────────────────
-const LINKED_TABLE_LABELS={aditivos:'Aditivos',materiais:'Materiais',funcionarios:'Funcionários',rdo:'RDO',todos:'A Fazer',despesas:'Adiantamentos',estoque:'Estoque',pedidos:'Pedidos',cotacoes:'Cotações'};
+const LINKED_TABLE_LABELS={aditivos:'Aditivos',materiais:'Materiais',funcionarios:'Funcionários',rdo:'RDO',todos:'A Fazer',despesas:'Adiantamentos',estoque:'Estoque',pedidos:'Pedidos',cotacoes:'Cotações',ferramentas:'Ferramentas'};
 function normalizePedidoItem(item={}){
   const raw=typeof item==='string'?{nome:item}:item||{};
   return{
@@ -2345,10 +2347,10 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
 async function loadAll(){
-  const [a,m,f,r,t,d,e,p,fn,c]=await Promise.all([
+  const [a,m,f,r,t,d,e,p,fn,c,ferr]=await Promise.all([
     sb.from('aditivos').select('*').order('created_at',{ascending:true}),
     sb.from('materiais').select('*').order('created_at',{ascending:false}),
     sb.from('funcionarios').select('*').order('nome'),
@@ -2359,8 +2361,9 @@ async function loadAll(){
     sb.from('pedidos').select('*').order('created_at',{ascending:false}),
     sb.from('fornecedores').select('*').order('nome'),
     sb.from('cotacoes').select('*').order('created_at',{ascending:false}),
+    sb.from('ferramentas').select('*').order('created_at',{ascending:false}),
   ]);
-  const errs=[a,m,f,r,t,d,e,p,fn,c].filter(x=>x.error);
+  const errs=[a,m,f,r,t,d,e,p,fn,c,ferr].filter(x=>x.error);
 if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.message));setTimeout(()=>toast('⚠ Erro ao carregar '+errs.length+' tabela(s). Verifique o console.','#ef4444'),500);}
   DB.aditivos=(a.data||[]).map(x=>({...x,comentarios:x.comentarios||[],arquivos:x.arquivos||[],planilha:x.planilha||[]}));
   DB.materiais=m.data||[];
@@ -2372,6 +2375,7 @@ if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.mess
   DB.pedidos=p.data||[];
   DB.fornecedores=fn.data||[];
   DB.cotacoes=c.data||[];
+  DB.ferramentas=ferr.data||[];
   await loadRemoteObras();
   await syncObraRegistry();
   await loadRemoteBaixadas();
@@ -2392,7 +2396,8 @@ const UPDATE_FIELD_ALLOWLIST={
   despesas:new Set(['descricao','nfe','loja','valor_conta']),
   estoque:new Set(['item','qtd','unidade']),
   pedidos:new Set(['numero','data','observacao','fornecedor','obra','responsavel','status','total']),
-  fornecedores:new Set(['nome','telefone','email','cnpj','ativo'])
+  fornecedores:new Set(['nome','telefone','email','cnpj','ativo']),
+  ferramentas:new Set(['item','numero_serie','patrimonio','status','funcionario_nome','data_alocacao','motivo_baixa','observacao'])
 };
 function canUpdateField(table,field){return UPDATE_FIELD_ALLOWLIST[table]?.has(field)===true;}
 async function updateField(table,id,field,value){
@@ -2412,11 +2417,37 @@ async function updateField(table,id,field,value){
   if(row)row[field]=value;
   const{error}=await sb.from(table).update({[field]:value}).eq('id',id);
   if(error){toast('Erro ao salvar: '+error.message,'#ef4444');if(row)row[field]=oldVal;return false;}
+  if(table==='materiais'&&field==='status'&&value==='Aprovado')_onMaterialAprovado(id);
   return true;
 }
 
+async function _onMaterialAprovado(matId){
+  const mat=DB.materiais.find(m=>m.id===matId);
+  if(!mat||!mat.item)return;
+  const normItem=normalizeMaterialSpec(mat.item);
+  const estoqueItem=(DB.estoque||[]).find(e=>normalizeMaterialSpec(e.item)===normItem);
+  if(!estoqueItem)return;
+  const qtdDeduzir=parseFloat(mat.quantidade)||0;
+  const novaQtd=Math.max(0,Number(estoqueItem.qtd||0)-qtdDeduzir);
+  const{error}=await sb.from('estoque').update({qtd:novaQtd}).eq('id',estoqueItem.id);
+  if(!error){
+    estoqueItem.qtd=novaQtd;
+    toast(`Estoque: "${estoqueItem.item}" → ${novaQtd} ${estoqueItem.unidade||'un'}`,'#22c55e');
+  }
+  const minimo=getAlmoxMinStock(estoqueItem);
+  if(novaQtd<=minimo){
+    const cot={id:uid(),obra:mat.obra,item:`Reposição: ${mat.item}`,cotacoes:[],status:'Solicitada',data:todayISO(),origem:'auto-reposicao',created_at:new Date().toISOString()};
+    const{error:ce}=await sb.from('cotacoes').insert(cot);
+    if(!ce){
+      if(!DB.cotacoes.find(c=>c.id===cot.id))DB.cotacoes.unshift(cot);
+      toast(`⚠ Estoque mínimo: cotação criada para "${mat.item}"`,'#f59e0b');
+    }
+  }
+  renderApp();
+}
+
 function setupRT(){
-  ['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','fornecedores','cotacoes'].forEach(table=>{
+  ['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','fornecedores','cotacoes','ferramentas'].forEach(table=>{
     sb.channel('rt-'+table).on('postgres_changes',{event:'*',schema:'public',table},({eventType:et,new:n,old:o})=>{
       if(et==='INSERT'){if(!DB[table].find(r=>r.id===n.id))DB[table].unshift(n);}
       else if(et==='UPDATE'){const i=DB[table].findIndex(r=>r.id===n.id);if(i>=0)DB[table][i]=n;}
@@ -3453,6 +3484,7 @@ function renderObraInner(){
   const pedidos=DB.pedidos.filter(p=>p.obra===obra);
   const fornecedores=DB.fornecedores.filter(f=>f.ativo===true);
   const cotacoes=DB.cotacoes.filter(c=>c.obra===obra);
+  const ferramentas=DB.ferramentas.filter(f=>f.obra===obra);
   const TAB_DEFS={
     aditivos:{icon:'📋',label:'Aditivos',count:ad.length},
     materiais:{icon:'📦',label:'Materiais',count:mat.length},
@@ -3460,6 +3492,7 @@ function renderObraInner(){
     rdo:{icon:'📝',label:'RDO',count:rdos.length},
     todo:{icon:'✅',label:'A Fazer',count:todos.filter(t=>t.status==='Pendente').length},
     despesas:{icon:'💰',label:'Adiantamento',count:desp.length||0},
+    ferramentas:{icon:'🔧',label:'Ferramentas',count:ferramentas.length},
   };
   // Ensure tabOrder always has all tabs including new ones
   if(!S.tabOrder)S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];
@@ -3484,6 +3517,7 @@ function renderObraInner(){
   else if(S.obraTab==='rdo')content=renderRDO(rdos,obra);
   else if(S.obraTab==='todo')content=renderTodo(todos,obra);
   else if(S.obraTab==='despesas')content=renderDespesas(desp,obra);
+  else if(S.obraTab==='ferramentas')content=renderFerramentas(ferramentas,obra);
 
   const col=obraColor(obra);
   return`<div>
@@ -3984,6 +4018,49 @@ ${r.atividades?`<div class="rdo-activity-card" onclick="_openModal('edit-rdo',{i
 ${r.ocorrencias?`<div style="margin-top:8px;padding:8px;background:#200c0c;border-radius:6px;font-size:12px;color:#f87171">⚠ ${esc(r.ocorrencias)}</div>`:''}
 ${(r.fotos||[]).length>0?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(r.fotos||[]).slice(0,4).map(f=>`<div style="width:60px;height:60px;border-radius:6px;overflow:hidden;border:1px solid var(--border)"><img src="${esc(f.url||f)}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}${(r.fotos||[]).length>4?`<div style="width:60px;height:60px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">+${(r.fotos||[]).length-4}</div>`:''}</div>`:''}
 </div>`).join('')}</div>`}
+</div>`;
+}
+
+// ─── FERRAMENTAS / ATIVOS ────────────────────────────────────────────────
+function renderFerramentas(ferramentas,obra){
+  const byStatus={Disponível:[],Alocado:[],['Em Manutenção']:[],Baixado:[]};
+  ferramentas.forEach(f=>{const s=f.status||'Disponível';(byStatus[s]||(byStatus[s]=[])).push(f);});
+  const tableRows=ferramentas.length===0?'':`<table style="width:100%;border-collapse:collapse">
+<thead><tr style="border-bottom:2px solid var(--border)">
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Item</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Nº Série / Patrimônio</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Status</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Responsável</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Desde</th>
+  <th style="padding:8px 10px;text-align:right;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Ações</th>
+</tr></thead>
+<tbody>
+${ferramentas.map(f=>{
+  const st=FERR_STATUS_MAP[f.status||'Disponível']||FERR_STATUS_MAP['Disponível'];
+  return`<tr style="border-bottom:1px solid var(--border);transition:background .12s" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+  <td style="padding:9px 10px;font-weight:600;color:var(--text)">${esc(f.item||'—')}</td>
+  <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${esc(f.numero_serie||f.patrimonio||'—')}</td>
+  <td style="padding:9px 10px">${makeCd(FERR_STATUS_LIST,FERR_STATUS_MAP,f.status||'Disponível',`_updateFerrStatus('${escJs(f.id)}',VAL)`)}</td>
+  <td style="padding:9px 10px;color:var(--text2)">${f.funcionario_nome?`<span style="font-size:12px">👤 ${esc(f.funcionario_nome)}</span>`:'<span style="color:var(--text3)">—</span>'}</td>
+  <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.data_alocacao?fmtD(f.data_alocacao):'—'}</td>
+  <td style="padding:9px 10px;text-align:right">
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      ${f.funcionario_nome?`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_termoResponsabilidade('${escJs(f.id)}')" title="Termo de Responsabilidade">📄</button>`:''}
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-ferramenta',{id:'${escJs(f.id)}'})">✎</button>
+      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteFerramenta('${escJs(f.id)}')">×</button>
+    </div>
+  </td>
+</tr>`;}).join('')}
+</tbody></table>`;
+  return`<div>
+<div class="section-header">
+  <div>
+    <div class="section-title">Ferramentas & Ativos</div>
+    <div class="section-sub">${ferramentas.length} item(s) · ${byStatus['Disponível'].length} disponível · ${byStatus['Alocado'].length} alocado · ${byStatus['Em Manutenção'].length} em manutenção · ${byStatus['Baixado'].length} baixado</div>
+  </div>
+  <button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Nova Ferramenta</button>
+</div>
+${ferramentas.length===0?`<div class="empty-state"><p>Nenhuma ferramenta cadastrada.</p><button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Primeiro Ativo</button></div>`:tableRows}
 </div>`;
 }
 
@@ -7890,8 +7967,25 @@ ${commercialItemsHeaderHtml()}
     onSave=`_saveCotacao()`;
   }
 
+  else if(m==='new-ferramenta'||m==='edit-ferramenta'){
+    const ferr=m==='edit-ferramenta'?DB.ferramentas.find(x=>x.id===d.id):null;
+    title=m==='new-ferramenta'?'Nova Ferramenta / Ativo':'Editar Ferramenta';
+    const funcsObra=(DB.funcionarios||[]).filter(f=>f.obra===S.obra&&f.status==='Ativo');
+    body=`<div class="form-grid-2">
+  <div class="form-group" style="grid-column:1/-1"><label>Nome / Descrição *</label><input id="m-ferr-item" placeholder="Ex: Furadeira de Impacto 3/4" value="${esc(ferr?.item||'')}"></div>
+  <div class="form-group"><label>Nº de Série</label><input id="m-ferr-serie" placeholder="Ex: SN-20241001" value="${esc(ferr?.numero_serie||'')}"></div>
+  <div class="form-group"><label>Nº Patrimônio</label><input id="m-ferr-pat" placeholder="Ex: PAT-0042" value="${esc(ferr?.patrimonio||'')}"></div>
+  <div class="form-group"><label>Status</label><select id="m-ferr-status">${FERR_STATUS_LIST.map(s=>`<option value="${s}"${(ferr?.status||'Disponível')===s?' selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="form-group"><label>Data de Alocação</label><input id="m-ferr-data" type="date" value="${ferr?.data_alocacao||''}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Responsável pela Cautela</label><input id="m-ferr-func" list="m-ferr-func-list" placeholder="Nome do funcionário" value="${esc(ferr?.funcionario_nome||'')}"><datalist id="m-ferr-func-list">${funcsObra.map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Motivo de Baixa (quebra/extravio)</label><input id="m-ferr-baixa" placeholder="Preencher apenas se Baixado" value="${esc(ferr?.motivo_baixa||'')}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea id="m-ferr-obs" rows="2" placeholder="Condições, histórico...">${esc(ferr?.observacao||'')}</textarea></div>
+</div>`;
+    onSave=m==='new-ferramenta'?`_saveFerramenta()`:`_saveFerramenta('${escJs(ferr?.id||'')}')`;
+  }
+
   return`<div class="modal-overlay">
-<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -8147,6 +8241,79 @@ window._duplicateRdo=async(id)=>{
   toast(`RDO Nº ${newItem.rdo_numero} criado (${nextDate})`);
   renderApp();
 };
+// ─── FERRAMENTAS ─────────────────────────────────────────────────────────
+window._saveFerramenta=async(editId)=>{
+  const item=document.getElementById('m-ferr-item')?.value?.trim();
+  if(!item){toast('Informe o nome da ferramenta.','#ef4444');return;}
+  const obj={
+    obra:S.obra,item,
+    numero_serie:document.getElementById('m-ferr-serie')?.value?.trim()||'',
+    patrimonio:document.getElementById('m-ferr-pat')?.value?.trim()||'',
+    status:document.getElementById('m-ferr-status')?.value||'Disponível',
+    funcionario_nome:document.getElementById('m-ferr-func')?.value?.trim()||'',
+    data_alocacao:document.getElementById('m-ferr-data')?.value||null,
+    motivo_baixa:document.getElementById('m-ferr-baixa')?.value?.trim()||'',
+    observacao:document.getElementById('m-ferr-obs')?.value?.trim()||'',
+    updated_at:new Date().toISOString()
+  };
+  if(editId){
+    const{error}=await sb.from('ferramentas').update(obj).eq('id',editId);
+    if(error){toast('Erro: '+error.message,'#ef4444');return;}
+    DB.ferramentas=DB.ferramentas.map(f=>f.id===editId?{...f,...obj}:f);
+  }else{
+    const newItem={id:uid(),...obj,created_at:new Date().toISOString()};
+    const{error}=await sb.from('ferramentas').insert(newItem);
+    if(error){toast('Erro: '+error.message,'#ef4444');return;}
+    DB.ferramentas.unshift(newItem);
+  }
+  toast('Ferramenta salva!');_closeModal();renderApp();
+};
+window._deleteFerramenta=async(id)=>{
+  if(!confirm('Excluir esta ferramenta?'))return;
+  await sb.from('ferramentas').delete().eq('id',id);
+  DB.ferramentas=DB.ferramentas.filter(f=>f.id!==id);
+  toast('Ferramenta removida.','#f59e0b');renderApp();
+};
+window._updateFerrStatus=async(id,status)=>{
+  const{error}=await sb.from('ferramentas').update({status}).eq('id',id);
+  if(error){toast('Erro: '+error.message,'#ef4444');return;}
+  DB.ferramentas=DB.ferramentas.map(f=>f.id===id?{...f,status}:f);
+  renderApp();
+};
+window._termoResponsabilidade=(id)=>{
+  const f=DB.ferramentas.find(x=>x.id===id);
+  if(!f)return;
+  const w=window.open('','_blank','width=700,height=500');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Termo de Responsabilidade</title>
+<style>body{font-family:Arial,sans-serif;max-width:640px;margin:40px auto;color:#111;font-size:14px}
+h2{text-align:center;font-size:18px;margin-bottom:4px}
+.sub{text-align:center;font-size:12px;color:#666;margin-bottom:24px}
+table{width:100%;border-collapse:collapse;margin-bottom:24px}
+td{padding:8px 12px;border:1px solid #ccc}td:first-child{font-weight:700;width:40%;background:#f5f5f5}
+.ass{margin-top:48px;display:flex;gap:40px}.ass div{flex:1;border-top:1px solid #111;padding-top:8px;text-align:center;font-size:12px}
+@media print{button{display:none}}
+</style></head><body>
+<h2>TERMO DE RESPONSABILIDADE</h2>
+<p class="sub">JET Serviços de Engenharia &middot; ${esc(f.obra||'')}</p>
+<table>
+<tr><td>Ferramenta / Ativo</td><td><strong>${esc(f.item||'')}</strong></td></tr>
+<tr><td>N&ordm; de S&eacute;rie</td><td>${esc(f.numero_serie||'&mdash;')}</td></tr>
+<tr><td>N&ordm; Patrim&ocirc;nio</td><td>${esc(f.patrimonio||'&mdash;')}</td></tr>
+<tr><td>Status</td><td>${esc(f.status||'')}</td></tr>
+<tr><td>Respons&aacute;vel</td><td><strong>${esc(f.funcionario_nome||'&mdash;')}</strong></td></tr>
+<tr><td>Data de Aloca&ccedil;&atilde;o</td><td>${f.data_alocacao?new Date(f.data_alocacao+'T12:00:00').toLocaleDateString('pt-BR'):'&mdash;'}</td></tr>
+<tr><td>Observa&ccedil;&otilde;es</td><td>${esc(f.observacao||'&mdash;')}</td></tr>
+</table>
+<p style="font-size:13px">Declaro ter recebido em perfeito estado o equipamento descrito acima, responsabilizando-me pela sua guarda, conserva&ccedil;&atilde;o e devolu&ccedil;&atilde;o nas mesmas condi&ccedil;&otilde;es, ou ressarcimento em caso de perda, furto ou dano.</p>
+<div class="ass">
+  <div>${esc(f.funcionario_nome||'Funcion&aacute;rio')}<br>CPF: _______________________</div>
+  <div>Respons&aacute;vel JET<br>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
+</div>
+<br><button onclick="window.print()" style="padding:8px 20px;cursor:pointer;margin-top:16px">Imprimir</button>
+</body></html>`);
+  w.document.close();
+};
+
 window._matCollapsed={};
 window._toggleMatGroup=(cid)=>{window._matCollapsed[cid]=window._matCollapsed[cid]===false?true:false;renderApp();};
 window._deleteMaterial=async(id)=>{if(!confirm('Excluir solicitação?'))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
