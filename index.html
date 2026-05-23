@@ -1736,7 +1736,29 @@ function cleanAlmoxMeta(meta={}){
       updated_at:row?.updated_at||new Date().toISOString()
     };
   });
-  return{itemMeta,transferMeta};
+  const depositoMeta={};
+  Object.entries(meta?.depositoMeta||{}).forEach(([nome,row])=>{
+    if(!nome)return;
+    depositoMeta[String(nome)]={
+      responsavel:String(row?.responsavel||'').trim(),
+      localizacao:String(row?.localizacao||'').trim(),
+      observacao:String(row?.observacao||'').trim(),
+      updated_at:row?.updated_at||new Date().toISOString()
+    };
+  });
+  return{itemMeta,transferMeta,depositoMeta};
+}
+function getAlmoxDepositoMeta(nome=''){return(DB.almoxMeta?.depositoMeta||{})[nome]||{responsavel:'',localizacao:'',observacao:''};}
+function setAlmoxDepositoMeta(nome,patch={}){
+  if(!nome)return;
+  const current=getAlmoxDepositoMeta(nome);
+  DB.almoxMeta=cleanAlmoxMeta({
+    ...(DB.almoxMeta||{}),
+    itemMeta:{...(DB.almoxMeta?.itemMeta||{})},
+    transferMeta:{...(DB.almoxMeta?.transferMeta||{})},
+    depositoMeta:{...(DB.almoxMeta?.depositoMeta||{}),[nome]:{...current,...patch,updated_at:new Date().toISOString()}}
+  });
+  queueAlmoxMetaSync();
 }
 function getLocalAlmoxMeta(){try{return cleanAlmoxMeta(JSON.parse(localStorage.getItem('jet-almox-meta')||'{}'));}catch{return{itemMeta:{},transferMeta:{}};}}
 function saveLocalAlmoxMeta(meta){localStorage.setItem('jet-almox-meta',JSON.stringify(cleanAlmoxMeta(meta)));}
@@ -3450,13 +3472,14 @@ function renderDashboard(){
 
   // PAINEL ALMOXARIFADO
   if(S.modulo==='almoxarifado'){
+    if(S.almoxPage==='gerenciar') return renderAlmoxGerenciar();
     const inventario=getAlmoxInventario();
     const expedicoes=buildAlmoxExpedicaoGroups();
     const movimentos=cleanAlmoxMovimentos(DB.almoxMovimentos||[]);
     const transferOpen=(getAlmoxTransferCounts(expedicoes)['Separado']||0)+(getAlmoxTransferCounts(expedicoes)['Em transito']||0);
     if(!['inventario','expedicao','movimentacoes','alertas'].includes(S.almoxTab))S.almoxTab='inventario';
     const lowStockCount=getAlmoxLowStockItems().length;
-    const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button>`;
+    const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.almoxPage='gerenciar';renderApp()">⚙ Gerenciar</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>`;
     let html=`<div class="page">${renderPageHero('📦','Almoxarifado','Gestão de estoque, transferências e movimentações',heroActions)}`;
     html+=`<div class="stats-row">
       <div class="stat-card" style="cursor:default"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Itens em estoque</div><div class="stat-value" style="color:#60a5fa">${inventario.length}</div><div class="stat-sub">${inventario.reduce((sum,i)=>sum+Number(i.qtd||0),0)} unidades totais</div></div>
@@ -5804,7 +5827,7 @@ function renderAlmoxInventoryPanel(inventario){
   </div>`;
   const searchBar=`<div style="position:relative;flex:1;min-width:180px;max-width:320px"><input id="almox-inv-search" placeholder="Buscar item ou centro..." style="width:100%;padding:7px 10px 7px 32px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;outline:none" value="${esc(S.almoxInvSearch||'')}" oninput="S.almoxInvSearch=this.value;renderApp()"><svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>`;
   const tableRows=items.length
-    ?`<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Depósito</th><th>Qtd</th><th>Und</th><th>Mín</th><th>Última entrada</th><th>Última saída</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${items.map(item=>{const low=isAlmoxLowStock(item);return`<tr><td><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(item.item)}" onblur="if(this.value.trim())updateField('estoque','${item.id}','item',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td><input class="ci ci-num" type="number" style="width:76px;text-align:center" value="${item.qtd||''}" onblur="updateField('estoque','${item.id}','qtd',this.value?Number(this.value):null)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci" style="width:56px;text-align:center;color:var(--text3)" value="${esc(item.unidade||'un')}" onblur="updateField('estoque','${item.id}','unidade',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci ci-num" type="number" min="1" step="1" style="width:70px;text-align:center" value="${getAlmoxMinStock(item)}" onblur="window._setAlmoxMinStock('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td style="color:var(--text3);white-space:nowrap">${fmtD(item.entrada)}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(item.saida)}</td><td>${low?`<span class="badge" style="background:rgba(245,158,11,.14);color:#fbbf24;border-color:rgba(245,158,11,.22)"><span class="badge-dot" style="background:#fbbf24;box-shadow:none"></span>Baixo</span>`:`<span class="badge" style="background:rgba(16,185,129,.12);color:#34d399;border-color:rgba(16,185,129,.18)"><span class="badge-dot" style="background:#34d399;box-shadow:none"></span>OK</span>`}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Entrada</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-saida';S.modalData={id:'${item.id}'};renderApp()">Saída</button><button class="btn btn-secondary btn-sm" onclick="S.modal='edit-estoque';S.modalData={id:'${item.id}'};renderApp()">Editar</button><button class="btn btn-danger btn-sm" onclick="if(confirm('Deletar: ${escJs(item.item)}?')){window._deleteEstoque('${item.id}')}">×</button></div></td></tr>`;}).join('')}</tbody></table></div>`
+    ?`<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Depósito</th><th>Qtd</th><th>Und</th><th>Mín</th><th>Última entrada</th><th>Última saída</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${items.map(item=>{const low=isAlmoxLowStock(item);return`<tr><td><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(item.item)}" onblur="if(this.value.trim())updateField('estoque','${item.id}','item',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td><input class="ci ci-num" type="number" style="width:76px;text-align:center" value="${item.qtd||''}" onblur="updateField('estoque','${item.id}','qtd',this.value?Number(this.value):null)" onkeydown="if(event.key==='Enter')this.blur()"></td><td><input class="ci" style="width:56px;text-align:center;color:var(--text3)" value="${esc(item.unidade||'un')}" onblur="updateField('estoque','${item.id}','unidade',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td><td style="text-align:center;color:var(--text3)" title="Editável em ⚙ Gerenciar">${getAlmoxMinStock(item)}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(item.entrada)}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(item.saida)}</td><td>${low?`<span class="badge" style="background:rgba(245,158,11,.14);color:#fbbf24;border-color:rgba(245,158,11,.22)"><span class="badge-dot" style="background:#fbbf24;box-shadow:none"></span>Baixo</span>`:`<span class="badge" style="background:rgba(16,185,129,.12);color:#34d399;border-color:rgba(16,185,129,.18)"><span class="badge-dot" style="background:#34d399;box-shadow:none"></span>OK</span>`}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Entrada</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-saida';S.modalData={id:'${item.id}'};renderApp()">Saída</button><button class="btn btn-secondary btn-sm" onclick="S.modal='edit-estoque';S.modalData={id:'${item.id}'};renderApp()">Editar</button><button class="btn btn-danger btn-sm" onclick="if(confirm('Deletar: ${escJs(item.item)}?')){window._deleteEstoque('${item.id}')}">×</button></div></td></tr>`;}).join('')}</tbody></table></div>`
     :(all.length
       ?`<div class="empty-state"><p>Nenhum item encontrado para o filtro atual.</p><button class="btn btn-secondary btn-sm" onclick="S.almoxInvSearch='';S.almoxInvSituation='todos';renderApp()">Limpar filtros</button></div>`
       :`<div class="empty-state"><p>Nenhum item no estoque.</p><button class="btn btn-primary" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Primeiro recebimento</button></div>`);
@@ -5895,6 +5918,69 @@ function renderAlmoxAlertasPanel(){
       :`<button class="btn btn-secondary btn-sm" onclick="window._criarCotacaoAlmox('${escJs(item.item)}','${escJs(item.obra||'')}')">+ Solicitar</button>`;
     return`<tr style="background:rgba(239,68,68,.04)"><td style="font-weight:600;color:var(--text)">${esc(item.item)}</td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td style="font-weight:700;color:#f87171">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td><td style="color:var(--text3)">${min} ${esc(item.unidade||'un')}</td><td style="color:#fbbf24;font-weight:700">−${deficit} ${esc(item.unidade||'un')}</td><td>${cotacaoCell}</td><td><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Receber</button></td></tr>`;
   }).join('')}</tbody></table></div></div>`;
+}
+
+function renderAlmoxGerenciar(){
+  const inventario=getAlmoxInventario();
+  // Depósitos: unique obra values from estoque
+  const depositosSet=new Set(inventario.map(i=>i.obra||'GLOBAL'));
+  const depositos=[...depositosSet].sort();
+
+  const depositoCards=depositos.length?depositos.map(dep=>{
+    const itens=inventario.filter(i=>(i.obra||'GLOBAL')===dep);
+    const totalQtd=itens.reduce((s,i)=>s+Number(i.qtd||0),0);
+    const meta=getAlmoxDepositoMeta(dep);
+    const depJs=escJs(dep);
+    return`<div class="card" style="border-left:3px solid #3b82f6">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <input value="${esc(dep)}" data-orig="${esc(dep)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameAlmoxDeposito(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear">
+          <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3)">${itens.length} item(s)</span>
+            <span style="font-size:11px;color:#60a5fa">${totalQtd} unidades em estoque</span>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="window._deleteAlmoxDeposito('${depJs}')" title="Remover depósito (somente se vazio)">🗑 Remover</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="form-group" style="margin:0"><label>Responsável</label><input value="${esc(meta.responsavel||'')}" placeholder="Nome..." onblur="setAlmoxDepositoMeta('${depJs}',{responsavel:this.value.trim()})" onkeydown="if(event.key==='Enter')this.blur()"></div>
+        <div class="form-group" style="margin:0"><label>Localização</label><input value="${esc(meta.localizacao||'')}" placeholder="Ex: Galpão A, Bloco 2..." onblur="setAlmoxDepositoMeta('${depJs}',{localizacao:this.value.trim()})" onkeydown="if(event.key==='Enter')this.blur()"></div>
+        <div class="form-group" style="margin:0"><label>Observações</label><input value="${esc(meta.observacao||'')}" placeholder="Informações adicionais..." onblur="setAlmoxDepositoMeta('${depJs}',{observacao:this.value.trim()})" onkeydown="if(event.key==='Enter')this.blur()"></div>
+      </div>
+    </div>`;
+  }).join(''):`<div class="empty-state"><p>Nenhum depósito cadastrado. Receba material para criar o primeiro.</p></div>`;
+
+  // Novo depósito
+  const novoDepositoCard=`<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(59,130,246,.12) 0%,rgba(29,78,216,.1) 100%);border:1px solid rgba(59,130,246,.28)">
+    <div class="card-title" style="color:#60a5fa">➕ NOVO DEPÓSITO</div>
+    <div style="display:flex;gap:8px"><input id="new-deposito-input" placeholder="Nome do novo depósito..." style="flex:1" onkeydown="if(event.key==='Enter')window._addAlmoxDeposito()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addAlmoxDeposito()">+ Adicionar</button></div>
+  </div>`;
+
+  // Configuração de itens — tabela com mínimo editável
+  const all=[...inventario].sort((a,b)=>String(a.item||'').localeCompare(String(b.item||'')));
+  const itensCfg=all.length?`<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Depósito</th><th>Unidade</th><th>Saldo atual</th><th>Qtd Mínima</th></tr></thead><tbody>${all.map(item=>{
+    const min=getAlmoxMinStock(item);
+    const low=isAlmoxLowStock(item);
+    return`<tr>
+      <td style="font-weight:600;color:var(--text)">${esc(item.item)}</td>
+      <td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td>
+      <td style="color:var(--text3)">${esc(item.unidade||'un')}</td>
+      <td style="font-weight:700;color:${low?'#f87171':'#34d399'}">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td>
+      <td><input class="ci ci-num" type="number" min="0" step="1" style="width:80px;text-align:center" value="${min}" onblur="window._setAlmoxMinStock('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Quantidade mínima antes de gerar alerta"></td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`:`<div class="empty-state"><p>Nenhum item no estoque para configurar.</p></div>`;
+
+  return`<div class="page">
+  <button class="btn btn-secondary btn-sm" onclick="S.almoxPage='main';renderApp()" style="margin-bottom:20px">← Voltar ao Almoxarifado</button>
+  <div class="section-header"><div><div class="section-title">⚙ Gerenciar Almoxarifado</div><div class="section-sub">Configure depósitos e parâmetros de estoque. Salvo automaticamente.</div></div></div>
+
+  <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:24px 0 12px">📦 Depósitos</div>
+  ${depositoCards}
+  ${novoDepositoCard}
+
+  <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:32px 0 12px">🔢 Estoque Mínimo por Item <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">— edite a coluna Qtd Mínima para definir o limite de alerta</span></div>
+  ${itensCfg}
+  </div>`;
 }
 
 function renderPedidos(ped,obra,fornecedores){
@@ -8904,6 +8990,44 @@ window._criarCotacaoAlmox=async(item,obra)=>{
   if(error){toast('Erro ao criar cotação: '+error.message,'#ef4444');return;}
   if(!DB.cotacoes.find(c=>c.id===cot.id))DB.cotacoes.unshift(cot);
   toast(`Cotação de reposição criada para "${item}"`,'#22c55e');
+  renderApp();
+};
+window._renameAlmoxDeposito=async el=>{
+  const orig=el.dataset.orig,novo=el.value.trim();
+  if(!novo||orig===novo)return;
+  const existe=new Set(getAlmoxInventario().map(i=>i.obra||'GLOBAL')).has(novo);
+  if(existe){toast('Já existe um depósito com esse nome.','#f59e0b');el.value=orig;return;}
+  const ids=DB.estoque.filter(e=>(e.obra||'GLOBAL')===orig).map(e=>e.id);
+  const target=novo==='GLOBAL'?null:novo;
+  await Promise.allSettled(ids.map(id=>sb.from('estoque').update({obra:target}).eq('id',id)));
+  DB.estoque=DB.estoque.map(e=>(e.obra||'GLOBAL')===orig?{...e,obra:target}:e);
+  // migrate depositoMeta key
+  const oldMeta=getAlmoxDepositoMeta(orig);
+  setAlmoxDepositoMeta(novo,oldMeta);
+  el.dataset.orig=novo;
+  toast(`Depósito renomeado para "${novo}"!`);
+  renderApp();
+};
+window._addAlmoxDeposito=()=>{
+  const i=document.getElementById('new-deposito-input');if(!i)return;
+  const v=i.value.trim();if(!v){toast('Digite um nome para o depósito.','#f59e0b');return;}
+  const existe=new Set(getAlmoxInventario().map(it=>it.obra||'GLOBAL')).has(v);
+  if(existe){toast('Depósito já existe.','#f59e0b');return;}
+  // Depósito sem itens ainda: salva só o meta
+  setAlmoxDepositoMeta(v,{responsavel:'',localizacao:'',observacao:''});
+  i.value='';
+  toast(`Depósito "${v}" criado. Receba material para populá-lo.`,'#22c55e');
+  renderApp();
+};
+window._deleteAlmoxDeposito=dep=>{
+  const itens=DB.estoque.filter(e=>(e.obra||'GLOBAL')===dep);
+  if(itens.length){toast(`Depósito "${dep}" ainda possui ${itens.length} item(s). Transfira ou remova os itens primeiro.`,'#f59e0b');return;}
+  if(!confirm(`Remover depósito "${dep}"? Ele não possui itens.`))return;
+  const next={...(DB.almoxMeta?.depositoMeta||{})};
+  delete next[dep];
+  DB.almoxMeta=cleanAlmoxMeta({...(DB.almoxMeta||{}),itemMeta:{...(DB.almoxMeta?.itemMeta||{})},transferMeta:{...(DB.almoxMeta?.transferMeta||{})},depositoMeta:next});
+  queueAlmoxMetaSync(true);
+  toast(`Depósito "${dep}" removido.`,'#22c55e');
   renderApp();
 };
 window._openExpedicaoRecebimento=(num)=>{
