@@ -1471,14 +1471,16 @@ function getAlmoxSelectOptions(selectedId='',{includeEmpty=true,onlyInventory=tr
   const rows=(onlyInventory?getAlmoxInventario():(DB.estoque||[])).slice().sort((a,b)=>String(a.item||'').localeCompare(String(b.item||''))||String(a.obra||'').localeCompare(String(b.obra||'')));
   return `${includeEmpty?'<option value="">Selecione...</option>':''}${rows.map(item=>`<option value="${esc(item.id)}" ${item.id===selectedId?'selected':''}>${esc(getAlmoxItemLabel(item))}</option>`).join('')}`;
 }
-function getAlmoxMovementFilters(){if(!window._almoxMovFilters)window._almoxMovFilters={obra:'',tipo:'Todos'};return window._almoxMovFilters;}
+function getAlmoxMovementFilters(){if(!window._almoxMovFilters)window._almoxMovFilters={obra:'',tipo:'Todos',dataInicio:'',dataFim:''};return window._almoxMovFilters;}
 function getAlmoxMovementTypes(){return['Todos',...new Set(cleanAlmoxMovimentos(DB.almoxMovimentos||[]).map(item=>item.tipo).filter(Boolean))];}
 function getAlmoxMovementObras(){return uniqObras([...getAllObras(),...cleanAlmoxMovimentos(DB.almoxMovimentos||[]).flatMap(item=>[item.obra_origem,item.obra_destino])]);}
 function getAlmoxFilteredMovimentos(){
   const filters=getAlmoxMovementFilters();
-  let rows=cleanAlmoxMovimentos(DB.almoxMovimentos||[]);
+  let rows=cleanAlmoxMovimentos(DB.almoxMovimentos||[]).sort((a,b)=>String(b.data||b.created_at||'').localeCompare(String(a.data||a.created_at||'')));
   if(filters.obra)rows=rows.filter(item=>item.obra_origem===filters.obra||item.obra_destino===filters.obra);
   if(filters.tipo&&filters.tipo!=='Todos')rows=rows.filter(item=>item.tipo===filters.tipo);
+  if(filters.dataInicio)rows=rows.filter(item=>(item.data||'')>=filters.dataInicio);
+  if(filters.dataFim)rows=rows.filter(item=>(item.data||'')<=filters.dataFim);
   return rows;
 }
 function buildAlmoxExpedicaoGroups(){
@@ -5816,17 +5818,59 @@ function renderAlmoxExpedicaoPanel(expedicao){
 }
 function renderAlmoxMovimentacoesPanel(){
   const filters=getAlmoxMovementFilters();
+  const allRows=cleanAlmoxMovimentos(DB.almoxMovimentos||[]);
   const rows=getAlmoxFilteredMovimentos();
   const obras=getAlmoxMovementObras();
   const tipos=getAlmoxMovementTypes();
   const totals=rows.reduce((acc,row)=>{acc[row.tipo]=(acc[row.tipo]||0)+1;return acc;},{});
-return `<div><div class="section-header"><div><div class="section-title">🧭 Histórico de movimentações</div><div class="section-sub">Filtro por obra para rastrear entradas, separacoes, despachos e recebimentos</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window.almoxMovXLSX(window.getAlmoxFilteredMovimentos())">Excel filtrado</button></div></div><div class="form-grid-2" style="margin-bottom:16px"><div class="form-group" style="margin:0"><label>Filtrar por obra</label><select onchange="window._setAlmoxMovFilter('obra',this.value)"><option value="">Todas</option>${obras.map(obra=>`<option value="${esc(obra)}" ${filters.obra===obra?'selected':''}>${esc(obra)}</option>`).join('')}</select></div><div class="form-group" style="margin:0"><label>Tipo de movimento</label><select onchange="window._setAlmoxMovFilter('tipo',this.value)">${tipos.map(tipo=>`<option value="${esc(tipo)}" ${filters.tipo===tipo?'selected':''}>${esc(tipo)}</option>`).join('')}</select></div></div><div class="stats-row" style="margin-bottom:18px"><div class="stat-card"><div class="stat-label">Linhas</div><div class="stat-value" style="color:#60a5fa">${rows.length}</div><div class="stat-sub">Movimentos no filtro atual</div></div><div class="stat-card"><div class="stat-label">Entradas</div><div class="stat-value" style="color:#34d399">${totals['Entrada']||0}</div><div class="stat-sub">Recebimentos</div></div><div class="stat-card"><div class="stat-label">Saidas</div><div class="stat-value" style="color:#fbbf24">${totals['Saida']||0}</div><div class="stat-sub">Separacoes</div></div><div class="stat-card"><div class="stat-label">Recebimentos</div><div class="stat-value" style="color:#a78bfa">${totals['Recebimento']||0}</div><div class="stat-sub">Confirmacoes na obra</div></div></div>${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Saldo</th><th>Controle</th><th>Responsavel</th><th>Obs</th></tr></thead><tbody>${rows.map(row=>{const tone=ALMOX_MOVEMENT_MAP[row.tipo]||{bg:'rgba(59,130,246,.12)',c:'#60a5fa'};return`<tr><td style="white-space:nowrap;color:var(--text3)">${fmtD(row.data)}</td><td><span class="badge" style="background:${tone.bg};color:${tone.c};border-color:${tone.bg}"><span class="badge-dot" style="background:${tone.c};box-shadow:none"></span>${esc(row.tipo)}</span></td><td style="font-weight:600;color:var(--text)">${esc(row.item||'-')}</td><td style="color:var(--text3)">${esc(row.obra_origem||'-')}</td><td style="color:var(--text3)">${esc(row.obra_destino||'-')}</td><td style="font-weight:700;color:var(--text)">${Number(row.qtd||0)} ${esc(row.unidade||'un')}</td><td style="color:var(--text3)">${Number(row.saldo_anterior||0)} -> ${Number(row.saldo_atual||0)}</td><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${esc(row.numero_controle||'-')}</td><td style="color:var(--text3)">${esc(row.responsavel||'-')}</td><td style="max-width:240px;color:var(--text3)">${esc(row.observacao||'-')}</td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty-state"><p>Nenhuma movimentacao para o filtro atual.</p></div>`}</div>`;
+  const hasFilter=!!(filters.obra||filters.tipo!=='Todos'||filters.dataInicio||filters.dataFim);
+  const today=todayISO();
+  const weekStart=(()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().slice(0,10);})();
+  const monthStart=today.slice(0,7)+'-01';
+  const shortcuts=[
+    {label:'Hoje',di:today,df:today},
+    {label:'Esta semana',di:weekStart,df:today},
+    {label:'Este mês',di:monthStart,df:today},
+    {label:'Limpar',di:'',df:''},
+  ];
+  const shortcutBtns=shortcuts.map(({label,di,df})=>{
+    const active=filters.dataInicio===di&&filters.dataFim===df&&di!=='';
+    return`<button class="btn btn-sm" style="padding:4px 10px;font-size:11px;${active?'background:rgba(59,130,246,.18);color:#60a5fa;border-color:#60a5fa':''}" onclick="window._setAlmoxMovFilter('dataInicio','${di}');window._setAlmoxMovFilter('dataFim','${df}')">${label}</button>`;
+  }).join('');
+  return`<div>
+  <div class="section-header"><div><div class="section-title">🧭 Histórico de movimentações</div><div class="section-sub">${rows.length} de ${allRows.length} movimento(s) ${hasFilter?'— filtro ativo':''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window.almoxMovXLSX(window.getAlmoxFilteredMovimentos())">Excel filtrado</button>${hasFilter?`<button class="btn btn-secondary btn-sm" onclick="window._almoxMovFilters={obra:'',tipo:'Todos',dataInicio:'',dataFim:''};renderApp()">✕ Limpar filtros</button>`:''}</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+    <div class="form-group" style="margin:0"><label>Depósito</label><select onchange="window._setAlmoxMovFilter('obra',this.value)"><option value="">Todos</option>${obras.map(obra=>`<option value="${esc(obra)}" ${filters.obra===obra?'selected':''}>${esc(obra)}</option>`).join('')}</select></div>
+    <div class="form-group" style="margin:0"><label>Tipo</label><select onchange="window._setAlmoxMovFilter('tipo',this.value)">${tipos.map(tipo=>`<option value="${esc(tipo)}" ${filters.tipo===tipo?'selected':''}>${esc(tipo)}</option>`).join('')}</select></div>
+    <div class="form-group" style="margin:0"><label>De</label><input type="date" class="fp-modal-date" value="${esc(filters.dataInicio||'')}" onchange="window._setAlmoxMovFilter('dataInicio',this.value)"></div>
+    <div class="form-group" style="margin:0"><label>Até</label><input type="date" class="fp-modal-date" value="${esc(filters.dataFim||'')}" onchange="window._setAlmoxMovFilter('dataFim',this.value)"></div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:18px">${shortcutBtns}</div>
+  <div class="stats-row" style="margin-bottom:18px">
+    <div class="stat-card" style="cursor:default"><div class="stat-label">Total filtrado</div><div class="stat-value" style="color:#60a5fa">${rows.length}</div><div class="stat-sub">${allRows.length} no histórico total</div></div>
+    <div class="stat-card" style="cursor:default"><div class="stat-label">Entradas</div><div class="stat-value" style="color:#34d399">${totals['Entrada']||0}</div><div class="stat-sub">Recebimentos no período</div></div>
+    <div class="stat-card" style="cursor:default"><div class="stat-label">Saídas</div><div class="stat-value" style="color:#fbbf24">${totals['Saida']||0}</div><div class="stat-sub">Separações no período</div></div>
+    <div class="stat-card" style="cursor:default"><div class="stat-label">Recebimentos</div><div class="stat-value" style="color:#a78bfa">${totals['Recebimento']||0}</div><div class="stat-sub">Confirmações na obra</div></div>
+  </div>
+  ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Saldo</th><th>Controle</th><th>Responsável</th></tr></thead><tbody>${rows.map(row=>{const tone=ALMOX_MOVEMENT_MAP[row.tipo]||{bg:'rgba(59,130,246,.12)',c:'#60a5fa'};const saldoAntes=Number(row.saldo_anterior||0);const saldoDepois=Number(row.saldo_atual||0);const saldoDelta=saldoDepois-saldoAntes;const saldoColor=saldoDelta>0?'#34d399':saldoDelta<0?'#f87171':'var(--text3)';return`<tr><td style="white-space:nowrap;color:var(--text3)">${fmtD(row.data)}</td><td><span class="badge" style="background:${tone.bg};color:${tone.c};border-color:${tone.bg}"><span class="badge-dot" style="background:${tone.c};box-shadow:none"></span>${esc(row.tipo)}</span></td><td style="font-weight:600;color:var(--text)">${esc(row.item||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.obra_origem||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.obra_destino||'-')}</td><td style="font-weight:700;color:var(--text)">${Number(row.qtd||0)} ${esc(row.unidade||'un')}</td><td style="white-space:nowrap"><span style="color:var(--text3);font-size:11px">${saldoAntes}</span><span style="color:var(--text3);margin:0 4px">→</span><span style="font-weight:700;color:${saldoColor}">${saldoDepois}</span></td><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${esc(row.numero_controle||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.responsavel||'-')}</td></tr>`;}).join('')}</tbody></table></div>`:`<div class="empty-state"><p>${hasFilter?'Nenhuma movimentação para o filtro atual.':'Nenhuma movimentação registrada ainda.'}</p></div>`}
+  </div>`;
 }
 
 function renderAlmoxAlertasPanel(){
   const lowItems=getAlmoxLowStockItems(999);
-  if(!lowItems.length)return`<div class="empty-state" style="color:#34d399"><p>✅ Nenhum item abaixo do estoque mínimo.</p></div>`;
-  return`<div><div class="section-header"><div><div class="section-title">🔔 Alertas de Reposição</div><div class="section-sub">${lowItems.length} item(s) abaixo do mínimo configurado — reposição necessária</div></div><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div><div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Depósito</th><th>Saldo atual</th><th>Mínimo</th><th>Déficit</th><th>Ação</th></tr></thead><tbody>${lowItems.map(item=>{const min=getAlmoxMinStock(item);const deficit=min-Number(item.qtd||0);return`<tr style="background:rgba(239,68,68,.04)"><td style="font-weight:600;color:var(--text)">${esc(item.item)}</td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td style="font-weight:700;color:#f87171">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td><td style="color:var(--text3)">${min} ${esc(item.unidade||'un')}</td><td style="color:#fbbf24;font-weight:700">−${deficit} ${esc(item.unidade||'un')}</td><td><div style="display:flex;gap:4px"><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Receber</button><button class="btn btn-secondary btn-sm" onclick="S.almoxTab='inventario';renderApp()">Ver inventário</button></div></td></tr>`;}).join('')}</tbody></table></div></div>`;
+  if(!lowItems.length)return`<div class="empty-state" style="color:#34d399"><p>✅ Nenhum item abaixo do estoque mínimo. Todos os saldos estão acima do mínimo configurado.</p></div>`;
+  const semCotacao=lowItems.filter(item=>!DB.cotacoes.find(c=>c.origem==='auto-reposicao'&&c.item===`Reposição: ${item.item}`&&c.status==='Solicitada')).length;
+  return`<div>
+  <div class="section-header"><div><div class="section-title">🔔 Alertas de Reposição</div><div class="section-sub">${lowItems.length} item(s) abaixo do mínimo${semCotacao?` · ${semCotacao} sem cotação solicitada`:' · cotações já abertas para todos'}</div></div><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>
+  <div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Depósito</th><th>Saldo</th><th>Mínimo</th><th>Déficit</th><th>Cotação</th><th>Ações</th></tr></thead><tbody>${lowItems.map(item=>{
+    const min=getAlmoxMinStock(item);
+    const deficit=min-Number(item.qtd||0);
+    const cotacao=DB.cotacoes.find(c=>c.origem==='auto-reposicao'&&c.item===`Reposição: ${item.item}`&&c.status==='Solicitada');
+    const cotacaoCell=cotacao
+      ?`<span class="badge" style="background:rgba(245,158,11,.14);color:#fbbf24;border-color:rgba(245,158,11,.22);cursor:pointer" onclick="S.page='compras';S.comprasTab='cotacoes';S.modulo='compras';renderApp()" title="Ver cotação em Compras"><span class="badge-dot" style="background:#fbbf24;box-shadow:none"></span>Solicitada</span>`
+      :`<button class="btn btn-secondary btn-sm" onclick="window._criarCotacaoAlmox('${escJs(item.item)}','${escJs(item.obra||'')}')">+ Solicitar</button>`;
+    return`<tr style="background:rgba(239,68,68,.04)"><td style="font-weight:600;color:var(--text)">${esc(item.item)}</td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td style="font-weight:700;color:#f87171">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td><td style="color:var(--text3)">${min} ${esc(item.unidade||'un')}</td><td style="color:#fbbf24;font-weight:700">−${deficit} ${esc(item.unidade||'un')}</td><td>${cotacaoCell}</td><td><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Receber</button></td></tr>`;
+  }).join('')}</tbody></table></div></div>`;
 }
 
 function renderPedidos(ped,obra,fornecedores){
@@ -7797,7 +7841,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div class="form-group"><label>Saldo atual</label><input id="m-ent-saldo" value="${selectedId?`${est.qtd||0} ${est.unidade||'un'}`:'Novo recebimento'}" disabled></div>
 <div class="form-group"><label>Item do material *</label><input id="m-ent-item" value="${esc(est.item||'')}" placeholder="Ex: Cabo Flexivel 4mm"></div>
 <div class="form-group"><label>Unidade</label><select id="m-ent-unit">${materialUnitOptions(est.unidade||'un')}</select></div>
-<div class="form-group"><label>Obra / centro *</label><input id="m-ent-obra" list="almox-centros" value="${esc(d.obra||est.obra||getAllObras()[0]||'GLOBAL')}" placeholder="Ex: APL - Paulista"><datalist id="almox-centros">${obrasOpts}</datalist></div>
+<div class="form-group"><label>Depósito *</label><input id="m-ent-obra" list="almox-centros" value="${esc(d.obra||est.obra||getAllObras()[0]||'GLOBAL')}" placeholder="Ex: APL - Paulista"><datalist id="almox-centros">${obrasOpts}</datalist></div>
 <div class="form-group"><label>Quantidade recebida *</label><input id="m-ent-qtd" type="number" min="1" step="1" placeholder="0"><div class="almox-inline-note">Esse valor sera somado ao saldo do item selecionado.</div></div>
 <div class="form-group"><label>Data da entrada *</label><input id="m-ent-data" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Estoque minimo</label><input id="m-ent-min" type="number" min="0" step="1" value="${selectedId?getAlmoxMinStock(est):ALMOX_LOW_STOCK_QTD}" placeholder="${ALMOX_LOW_STOCK_QTD}"><div class="almox-inline-note">Usado nos alertas de reposicao e no resumo do inventario.</div></div>
@@ -8826,6 +8870,16 @@ window._setAlmoxMinStock=(id,value)=>{
 window._setAlmoxMovFilter=(field,value)=>{
   const filters=getAlmoxMovementFilters();
   filters[field]=value;
+  renderApp();
+};
+window._criarCotacaoAlmox=async(item,obra)=>{
+  const jaExiste=DB.cotacoes.find(c=>c.origem==='auto-reposicao'&&c.item===`Reposição: ${item}`&&c.status==='Solicitada');
+  if(jaExiste){toast('Já existe uma cotação aberta para este item.','#f59e0b');return;}
+  const cot={id:uid(),obra:obra||getAllObras()[0]||'',item:`Reposição: ${item}`,cotacoes:[],status:'Solicitada',data:todayISO(),origem:'auto-reposicao',created_at:new Date().toISOString()};
+  const{error}=await sb.from('cotacoes').insert(cot);
+  if(error){toast('Erro ao criar cotação: '+error.message,'#ef4444');return;}
+  if(!DB.cotacoes.find(c=>c.id===cot.id))DB.cotacoes.unshift(cot);
+  toast(`Cotação de reposição criada para "${item}"`,'#22c55e');
   renderApp();
 };
 window._openExpedicaoRecebimento=(num)=>{
