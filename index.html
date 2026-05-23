@@ -2351,8 +2351,8 @@ function _cdPick(triggerId,optEl){
 // ─── DB STATE ─────────────────────────────────────────────────────────────
 const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
-async function loadAll(){
-  const [a,m,f,r,t,d,e,p,fn,c,ferr]=await Promise.all([
+async function _fetchCoreTables(){
+  return Promise.all([
     sb.from('aditivos').select('*').order('created_at',{ascending:true}),
     sb.from('materiais').select('*').order('created_at',{ascending:false}),
     sb.from('funcionarios').select('*').order('nome'),
@@ -2365,8 +2365,32 @@ async function loadAll(){
     sb.from('cotacoes').select('*').order('created_at',{ascending:false}),
     sb.from('ferramentas').select('*').order('created_at',{ascending:false}),
   ]);
-  const errs=[a,m,f,r,t,d,e,p,fn,c,ferr].filter(x=>x.error);
-if(errs.length){console.warn('[JET] Erros ao carregar:',errs.map(x=>x.error.message));setTimeout(()=>toast('⚠ Erro ao carregar '+errs.length+' tabela(s). Verifique o console.','#ef4444'),500);}
+}
+
+async function loadAll(){
+  let results=await _fetchCoreTables();
+  let errs=results.filter(x=>x.error);
+
+  // Se todas (ou a maioria) falharam: provável projeto pausado no Supabase free tier.
+  // Aguarda e tenta uma vez.
+  if(errs.length>=results.length-1){
+    console.warn('[JET] Falha inicial ao carregar tabelas (projeto pode estar acordando). Tentando novamente em 5s...');
+    document.title='⏳ JET — conectando...';
+    await new Promise(r=>setTimeout(r,5000));
+    results=await _fetchCoreTables();
+    errs=results.filter(x=>x.error);
+    document.title='JET Gestão de Obras';
+  }
+
+  const [a,m,f,r,t,d,e,p,fn,c,ferr]=results;
+
+  if(errs.length){
+    const nomes=['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','fornecedores','cotacoes','ferramentas'];
+    const falhas=results.map((res,i)=>res.error?nomes[i]:null).filter(Boolean);
+    console.warn('[JET] Tabelas com erro após retry:',falhas.join(', '),errs.map(x=>x.error?.message));
+    setTimeout(()=>toast(`⚠ Erro ao carregar: ${falhas.join(', ')}. Verifique o console.`,'#ef4444'),300);
+  }
+
   DB.aditivos=(a.data||[]).map(x=>({...x,comentarios:x.comentarios||[],arquivos:x.arquivos||[],planilha:x.planilha||[]}));
   DB.materiais=m.data||[];
   DB.funcionarios=f.data||[];
