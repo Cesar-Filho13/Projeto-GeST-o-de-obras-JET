@@ -3496,7 +3496,7 @@ function renderDashboard(){
     const movimentos=cleanAlmoxMovimentos(DB.almoxMovimentos||[]);
     const transferOpen=(getAlmoxTransferCounts(expedicoes)['Separado']||0)+(getAlmoxTransferCounts(expedicoes)['Em transito']||0);
     if(!['inventario','expedicao','movimentacoes','alertas'].includes(S.almoxTab))S.almoxTab='inventario';
-    const lowStockCount=getAlmoxLowStockItems().length;
+    const lowStockCount=getAlmoxInventario().filter(isAlmoxLowStock).length;
     const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.almoxPage='gerenciar';renderApp()">⚙ Gerenciar</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>`;
     let html=`<div class="page">${renderPageHero('📦','Almoxarifado','Gestão de estoque, transferências e movimentações',heroActions)}`;
     html+=`<div class="stats-row">
@@ -5922,7 +5922,7 @@ function renderAlmoxMovimentacoesPanel(){
 }
 
 function renderAlmoxAlertasPanel(){
-  const lowItems=getAlmoxLowStockItems(999);
+  const lowItems=getAlmoxInventario().filter(isAlmoxLowStock).sort((a,b)=>Number(a.qtd||0)-Number(b.qtd||0));
   if(!lowItems.length)return`<div class="empty-state" style="color:#34d399"><p>✅ Nenhum item abaixo do estoque mínimo. Todos os saldos estão acima do mínimo configurado.</p></div>`;
   const semCotacao=lowItems.filter(item=>!DB.cotacoes.find(c=>c.origem==='auto-reposicao'&&c.item===`Reposição: ${item.item}`&&c.status==='Solicitada')).length;
   return`<div>
