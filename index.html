@@ -1424,12 +1424,16 @@ async function saveRemoteObras(list){
 }
 async function syncObraRegistry(){
   const localNames=getObrasData().map(o=>o?.nome).filter(Boolean);
-  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras()]);
+  const depositos=getAlmoxDepositos();
+  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras()]).filter(o=>!depositos.has(o));
   if(!sameObraList(DB.obraRegistry,merged))await saveRemoteObras(merged);
 }
 function getDbObras(){
   const tables=['aditivos','materiais','funcionarios','rdo','todos','despesas','pedidos','cotacoes','ferramentas'];
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
+}
+function getAlmoxDepositos(){
+  return new Set((DB.estoque||[]).map(e=>String(e?.obra||'').trim()).filter(Boolean));
 }
 
 const normalizeStockKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -2217,7 +2221,8 @@ function syncBaixadasWithFuncionarios(obra){
 function getAllObras(){
   const obraDataNames=getObrasData().map(o=>o?.nome).filter(Boolean);
   const hidden=new Set([...getHiddenObras(),...getArchivedObras()]);
-  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o));
+  const depositos=getAlmoxDepositos();
+  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o)&&!depositos.has(o));
 }
 function getTrailingNumber(value){const nums=String(value||'').match(/\d+/g)||[];return nums.length?Number(nums[nums.length-1]):null;}
 function sortAditivosDisplay(list=[]){return[...(Array.isArray(list)?list:[])].sort((a,b)=>{const na=getTrailingNumber(a?.numero||a?.nome||a?.id);const nb=getTrailingNumber(b?.numero||b?.nome||b?.id);if(na!=null||nb!=null){const diff=(nb??-1)-(na??-1);if(diff!==0)return diff;}const da=String(b?.data||b?.created_at||'');const db=String(a?.data||a?.created_at||'');if(da!==db)return da.localeCompare(db);return String(b?.created_at||b?.id||'').localeCompare(String(a?.created_at||a?.id||''));});}
