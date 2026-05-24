@@ -1447,7 +1447,11 @@ function hasAlmoxExplicitMin(item={}){
   const raw=DB.almoxMeta?.itemMeta?.[item.id]?.estoque_minimo;
   return raw!=null&&raw!=='';
 }
-function isAlmoxLowStock(item={}){return hasAlmoxExplicitMin(item)&&Number(item.qtd||0)<=getAlmoxMinStock(item);}
+function isAlmoxLowStock(item={}){
+  const qtd=Number(item.qtd||0);
+  if(qtd===0)return true;
+  return hasAlmoxExplicitMin(item)&&qtd<=getAlmoxMinStock(item);
+}
 function getAlmoxItemCodigo(item={}){return String(DB.almoxMeta?.itemMeta?.[item.id]?.codigo||'').trim();}
 function getAlmoxTransferMeta(num,items=[]){
   const key=getAlmoxTransferKey(num);
@@ -2479,6 +2483,7 @@ async function updateField(table,id,field,value){
   const{error}=await sb.from(table).update({[field]:value}).eq('id',id);
   if(error){toast('Erro ao salvar: '+error.message,'#ef4444');if(row)row[field]=oldVal;return false;}
   if(table==='materiais'&&field==='status'&&value==='Aprovado')_onMaterialAprovado(id);
+  if(table==='estoque')renderApp();
   return true;
 }
 
