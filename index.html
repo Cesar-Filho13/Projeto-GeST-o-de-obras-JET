@@ -1434,22 +1434,10 @@ function getDbObras(){
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
 function getAlmoxDepositos(){
-  let stored=[];try{stored=JSON.parse(localStorage.getItem(ALMOX_DEPOSITOS_KEY)||'[]');}catch(_){}
-  const s=new Set(stored);
-  (DB.estoque||[]).forEach(e=>{const n=String(e?.obra||'').trim();if(n)s.add(n);});
-  Object.keys(DB.almoxMeta?.depositoMeta||{}).forEach(n=>{if(n)s.add(n);});
+  // Only collect from inventory items (not expedição destination rows which carry obra names)
+  const s=new Set(['ALMOX CENTRAL']);
+  getAlmoxInventario().forEach(e=>{const n=String(e?.obra||'').trim();if(n)s.add(n);});
   return s;
-}
-function persistAlmoxDepositos(){
-  const s=getAlmoxDepositos();
-  if(s.size)localStorage.setItem(ALMOX_DEPOSITOS_KEY,JSON.stringify([...s]));
-}
-function registerAlmoxDeposito(nome){
-  if(!nome)return;
-  const n=String(nome).trim();
-  const s=getAlmoxDepositos();
-  s.add(n);
-  localStorage.setItem(ALMOX_DEPOSITOS_KEY,JSON.stringify([...s]));
 }
 
 const normalizeStockKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -2495,8 +2483,7 @@ async function loadAll(){
   DB.todos=t.data||[];
   DB.despesas=(d.data||[]).map(x=>({...x}));
   DB.estoque=e.data||[];
-  registerAlmoxDeposito('ALMOX CENTRAL');
-  persistAlmoxDepositos();
+  localStorage.removeItem(ALMOX_DEPOSITOS_KEY);
   DB.pedidos=p.data||[];
   DB.fornecedores=fn.data||[];
   DB.cotacoes=c.data||[];
