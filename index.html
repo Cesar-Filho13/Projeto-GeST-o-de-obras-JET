@@ -1428,7 +1428,7 @@ async function syncObraRegistry(){
   if(!sameObraList(DB.obraRegistry,merged))await saveRemoteObras(merged);
 }
 function getDbObras(){
-  const tables=['aditivos','materiais','funcionarios','rdo','todos','despesas','estoque','pedidos','cotacoes','ferramentas'];
+  const tables=['aditivos','materiais','funcionarios','rdo','todos','despesas','pedidos','cotacoes','ferramentas'];
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
 
