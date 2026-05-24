@@ -1443,7 +1443,11 @@ function getAlmoxMinStock(item={}){
   const n=Number(raw);
   return Number.isFinite(n)&&n>=0?n:ALMOX_LOW_STOCK_QTD;
 }
-function isAlmoxLowStock(item={}){return Number(item.qtd||0)<=getAlmoxMinStock(item);}
+function hasAlmoxExplicitMin(item={}){
+  const raw=DB.almoxMeta?.itemMeta?.[item.id]?.estoque_minimo;
+  return raw!=null&&raw!=='';
+}
+function isAlmoxLowStock(item={}){return hasAlmoxExplicitMin(item)&&Number(item.qtd||0)<=getAlmoxMinStock(item);}
 function getAlmoxItemCodigo(item={}){return String(DB.almoxMeta?.itemMeta?.[item.id]?.codigo||'').trim();}
 function getAlmoxTransferMeta(num,items=[]){
   const key=getAlmoxTransferKey(num);
