@@ -1238,6 +1238,7 @@ function actionIconSvg(name,size=14){
 const LEGACY_OBRA_RE=/^UFV\s*Manga\s*(I|II)$/i;
 const OBRA_REGISTRY_PATH='meta/obras-registry.json';
 const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
+const FALTAS_PATH='meta/funcionarios-faltas.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const DESPESA_PENDING_FILES_KEY='jet-despesa-files-pending-sync';
 const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
@@ -1536,6 +1537,11 @@ function cleanBaixada(row={}){
   };
 }
 function cleanBaixadas(list){return(Array.isArray(list)?list:[]).map(cleanBaixada).filter(r=>r.obra&&(r.funcId||r.nome));}
+function cleanFalta(row={}){return{id:String(row?.id||('ft-'+uid())),obra:String(row?.obra||'').trim(),funcId:String(row?.funcId||'').trim(),nome:String(row?.nome||'').trim(),funcao:String(row?.funcao||'').trim(),data:String(row?.data||'').slice(0,10),motivo:String(row?.motivo||'').trim(),updated_at:row?.updated_at||new Date().toISOString()};}
+function cleanFaltas(list){return(Array.isArray(list)?list:[]).map(cleanFalta).filter(r=>r.obra&&(r.funcId||r.nome)&&r.data);}
+function getLocalFaltas(){try{return cleanFaltas(JSON.parse(localStorage.getItem('jet-faltas')||'[]'));}catch{return[];}}
+function saveLocalFaltas(list){localStorage.setItem('jet-faltas',JSON.stringify(cleanFaltas(list)));}
+function getFaltasByObra(obra){return cleanFaltas(DB.faltas||[]).filter(r=>r.obra===obra);}
 function getLocalBaixadas(){try{return cleanBaixadas(JSON.parse(localStorage.getItem('jet-baixadas')||'[]'));}catch{return[];}}
 function saveLocalBaixadas(list){localStorage.setItem('jet-baixadas',JSON.stringify(cleanBaixadas(list)));}
 function noticePriorityRank(priority){return priority==='Alta'?3:priority==='Baixa'?1:2;}
@@ -1833,6 +1839,29 @@ async function saveRemoteBaixadas(list,{silent=false}={}){
     return false;
   }
 }
+async function loadRemoteFaltas(){
+  try{
+    const{data,error}=await sb.storage.from(BUCKET).download(FALTAS_PATH);
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.faltas=getLocalFaltas();return;}throw error;}
+    DB.faltas=cleanFaltas(JSON.parse(await data.text()));
+    saveLocalFaltas(DB.faltas);
+  }catch(err){DB.faltas=getLocalFaltas();console.warn('[JET] Faltas não carregadas:',err?.message||err);}
+}
+async function saveRemoteFaltas(list,{silent=false}={}){
+  const cleaned=cleanFaltas(list);
+  DB.faltas=[...cleaned];
+  saveLocalFaltas(cleaned);
+  try{
+    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    const{error}=await sb.storage.from(BUCKET).upload(FALTAS_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){
+    console.warn('[JET] Faltas não salvas:',err?.message||err);
+    if(!silent)toast('Faltas salvas neste aparelho. A sincronização online falhou.','#f59e0b');
+    return false;
+  }
+}
 async function loadRemoteHomeNotices(){
   try{
     const {data,error}=await sb.storage.from(BUCKET).download(HOME_NOTICES_PATH);
@@ -2057,6 +2086,7 @@ async function saveRemoteAlmoxMovimentos(list,{silent=false}={}){
   }
 }
 let _baixadasSyncTimer=null;
+let _faltasSyncTimer=null;
 let _homeNoticesSyncTimer=null;
 let _propostasSyncTimer=null;
 let _almoxMetaSyncTimer=null;
@@ -2067,6 +2097,14 @@ function queueBaixadasSync(notify=false){
   _baixadasSyncTimer=setTimeout(async()=>{
     const ok=await saveRemoteBaixadas(DB.baixadas||[],{silent:!notify});
     if(ok&&notify)toast('Planejamento de baixadas sincronizado.','#22c55e');
+  },notify?0:420);
+}
+function queueFaltasSync(notify=false){
+  saveLocalFaltas(DB.faltas||[]);
+  clearTimeout(_faltasSyncTimer);
+  _faltasSyncTimer=setTimeout(async()=>{
+    const ok=await saveRemoteFaltas(DB.faltas||[],{silent:!notify});
+    if(ok&&notify)toast('Faltas sincronizadas.','#22c55e');
   },notify?0:420);
 }
 function queueHomeNoticesSync(notify=false){
@@ -2388,7 +2426,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
 
 async function _fetchCoreTables(){
   return Promise.all([
@@ -2444,6 +2482,7 @@ async function loadAll(){
   await loadRemoteObras();
   await syncObraRegistry();
   await loadRemoteBaixadas();
+  await loadRemoteFaltas();
   await loadRemoteHomeNotices();
   await loadRemoteCommercialCompanies();
   await loadRemotePropostas();
@@ -3965,6 +4004,56 @@ ${collapsed?'':
 }
 
 // ─── FUNCIONÁRIOS ─────────────────────────────────────────────────────────
+function renderFaltasPanel(obra){
+  const allFaltas=getFaltasByObra(obra).sort((a,b)=>b.data.localeCompare(a.data));
+  const funcList=DB.funcionarios.filter(f=>f.obra===obra);
+  const today=todayISO();
+  const thisMonth=today.slice(0,7);
+  const obraSafe=escJs(obra);
+  const uniqueFuncIds=new Set(allFaltas.map(f=>f.funcId||f.nome));
+  const faltasMes=allFaltas.filter(f=>f.data&&f.data.startsWith(thisMonth)).length;
+  const faltasFilter=S.faltasFilter||'todos';
+  const visibleFaltas=faltasFilter==='todos'?allFaltas:allFaltas.filter(f=>(f.funcId||f.nome)===faltasFilter);
+  const summary=[
+    {label:'Total de faltas',value:allFaltas.length,note:'Registros desta obra',accent:'#f87171'},
+    {label:'Funcionários com faltas',value:uniqueFuncIds.size,note:'Com ao menos 1 falta',accent:'#fbbf24'},
+    {label:'Faltas este mês',value:faltasMes,note:thisMonth.slice(5)+'/'+thisMonth.slice(0,4),accent:'#c084fc'},
+    {label:'Com ficha limpa',value:Math.max(0,funcList.length-uniqueFuncIds.size),note:'Sem nenhuma falta registrada',accent:'#34d399'},
+  ];
+  const funcComFalta=[...new Map(allFaltas.map(f=>[f.funcId||f.nome,{id:f.funcId||f.nome,nome:f.nome}])).values()];
+  const filterBtns=[
+    `<button class="obra-nav-btn${faltasFilter==='todos'?' active':''}" onclick="S.faltasFilter='todos';renderApp()" style="padding:7px 14px;font-size:12px">Todos (${allFaltas.length})</button>`,
+    ...funcComFalta.map(f=>`<button class="obra-nav-btn${faltasFilter===f.id?' active':''}" onclick="S.faltasFilter='${escJs(f.id)}';renderApp()" style="padding:7px 14px;font-size:12px">${esc(f.nome)} (${allFaltas.filter(x=>(x.funcId||x.nome)===f.id).length})</button>`)
+  ].join('');
+  const addForm=`<div class="card" style="margin-bottom:16px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2)">
+    <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">➕ Registrar nova falta injustificada</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;flex:2;min-width:180px"><label>Funcionário</label><select id="falta-func-sel" style="width:100%"><option value="">Selecionar...</option>${funcList.map(f=>`<option value="${esc(f.id)}" data-nome="${esc(f.nome)}" data-funcao="${esc(f.funcao||'')}">${esc(f.nome)}${f.funcao?' — '+f.funcao:''}</option>`).join('')}</select></div>
+      <div class="form-group" style="margin:0;width:150px"><label>Data da falta</label><input id="falta-data-inp" type="date" class="fp-modal-date" value="${today}"></div>
+      <div class="form-group" style="margin:0;flex:3;min-width:200px"><label>Motivo (opcional)</label><input id="falta-motivo-inp" type="text" placeholder="Ex: Não compareceu sem aviso prévio..."></div>
+      <button class="btn btn-danger" style="align-self:flex-end" onclick="window._addFalta('${obraSafe}')">+ Registrar</button>
+    </div>
+  </div>`;
+  const tableHtml=visibleFaltas.length
+    ?`<div class="tbl-wrap"><table><thead><tr><th>Funcionário</th><th>Função</th><th>Data</th><th>Motivo</th><th style="width:52px"></th></tr></thead><tbody>${visibleFaltas.map(f=>`<tr><td style="font-weight:600;color:var(--text)">${esc(f.nome||'—')}</td><td><span class="tag">${esc(f.funcao||'—')}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);white-space:nowrap">${fmtD(f.data)}</td><td style="color:var(--text3)">${esc(f.motivo||'—')}</td><td><button class="btn btn-danger btn-sm btn-icon" title="Remover falta" onclick="window._deleteFalta('${escJs(f.id)}')">🗑</button></td></tr>`).join('')}</tbody></table></div>`
+    :`<div class="empty-state"><p>${faltasFilter!=='todos'?'Nenhuma falta registrada para este funcionário.':'Nenhuma falta registrada nesta obra.'}</p></div>`;
+  return`<div class="card baixada-card">
+    <div class="baixada-head">
+      <div class="baixada-head-copy">
+        <div class="card-title" style="margin-bottom:8px">⚠ Faltas Injustificadas</div>
+        <div class="baixada-sub">Registro de ausências injustificadas da equipe. Cada falta fica vinculada ao funcionário com data e motivo. Use os filtros para consultar por pessoa e exporte o relatório em PDF ou Excel.</div>
+      </div>
+      <div class="baixada-actions">
+        <button class="btn btn-secondary btn-sm" onclick="window.faltasXLSX('${obraSafe}')">📊 Excel</button>
+        <button class="btn btn-secondary btn-sm" onclick="window.faltasPDF('${obraSafe}')">📑 PDF</button>
+      </div>
+    </div>
+    <div class="baixada-summary-grid">${summary.map(c=>`<div class="baixada-summary-card" style="--accent:${c.accent}"><div class="baixada-summary-label">${c.label}</div><div class="baixada-summary-value">${esc(String(c.value))}</div><div class="baixada-summary-note">${esc(c.note)}</div></div>`).join('')}</div>
+    ${addForm}
+    <div class="baixada-filter-row"><div class="baixada-filter-chips">${filterBtns}</div><div class="section-sub">${allFaltas.length} falta(s) registrada(s) · ${visibleFaltas.length} visível(is)</div></div>
+    ${tableHtml}
+  </div>`;
+}
 function renderBaixadasPanel(obra){
   const sync=syncBaixadasWithFuncionarios(obra);
   if(sync.changed)queueBaixadasSync();
@@ -4027,8 +4116,8 @@ function renderFuncionarios(func,obra){
   const filterBtns=['Todos','Ativo','Ausente','Afastado','Desligado'].map(s=>`<button class="obra-nav-btn${filter===s?' active':''}" onclick="S.funcFilter='${s}';renderApp()" style="padding:6px 14px;font-size:12px">${s==='Todos'?'Todos ('+func.length+')':s+' ('+func.filter(f=>(f.status||'Ativo')===s).length+')'}</button>`).join('');
   const obraSafe=escJs(obra);
   const actionBar=`<div class="func-actions-bar"><div class="func-action-group"><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosCSV('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">⬇</span><span class="func-toolbar-copy"><strong>CSV</strong><small>Lista rápida</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosXLSX('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📊</span><span class="func-toolbar-copy"><strong>Excel</strong><small>Planilha formatada</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="window.funcionariosPDF('${obraSafe}',S.funcHideDocs)"><span class="func-toolbar-icon">📑</span><span class="func-toolbar-copy"><strong>PDF</strong><small>Relatório pronto</small></span></button><button class="btn btn-secondary func-toolbar-btn" onclick="_openModal('import-funcionarios',{obra:'${obraSafe}',scope:'obra'})"><span class="func-toolbar-icon">⬆</span><span class="func-toolbar-copy"><strong>Importar</strong><small>Planilha .xlsx</small></span></button></div><label class="func-toggle-card"><input type="checkbox" id="hide-doc-funcionarios" ${hideDocs?'checked':''} onchange="S.funcHideDocs=this.checked"><span class="func-toolbar-icon">👁</span><span class="func-toolbar-copy"><strong>Ocultar CPF/Doc</strong><small>Aplica nos exports desta aba</small></span></label><button class="btn btn-primary func-create-btn" onclick="_openModal('new-func')"><span class="func-toolbar-icon">+</span><span class="func-toolbar-copy"><strong>Novo Funcionário</strong><small>Cadastro rápido da equipe</small></span></button></div>`;
-  const subTabs=`<div class="obra-nav" style="margin:0 0 20px;padding-bottom:12px"><button class="obra-nav-btn${section==='equipe'?' active':''}" onclick="S.funcSection='equipe';renderApp()"><span class="nav-icon">👥</span>Equipe<span class="nav-count">${func.length}</span></button><button class="obra-nav-btn${section==='baixadas'?' active':''}" onclick="S.funcSection='baixadas';renderApp()"><span class="nav-icon">🗓</span>Baixadas<span class="nav-count">${getActiveFuncionarios(obra).length}</span></button></div>`;
-  return`<div><div class="section-header"><div><div class="section-title">👷 Funcionários</div><div class="section-sub">${func.length} cadastrados · ${ativos} ativos</div></div>${actionBar}</div>${subTabs}${section==='baixadas'?renderBaixadasPanel(obra):`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${filterBtns}</div>${filtered.length===0?`<div class="empty-state"><p>${filter==='Todos'?'Nenhum funcionário cadastrado.':'Nenhum funcionário com status "'+filter+'".'}</p>${filter==='Todos'?`<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn btn-primary" onclick="_openModal('new-func')">+ Primeiro Funcionário</button><button class="btn btn-secondary" onclick="_openModal('import-funcionarios',{obra:'${obraSafe}',scope:'obra'})">⬆ Importar planilha</button></div>`:''}</div>`:`<div class="tbl-wrap"><table><thead><tr><th style="cursor:pointer" onclick="${sortClick('nome')}">Nome ${sortIcon('nome')}</th><th style="cursor:pointer" onclick="${sortClick('funcao')}">Função ${sortIcon('funcao')}</th><th style="cursor:pointer" onclick="${sortClick('empresa')}">Empresa ${sortIcon('empresa')}</th><th>Telefone</th><th>Documento</th><th style="cursor:pointer" onclick="${sortClick('data_entrada')}">Entrada ${sortIcon('data_entrada')}</th><th style="cursor:pointer" onclick="${sortClick('status')}">Status ${sortIcon('status')}</th><th style="width:60px"></th></tr></thead><tbody>${filtered.map(f=>`<tr><td style="font-weight:600;color:var(--text)">${esc(f.nome)}</td><td><span class="tag">${esc(f.funcao||'—')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'—')}</td><td style="color:var(--text3)">${esc(f.telefone||'—')}</td><td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(f.documento||'—')}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,f.status||'Ativo',`updateField('funcionarios','${f.id}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="btn btn-secondary btn-sm btn-icon" title="Editar funcionário" onclick="_openModal('edit-func',{id:'${f.id}'})">✎</button><button class="btn btn-danger btn-sm btn-icon" title="Excluir funcionário" onclick="_deleteFuncionario('${f.id}')">🗑</button></div></td></tr>`).join('')}</tbody></table></div>`}`}</div>`;
+  const subTabs=`<div class="obra-nav" style="margin:0 0 20px;padding-bottom:12px"><button class="obra-nav-btn${section==='equipe'?' active':''}" onclick="S.funcSection='equipe';renderApp()"><span class="nav-icon">👥</span>Equipe<span class="nav-count">${func.length}</span></button><button class="obra-nav-btn${section==='baixadas'?' active':''}" onclick="S.funcSection='baixadas';renderApp()"><span class="nav-icon">🗓</span>Baixadas<span class="nav-count">${getActiveFuncionarios(obra).length}</span></button><button class="obra-nav-btn${section==='faltas'?' active':''}" onclick="S.funcSection='faltas';S.faltasFilter='todos';renderApp()" style="${getFaltasByObra(obra).length?'color:#f87171':''}" ><span class="nav-icon">⚠</span>Faltas injustificadas<span class="nav-count" style="${getFaltasByObra(obra).length?'background:#ef4444;color:#fff':''}">${getFaltasByObra(obra).length}</span></button></div>`;
+  return`<div><div class="section-header"><div><div class="section-title">👷 Funcionários</div><div class="section-sub">${func.length} cadastrados · ${ativos} ativos</div></div>${actionBar}</div>${subTabs}${section==='faltas'?renderFaltasPanel(obra):section==='baixadas'?renderBaixadasPanel(obra):`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${filterBtns}</div>${filtered.length===0?`<div class="empty-state"><p>${filter==='Todos'?'Nenhum funcionário cadastrado.':'Nenhum funcionário com status "'+filter+'".'}</p>${filter==='Todos'?`<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn btn-primary" onclick="_openModal('new-func')">+ Primeiro Funcionário</button><button class="btn btn-secondary" onclick="_openModal('import-funcionarios',{obra:'${obraSafe}',scope:'obra'})">⬆ Importar planilha</button></div>`:''}</div>`:`<div class="tbl-wrap"><table><thead><tr><th style="cursor:pointer" onclick="${sortClick('nome')}">Nome ${sortIcon('nome')}</th><th style="cursor:pointer" onclick="${sortClick('funcao')}">Função ${sortIcon('funcao')}</th><th style="cursor:pointer" onclick="${sortClick('empresa')}">Empresa ${sortIcon('empresa')}</th><th>Telefone</th><th>Documento</th><th style="cursor:pointer" onclick="${sortClick('data_entrada')}">Entrada ${sortIcon('data_entrada')}</th><th style="cursor:pointer" onclick="${sortClick('status')}">Status ${sortIcon('status')}</th><th style="width:60px"></th></tr></thead><tbody>${filtered.map(f=>`<tr><td style="font-weight:600;color:var(--text)">${esc(f.nome)}</td><td><span class="tag">${esc(f.funcao||'—')}</span></td><td style="color:var(--text3)">${esc(f.empresa||'—')}</td><td style="color:var(--text3)">${esc(f.telefone||'—')}</td><td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${esc(f.documento||'—')}</td><td style="color:var(--text3);white-space:nowrap">${fmtD(f.data_entrada)}</td><td>${makeCd(FUNC_STATUS,FS,f.status||'Ativo',`updateField('funcionarios','${f.id}','status',VAL)`)}</td><td><div class="func-row-actions"><button class="btn btn-secondary btn-sm btn-icon" title="Editar funcionário" onclick="_openModal('edit-func',{id:'${f.id}'})">✎</button><button class="btn btn-danger btn-sm btn-icon" title="Excluir funcionário" onclick="_deleteFuncionario('${f.id}')">🗑</button></div></td></tr>`).join('')}</tbody></table></div>`}`}</div>`;
 }
 
 // ─── RDO ──────────────────────────────────────────────────────────────────
@@ -7135,6 +7224,32 @@ window.baixadasPDF=(obra)=>{
   doc.save(`Baixadas_${obra.replace(/\s+/g,'_')}.pdf`);
   toast('PDF exportado!');
 };
+window.faltasXLSX=(obra)=>{
+  const rows=getFaltasByObra(obra).sort((a,b)=>b.data.localeCompare(a.data));
+  return exportStyledXLSX({
+    sheetName:'Faltas',
+    filename:'Faltas_Injustificadas_'+obra.replace(/\s+/g,'_'),
+    title:'Faltas Injustificadas',
+    meta:[obra,`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} falta(s) registrada(s)`],
+    columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Funcionário',key:'nome',width:28},{header:'Função',key:'funcao',width:22},{header:'Data',key:'data',width:14},{header:'Motivo',key:'motivo',width:40}],
+    rows:rows.map((x,i)=>({idx:i+1,nome:x.nome||'',funcao:x.funcao||'',data:fmtD(x.data),motivo:x.motivo||'—'}))
+  });
+};
+window.faltasPDF=(obra)=>{
+  if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
+  const{jsPDF}=window.jspdf;
+  const rows=getFaltasByObra(obra).sort((a,b)=>b.data.localeCompare(a.data));
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,M=14;
+  doc.setFillColor(26,46,107);doc.circle(M+10,12,10,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,14,{align:'center'});
+  doc.setFontSize(15);doc.setTextColor(20,20,60);doc.text('Faltas Injustificadas',M+26,10);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);doc.text(`${obra} · ${new Date().toLocaleDateString('pt-BR')} · ${rows.length} falta(s)`,M+26,16);
+  doc.setDrawColor(200,210,240);doc.line(M,22,W-M,22);
+  doc.autoTable({startY:26,margin:{left:M,right:M},head:[['#','Funcionário','Função','Data','Motivo']],body:rows.map((r,i)=>[String(i+1),r.nome||'',r.funcao||'',fmtD(r.data),r.motivo||'—']),styles:{fontSize:9,cellPadding:3},headStyles:{fillColor:[26,46,107],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[255,245,245]},columnStyles:{0:{cellWidth:12,halign:'center'},3:{cellWidth:22},4:{cellWidth:80}},didDrawPage:(d)=>{doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`JET Gestão de Obras · ${obra} · Pág ${d.pageNumber}`,W/2,205,{align:'center'});}});
+  doc.save(`Faltas_Injustificadas_${obra.replace(/\s+/g,'_')}.pdf`);
+  toast('PDF exportado!');
+};
 window.rdoCSV=(obra)=>{const r=DB.rdo.filter(r=>r.obra===obra);exportCSV(r.map(x=>[x.data,x.tempo,x.efetivo,x.atividades,x.ocorrencias,x.autor]),['Data','Tempo','Efetivo','Atividades','Ocorrências','Autor'],`RDO_${obra}`);};
 window.rdoXLSX=(obra)=>{const r=DB.rdo.filter(item=>item.obra===obra);return exportStyledXLSX({sheetName:'RDO',filename:`RDO_${obra}`,title:'Relatório Diário de Obra',meta:[obra,`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${r.length} registro(s)`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Data',key:'data',width:14},{header:'Tempo',key:'tempo',width:18},{header:'Efetivo',key:'efetivo',width:12,align:'center'},{header:'Atividades',key:'atividades',width:42},{header:'Ocorrências',key:'ocorrencias',width:42},{header:'Autor',key:'autor',width:18}],rows:r.map((x,i)=>({idx:i+1,data:fmtD(x.data),tempo:x.tempo||'',efetivo:x.efetivo||'',atividades:x.atividades||'',ocorrencias:x.ocorrencias||'',autor:x.autor||''}))});};
 window.rdoPDF=exportRDOPDF;
@@ -8998,6 +9113,33 @@ window._setAlmoxMinStock=(id,value)=>{
   const min=Math.max(0,Number(raw)||0);
   setAlmoxItemMeta(id,{estoque_minimo:min});
   toast(`Estoque minimo de ${item.item||'item'} atualizado.`, '#22c55e');
+  renderApp();
+};
+window._addFalta=(obra)=>{
+  const sel=document.getElementById('falta-func-sel');
+  const dataInp=document.getElementById('falta-data-inp');
+  const motivoInp=document.getElementById('falta-motivo-inp');
+  if(!sel||!sel.value){toast('Selecione um funcionário.','#ef4444');return;}
+  if(!dataInp||!dataInp.value){toast('Informe a data da falta.','#ef4444');return;}
+  const opt=sel.options[sel.selectedIndex];
+  const falta=cleanFalta({
+    obra,
+    funcId:sel.value,
+    nome:opt.dataset.nome||opt.text.split(' — ')[0],
+    funcao:opt.dataset.funcao||'',
+    data:dataInp.value,
+    motivo:motivoInp?.value?.trim()||''
+  });
+  DB.faltas=[...(DB.faltas||[]),falta];
+  queueFaltasSync();
+  toast('Falta registrada.','#22c55e');
+  renderApp();
+};
+window._deleteFalta=(id)=>{
+  if(!confirm('Remover este registro de falta?'))return;
+  DB.faltas=(DB.faltas||[]).filter(f=>f.id!==id);
+  queueFaltasSync();
+  toast('Falta removida.','#22c55e');
   renderApp();
 };
 window._almoxSearchRender=()=>{
