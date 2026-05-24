@@ -1238,6 +1238,7 @@ function actionIconSvg(name,size=14){
 const LEGACY_OBRA_RE=/^UFV\s*Manga\s*(I|II)$/i;
 const OBRA_REGISTRY_PATH='meta/obras-registry.json';
 const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
+const ALMOX_DEPOSITOS_KEY='jet-almox-depositos';
 const FALTAS_PATH='meta/funcionarios-faltas.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const DESPESA_PENDING_FILES_KEY='jet-despesa-files-pending-sync';
@@ -1433,7 +1434,22 @@ function getDbObras(){
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
 function getAlmoxDepositos(){
-  return new Set((DB.estoque||[]).map(e=>String(e?.obra||'').trim()).filter(Boolean));
+  let stored=[];try{stored=JSON.parse(localStorage.getItem(ALMOX_DEPOSITOS_KEY)||'[]');}catch(_){}
+  const s=new Set(stored);
+  (DB.estoque||[]).forEach(e=>{const n=String(e?.obra||'').trim();if(n)s.add(n);});
+  Object.keys(DB.almoxMeta?.depositoMeta||{}).forEach(n=>{if(n)s.add(n);});
+  return s;
+}
+function persistAlmoxDepositos(){
+  const s=getAlmoxDepositos();
+  if(s.size)localStorage.setItem(ALMOX_DEPOSITOS_KEY,JSON.stringify([...s]));
+}
+function registerAlmoxDeposito(nome){
+  if(!nome)return;
+  const n=String(nome).trim();
+  const s=getAlmoxDepositos();
+  s.add(n);
+  localStorage.setItem(ALMOX_DEPOSITOS_KEY,JSON.stringify([...s]));
 }
 
 const normalizeStockKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -2480,6 +2496,8 @@ async function loadAll(){
   DB.todos=t.data||[];
   DB.despesas=(d.data||[]).map(x=>({...x}));
   DB.estoque=e.data||[];
+  registerAlmoxDeposito('ALMOX CENTRAL');
+  persistAlmoxDepositos();
   DB.pedidos=p.data||[];
   DB.fornecedores=fn.data||[];
   DB.cotacoes=c.data||[];
