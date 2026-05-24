@@ -1470,8 +1470,7 @@ function hasAlmoxExplicitMin(item={}){
 }
 function isAlmoxLowStock(item={}){
   const qtd=Number(item.qtd||0);
-  if(qtd===0)return true;
-  return hasAlmoxExplicitMin(item)&&qtd<=getAlmoxMinStock(item);
+  return qtd<=getAlmoxMinStock(item);
 }
 function getAlmoxItemCodigo(item={}){return String(DB.almoxMeta?.itemMeta?.[item.id]?.codigo||'').trim();}
 function getAlmoxTransferMeta(num,items=[]){
