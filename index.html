@@ -6822,7 +6822,7 @@ function exportAditivosPDF(obra){
   doc.save(`Aditivos_${obra.replace(/\s+/g,'_')}.pdf`);toast('PDF exportado!');
 }
 
-async function exportMateriaisPDF(obra,ids){
+async function exportMateriaisPDF(obra,ids,opts={}){
   if(!window.jspdf){toast('Biblioteca n\u00E3o carregada.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;
   let mats=DB.materiais.filter(m=>m.obra===obra);
@@ -7092,7 +7092,7 @@ async function exportMateriaisPDF(obra,ids){
 
   async function appendMaterialAttachments(){
     if(!reqFiles.length)return;
-    doc.addPage('a4','portrait');
+    newPage();
     drawHeader('ANEXOS DA SOLICITAÇÃO - '+obraLabel,false);
     drawSummary([`Total de anexos: ${reqFiles.length}`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`]);
     let y=64;
@@ -7209,8 +7209,8 @@ async function exportMateriaisPDF(obra,ids){
   ]);
 
   function startReqPage(){
-    drawHeader('Requisi\u00E7\u00E3o de Materiais - '+obraLabel,false);
-    return drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Aprovados/Comprados: ${aprov}`,`Solicitante: ${solicitanteLabel}`,`Anexos: ${reqFiles.length}`]);
+    drawHeader('Requisi\u00E7\u00E3o de Materiais - '+obraLabel);
+    return drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Aprovados/Comprados: ${aprov}`,`Data: ${headerDate}`,`Solicitante: ${solicitanteLabel}`]);
   }
 
   function startConferencePage(titleText){
@@ -7218,21 +7218,17 @@ async function exportMateriaisPDF(obra,ids){
     return drawSummary([`Total: ${mats.length} itens`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`,`Anexos: ${reqFiles.length}`]);
   }
 
-  let reqStart=startReqPage();
-  drawManualTable(reqColumns,reqRows,reqStart,startReqPage,'req');
-  drawStamp('Eng. ou Encarregado');
+  const {req=true,viaObra=true,almox=true,rascunho=true,anexos=true}=opts;
+  let _firstPage=true;const newPage=()=>{if(!_firstPage)doc.addPage('a4','portrait');_firstPage=false;};
 
-  doc.addPage('a4','portrait');
-  let confStart=startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia obra');
+  if(req){newPage();let reqStart=startReqPage();drawManualTable(reqColumns,reqRows,reqStart,startReqPage,'req');drawStamp('Eng. ou Encarregado');}
+  if(viaObra){newPage();let confStart=startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia obra');
   drawManualTable(confColumns,confRows,confStart,()=>startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia obra'),'conf');
-  drawStamp('Almoxarife');
-
-  doc.addPage('a4','portrait');
-  let almoxStart=startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia via almoxarifado');
+  drawStamp('Almoxarife');}
+  if(almox){newPage();let almoxStart=startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia via almoxarifado');
   drawManualTable(confColumns,confRows,almoxStart,()=>startConferencePage('Planilha de Materiais \u2014 Confer\u00EAncia via almoxarifado'),'conf');
-  drawStamp('Almoxarife');
-
-  doc.addPage('a4','portrait');
+  drawStamp('Almoxarife');}
+  if(rascunho){newPage();
   drawHeader('CABE\u00C7ALHO + VIA RASCUNHO - '+obraLabel,false);
   drawSummary([`Obra: ${obraLabel}`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`,`Itens base: ${mats.length}`]);
   doc.setFont('helvetica','bold');
@@ -7246,8 +7242,8 @@ async function exportMateriaisPDF(obra,ids){
   doc.setDrawColor(210,216,230);
   doc.setLineWidth(0.25);
   for(let y=112;y<=245;y+=12)doc.line(M,y,W-M,y);
-
-  await appendMaterialAttachments();
+  }
+  if(anexos)await appendMaterialAttachments();
 
   const totalPages=doc.getNumberOfPages();
   for(let i=1;i<=totalPages;i++){
@@ -7568,7 +7564,7 @@ window.materiaisXLSX=(obra)=>{
   });
 }
 window.materiaisTXT=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportTXT(m.map(x=>[x.item,x.quantidade,normalizeMaterialUnit(x.unidade||'un'),x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
-window.materiaisPDF=exportMateriaisPDF;
+window.materiaisPDF=(obra)=>window._openMatPdfSelect(obra,'');
 window.funcionariosCSV=(obra,hideDocs)=>{const f=DB.funcionarios.filter(f=>f.obra===obra);const cols=hideDocs?['Nome','Função','Empresa','Telefone','Entrada','Status']:['Nome','Função','Empresa','Telefone','Documento','Entrada','Status'];const data=f.map(x=>hideDocs?[x.nome,x.funcao,x.empresa,x.telefone,x.data_entrada,x.status]:[x.nome,x.funcao,x.empresa,x.telefone,x.documento,x.data_entrada,x.status]);exportCSV(data,cols,`Funcionarios_${obra}`);};
 window.funcionariosXLSX=(obra,hideDocs)=>{
   const f=DB.funcionarios.filter(func=>func.obra===obra);
@@ -8731,6 +8727,22 @@ ${commercialItemsHeaderHtml()}
       :`<div class="empty-state"><p>Nenhuma alteração registrada.</p><div style="font-size:11px;color:var(--text3);margin-top:4px">O histórico começa a ser gravado a partir da próxima mudança de status.</div></div>`;
     onSave='_closeModal()';saveLabel='Fechar';
   }
+  else if(m==='mat-pdf-select'){
+    title='Imprimir Requerimento de Materiais';
+    const _mats=DB.materiais.filter(x=>x.obra===d.obra&&(!d.ids||d.ids.split(',').filter(Boolean).includes(x.id)));
+    const _reqFileKey=getMaterialReqKeyFromItems(_mats,d.obra);
+    const _reqFileCnt=getMaterialReqFiles(_reqFileKey).length;
+    const _opt=(id,emoji,label,desc,checked=true)=>`<label style="display:flex;align-items:flex-start;gap:12px;padding:11px 13px;border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='rgba(96,165,250,.45)'" onmouseout="this.style.borderColor='var(--border)'"><input type="checkbox" id="${id}"${checked?' checked':''} style="accent-color:#3b82f6;width:16px;height:16px;flex-shrink:0;margin-top:2px"><div><div style="font-weight:600;font-size:13px;color:var(--text)">${emoji} ${label}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${desc}</div></div></label>`;
+    body=`<div style="padding:2px 0">
+<div style="font-size:12px;color:var(--text3);margin-bottom:14px">Selecione as seções a incluir no PDF:</div>
+${_opt('pdf-opt-req','📋','Requisição principal','Lista de pedidos com urgência, status e assinatura do encarregado')}
+${_opt('pdf-opt-obra','🏗','Via obra','Planilha de conferência simplificada para recebimento no canteiro')}
+${_opt('pdf-opt-almox','🏪','Via almoxarifado','Planilha de conferência para controle do estoque interno')}
+${_opt('pdf-opt-rascunho','📝','Via rascunho','Folha livre para anotações e conferência preliminar')}
+${_opt('pdf-opt-anexos','📎','Anexos da solicitação',_reqFileCnt>0?`${_reqFileCnt} arquivo${_reqFileCnt!==1?'s':''} anexado${_reqFileCnt!==1?'s':''}`:'Nenhum arquivo anexado',_reqFileCnt>0)}
+</div>`;
+    onSave='_doMatPdfGenerate()';saveLabel='📄 Gerar PDF';
+  }
 
   return`<div class="modal-overlay">
 <div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
@@ -9098,13 +9110,28 @@ window._openEditReq=(idsStr)=>{
   renderApp();
 };
 
-window._matReqPDF=(obra,idsStr)=>{
+window._openMatPdfSelect=(obra,idsStr='')=>{S.modal='mat-pdf-select';S.modalData={obra,ids:idsStr||''};renderApp();};
+
+window._doMatPdfGenerate=()=>{
+  const obra=S.modalData.obra||S.obra||'';
+  const idsStr=S.modalData.ids||'';
   const ids=idsStr.split(',').filter(Boolean);
-  exportMateriaisPDF(obra,ids).catch(err=>{
-    console.error('[JET] Falha ao exportar PDF de materiais:',err);
+  const opts={
+    req:document.getElementById('pdf-opt-req')?.checked!==false,
+    viaObra:document.getElementById('pdf-opt-obra')?.checked!==false,
+    almox:document.getElementById('pdf-opt-almox')?.checked!==false,
+    rascunho:document.getElementById('pdf-opt-rascunho')?.checked!==false,
+    anexos:document.getElementById('pdf-opt-anexos')?.checked!==false,
+  };
+  if(!opts.req&&!opts.viaObra&&!opts.almox&&!opts.rascunho&&!opts.anexos){toast('Selecione ao menos uma seção.','#f59e0b');return;}
+  _closeModal();
+  exportMateriaisPDF(obra,ids.length?ids:undefined,opts).catch(err=>{
+    console.error('[JET] Falha ao exportar PDF:',err);
     toast('Não consegui gerar o PDF de materiais.','#ef4444');
   });
 };
+
+window._matReqPDF=(obra,idsStr)=>{window._openMatPdfSelect(obra,idsStr);};
 
 window._matReqXLSX=(obra,idsStr)=>{
   const ids=idsStr.split(',').filter(Boolean);
