@@ -7218,7 +7218,7 @@ async function exportMateriaisPDF(obra,ids,opts={}){
     return drawSummary([`Total: ${mats.length} itens`,`Solicitante: ${solicitanteLabel}`,`Data: ${headerDate}`,`Anexos: ${reqFiles.length}`]);
   }
 
-  const {req=true,viaObra=true,almox=true,rascunho=true,anexos=true,titleOverride=''}=opts;
+  const {req=true,viaObra=true,almox=true,rascunho=true,anexos=true,titleOverride='',filenamePrefix=''}=opts;
   let _firstPage=true;const newPage=()=>{if(!_firstPage)doc.addPage('a4','portrait');_firstPage=false;};
 
   if(req){newPage();let reqStart=startReqPage();drawManualTable(reqColumns,reqRows,reqStart,startReqPage,'req');drawStamp('Eng. ou Encarregado');}
@@ -7254,7 +7254,7 @@ async function exportMateriaisPDF(obra,ids,opts={}){
     doc.text('JET Gest\u00E3o de Obras \u00B7 P\u00E1gina '+i+'/'+totalPages,W/2,H-8,{align:'center'});
   }
 
-  doc.save('Requisicao_Materiais_'+obra.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  doc.save((filenamePrefix||'Requisicao_Materiais_')+obra.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
   toast('PDF exportado!');
 }
 
@@ -9158,7 +9158,7 @@ window._doMatConclReqWithDevolutiva=async()=>{
   const ids=(idsStr||'').split(',').filter(Boolean);
   S.modal=null;S.modalData={};
   try{
-    await exportMateriaisPDF(obra,ids.length?ids:undefined,{req:true,viaObra:false,almox:false,rascunho:false,anexos:false,titleOverride:'Conferência de Materiais'});
+    await exportMateriaisPDF(obra,ids.length?ids:undefined,{req:true,viaObra:false,almox:false,rascunho:false,anexos:false,titleOverride:'Conferência de Materiais',filenamePrefix:'Devolutiva_'});
   }catch(err){
     console.error('[JET] Erro ao gerar devolutiva:',err);
     toast('Erro ao gerar a devolutiva.','#ef4444');
