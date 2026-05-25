@@ -4169,8 +4169,8 @@ function renderMateriais(mat,obra){
   </div>
 </div>
 <nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
-  <button class="obra-nav-btn${subTab==='andamento'?' active':''}" onclick="S.matSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntAnd}</span></button>
-  <button class="obra-nav-btn${subTab==='concluidas'?' active':''}" onclick="S.matSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntConcl}</span></button>
+  <button class="obra-nav-btn${subTab==='andamento'?' active':''}" style="${subTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.matSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntAnd}</span></button>
+  <button class="obra-nav-btn${subTab==='concluidas'?' active':''}" style="${subTab==='concluidas'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.matSubTab='concluidas';renderApp()">Concluídas<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntConcl}</span></button>
 </nav>
 ${mat.length===0?`<div class="empty-state"><p>Nenhum material solicitado.</p><button class="btn btn-primary" onclick="_openModal('new-material')">+ Primeira Solicitação</button></div>`:
 search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontrado para "<strong>${esc(search)}</strong>".</p></div>`:
@@ -4394,8 +4394,8 @@ function renderRDO(rdos,obra){
   </div>
 </div>
 <nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
-  <button class="obra-nav-btn${rdoSubTab==='elaboracao'?' active':''}" onclick="S.rdoSubTab='elaboracao';renderApp()">Em elaboração<span class="nav-count">${cntElab}</span></button>
-  <button class="obra-nav-btn${rdoSubTab==='enviados'?' active':''}" onclick="S.rdoSubTab='enviados';renderApp()">Enviados<span class="nav-count">${cntEnv}</span></button>
+  <button class="obra-nav-btn${rdoSubTab==='elaboracao'?' active':''}" style="${rdoSubTab==='elaboracao'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.rdoSubTab='elaboracao';renderApp()">Em elaboração<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntElab}</span></button>
+  <button class="obra-nav-btn${rdoSubTab==='enviados'?' active':''}" style="${rdoSubTab==='enviados'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.rdoSubTab='enviados';renderApp()">Enviados<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntEnv}</span></button>
 </nav>
 ${rdos.length===0?`<div class="empty-state"><p>${rdoSubTab==='enviados'?'Nenhum RDO enviado ainda.':'Nenhum RDO em elaboração.'}</p>${rdoSubTab==='elaboracao'?'<button class="btn btn-primary" onclick="_openModal(\'new-rdo\')">+ Novo RDO</button>':''}</div>`:
 `<div>${rdos.map(r=>`<div class="rdo-card">
@@ -4479,8 +4479,8 @@ ${ferramentas.map(f=>{
   </div>
 </div>
 <nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
-  <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" onclick="S.ferrSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntFAnd}</span></button>
-  <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" onclick="S.ferrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntFConcl}</span></button>
+  <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" style="${ferrSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.ferrSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntFAnd}</span></button>
+  <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" style="${ferrSubTab==='concluidas'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.ferrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntFConcl}</span></button>
 </nav>
 ${ferramentas.length===0?`<div class="empty-state"><p>${ferrSubTab==='concluidas'?'Nenhum ativo encerrado ainda.':'Nenhuma ferramenta cadastrada.'}</p>${ferrSubTab==='andamento'?'<button class="btn btn-primary" onclick="_openModal(\'new-ferramenta\')">+ Primeiro Ativo</button>':''}</div>`:tableRows}
 </div>`;
