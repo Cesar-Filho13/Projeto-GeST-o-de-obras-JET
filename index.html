@@ -4143,10 +4143,20 @@ window._saveEditComment=async(aid,idx)=>{
 };
 
 // ─── MATERIAIS ────────────────────────────────────────────────────────────
+function getMatConcluidas(obra){try{return new Set(JSON.parse(localStorage.getItem('jet-mat-concl-'+obra)||'[]'));}catch{return new Set();}}
+function saveMatConcluidas(obra,set){localStorage.setItem('jet-mat-concl-'+obra,JSON.stringify([...set]));}
+window._matConclReq=(obra,dt)=>{const s=getMatConcluidas(obra);s.add(dt);saveMatConcluidas(obra,s);S.matSubTab='concluidas';renderApp();};
+window._matReopenReq=(obra,dt)=>{const s=getMatConcluidas(obra);s.delete(dt);saveMatConcluidas(obra,s);S.matSubTab='andamento';renderApp();};
 function renderMateriais(mat,obra){
   const search=(S.matSearch||'').toLowerCase().trim();
   const filtered=search?mat.filter(m=>String(m.item||'').toLowerCase().includes(search)||String(m.solicitante||'').toLowerCase().includes(search)||String(m.disciplina||'').toLowerCase().includes(search)||String(m.status||'').toLowerCase().includes(search)):mat;
   const pend=mat.filter(m=>m.status==='Pendente').length;
+  const subTab=S.matSubTab||'andamento';
+  const matConcl=getMatConcluidas(obra);
+  const _abd={};mat.forEach(m=>{const d=m.data_solicitacao||'9999';if(!_abd[d])_abd[d]=[];_abd[d].push(m);});
+  const _dks=Object.keys(_abd);
+  const cntAnd=_dks.filter(d=>!matConcl.has(d)).length;
+  const cntConcl=_dks.filter(d=>matConcl.has(d)).length;
   return`<div>
 <div class="section-header">
   <div><div class="section-title">Solicitação de Materiais</div><div class="section-sub">${mat.length} solicitações · ${pend} pendentes${search?' · '+filtered.length+' exibidos':''}</div></div>
@@ -4156,13 +4166,18 @@ function renderMateriais(mat,obra){
     <button class="btn btn-primary" onclick="_openModal('new-material')">+ Nova Solicitação</button>
   </div>
 </div>
+<nav class="obra-nav" style="margin:8px 0 10px">
+  <button class="obra-nav-btn${subTab==='andamento'?' active':''}" onclick="S.matSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntAnd}</span></button>
+  <button class="obra-nav-btn${subTab==='concluidas'?' active':''}" onclick="S.matSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntConcl}</span></button>
+</nav>
 ${mat.length===0?`<div class="empty-state"><p>Nenhum material solicitado.</p><button class="btn btn-primary" onclick="_openModal('new-material')">+ Primeira Solicitação</button></div>`:
 search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontrado para "<strong>${esc(search)}</strong>".</p></div>`:
 (()=>{
   const DISC_MAP={'Elétrica':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Hidráulica':{bg:'#062018',c:'#34d399',d:'#10b981'},'EPI':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Geral':{bg:'#161616',c:'#888',d:'#555'},'Civil':{bg:'#1a0f2e',c:'#c084fc',d:'#a855f7'},'Lógica':{bg:'#0f1e20',c:'#2dd4bf',d:'#14b8a6'}};
   const byDate={};
   filtered.forEach(m=>{const d=m.data_solicitacao||'9999';if(!byDate[d])byDate[d]=[];byDate[d].push(m);});
-  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).filter(dt=>subTab==='concluidas'?matConcl.has(dt):!matConcl.has(dt));
+  if(!dates.length)return`<div class="empty-state"><p>${subTab==='concluidas'?'Nenhuma requisição concluída ainda.':'Nenhuma requisição em andamento.'}</p></div>`;
   const collapKey='mat-date-collapsed-'+obra;
   if(!window._matCollapsed)window._matCollapsed={};
   return dates.map((dt,di)=>{
@@ -4182,7 +4197,7 @@ search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontr
   ${pend>0?`<span style="font-size:11px;color:#fbbf24;background:#2a1d06;padding:1px 8px;border-radius:100px;font-weight:600">⏳ ${pend} pendente${pend!==1?'s':''}</span>`:''}
   ${concl===items.length?`<span style="font-size:11px;color:#34d399;background:#062018;padding:1px 8px;border-radius:100px;font-weight:600">✓ Concluído</span>`:''}
   ${items[0]?.solicitante?`<span style="font-size:11px;color:var(--text3);margin-left:4px">por ${esc(items[0].solicitante)}</span>`:''}
-  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._duplicateMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Duplicar requisição (nova data — hoje)">⧉ Duplicar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button></span>
+  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._duplicateMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Duplicar requisição (nova data — hoje)">⧉ Duplicar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button>${subTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px;color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._matConclReq('${escJs(obra)}','${escJs(dt)}')" title="Encerrar esta requisição">✓ Encerrar</button>`:`<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReopenReq('${escJs(obra)}','${escJs(dt)}')" title="Reabrir esta requisição">↩ Reabrir</button>`}</span>
 </div>
 ${collapsed?'':
 `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">
