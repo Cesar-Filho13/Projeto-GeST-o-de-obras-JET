@@ -2233,16 +2233,21 @@ function isExpedicaoTipo(tipo){return/expedi/i.test(String(tipo||''));}
 function getDespesaFiles(id){return(DB.despesaFiles&&DB.despesaFiles[id])||[];}
 function getMaterialReqFiles(key){return(DB.materialReqFiles&&DB.materialReqFiles[key])||[];}
 async function copyText(text,label='Copiado para a área de transferência.'){
+  let ok=false;
   try{
-    if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);
-    else{
-      const ta=document.createElement('textarea');
-      ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-    }
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,99999);
+    ok=document.execCommand('copy');
+    ta.remove();
+  }catch(_){}
+  if(!ok){
+    try{await navigator.clipboard.writeText(text);ok=true;}catch(_){}
+  }
+  if(ok){
     toast(label,'#22c55e');
-  }catch(err){
-    console.warn('[JET] Falha ao copiar:',err?.message||err);
-    toast('Não foi possível copiar agora.','#ef4444');
+  }else{
+    window.prompt('Copie o texto abaixo (Ctrl+A → Ctrl+C):', text);
   }
 }
 function buildMaterialGroupCopy(obra,items=[]){
@@ -8804,7 +8809,7 @@ window._duplicateRdo=async(id)=>{
   const nextDate=(()=>{const d=new Date(src.data+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);})();
   const diaSem=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(nextDate+'T12:00:00').getDay()];
   const maxNum=Math.max(0,...(DB.rdo.filter(r=>r.obra===src.obra).map(r=>parseInt(r.rdo_numero)||0)));
-  const newItem={...src,id:uid(),data:nextDate,dia_semana:diaSem,rdo_numero:maxNum+1,fotos:[...(src.fotos||[])],status:'Elaboração'};
+  const newItem={...src,id:uid(),data:nextDate,dia_semana:diaSem,rdo_numero:maxNum+1,fotos:[],status:'Elaboração'};
   const{error}=await sb.from('rdo').insert(newItem);
   if(error){toast('Erro ao duplicar: '+error.message,'#ef4444');return;}
   DB.rdo.unshift(newItem);
