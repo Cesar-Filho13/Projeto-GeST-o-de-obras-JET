@@ -1393,7 +1393,7 @@ function getArchivedObras(){try{return cleanObraList(JSON.parse(localStorage.get
 function saveArchivedObras(d){localStorage.setItem('jet-archived-obras',JSON.stringify(cleanObraList(d)));}
 function getObrasData(){try{return cleanObraData(JSON.parse(localStorage.getItem('jet-obras-data')||'[]'));}catch{return[];}}
 function saveObrasData(d){localStorage.setItem('jet-obras-data',JSON.stringify(d));}
-function getObraData(nome){return getObrasData().find(o=>o.nome===nome)||{nome,engenheiro:'',gerente:'',outros:''};}
+function getObraData(nome){return getObrasData().find(o=>o.nome===nome)||{nome,engenheiro:'',gerente:'',outros:'',status:'Ativa'};}
 function setObraField(nome,field,value){const all=getObrasData();const ex=all.find(o=>o.nome===nome);if(ex)ex[field]=value;else all.push({nome,engenheiro:'',gerente:'',outros:'',[field]:value});saveObrasData(all);}
 const uniqObras=list=>[...new Set((Array.isArray(list)?list:[]).map(o=>String(o||'').trim()).filter(Boolean))];
 function sameObraList(a,b){return JSON.stringify(uniqObras(a))===JSON.stringify(uniqObras(b));}
@@ -2380,6 +2380,47 @@ document.addEventListener('click',()=>{if(S.homeNoticeOpen){S.homeNoticeOpen=fal
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCd();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideMentionMenus();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.homeNoticeOpen){S.homeNoticeOpen=false;renderApp();}});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'&&!S.modal){e.preventDefault();S.globalSearchOpen=true;renderApp();setTimeout(()=>document.getElementById('gs-inp')?.focus(),50);}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.globalSearchOpen){S.globalSearchOpen=false;S.globalSearch='';renderApp();}});
+
+function globalSearchResults(q){
+  const lq=q.toLowerCase();
+  const res=[];
+  getAllObras().filter(o=>o.toLowerCase().includes(lq)).slice(0,3).forEach(o=>res.push({type:'obra',typeLabel:'Obra',icon:'🏗️',title:o,sub:`${DB.aditivos.filter(a=>a.obra===o).length} aditivos · ${DB.funcionarios.filter(f=>f.obra===o&&f.status==='Ativo').length} funcionários ativos`,obra:o,nav:()=>{S.obra=o;S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';}}));
+  DB.aditivos.filter(a=>String(a.nome||'').toLowerCase().includes(lq)||String(a.numero||'').toLowerCase().includes(lq)).slice(0,4).forEach(a=>res.push({type:'aditivo',typeLabel:'Aditivo',icon:'📋',title:a.nome||a.numero||'Aditivo',sub:`${a.obra} · ${a.status||'—'}`,obra:a.obra,nav:()=>{S.obra=a.obra;S.page='obra';S.obraTab='aditivos';S.selectedAditivo=a.id;S.matSearch='';}}));
+  DB.materiais.filter(m=>String(m.item||'').toLowerCase().includes(lq)||String(m.solicitante||'').toLowerCase().includes(lq)).slice(0,4).forEach(m=>res.push({type:'material',typeLabel:'Material',icon:'📦',title:m.item||'—',sub:`${m.obra} · ${m.status||'—'}`,obra:m.obra,nav:()=>{S.obra=m.obra;S.page='obra';S.obraTab='materiais';S.selectedAditivo=null;S.matSearch=m.item||'';}}));
+  DB.funcionarios.filter(f=>String(f.nome||'').toLowerCase().includes(lq)||String(f.funcao||'').toLowerCase().includes(lq)).slice(0,4).forEach(f=>res.push({type:'funcionario',typeLabel:'Funcionário',icon:'👷',title:f.nome||'—',sub:`${f.obra} · ${f.funcao||'—'} · ${f.status||'—'}`,obra:f.obra,nav:()=>{S.obra=f.obra;S.page='obra';S.obraTab='funcionarios';S.selectedAditivo=null;S.matSearch='';}}));
+  DB.ferramentas.filter(f=>String(f.item||'').toLowerCase().includes(lq)||String(f.numero_serie||'').toLowerCase().includes(lq)||String(f.patrimonio||'').toLowerCase().includes(lq)).slice(0,3).forEach(f=>res.push({type:'ferramenta',typeLabel:'Ferramenta',icon:'🔧',title:f.item||'—',sub:`${f.obra} · ${f.status||'—'}`,obra:f.obra,nav:()=>{S.obra=f.obra;S.page='obra';S.obraTab='ferramentas';S.selectedAditivo=null;S.matSearch='';}}));
+  return res.slice(0,12);
+}
+window._gotoSearchResult=(idx)=>{
+  const res=globalSearchResults((S.globalSearch||'').trim());
+  if(!res[idx])return;
+  S.globalSearchOpen=false;S.globalSearch='';
+  res[idx].nav();
+  renderApp();
+};
+window._gsKey=(e)=>{
+  if(e.key==='Escape'){S.globalSearchOpen=false;S.globalSearch='';renderApp();return;}
+  if(e.key==='Enter'){const res=globalSearchResults((S.globalSearch||'').trim());if(res.length)window._gotoSearchResult(0);}
+};
+function renderGlobalSearch(){
+  const q=(S.globalSearch||'').trim();
+  const res=q.length>=2?globalSearchResults(q):[];
+  return`<div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding-top:80px" onclick="S.globalSearchOpen=false;S.globalSearch='';renderApp()">
+<div style="width:100%;max-width:580px;background:var(--chrome);border:1px solid var(--border2);border-radius:16px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.55)" onclick="event.stopPropagation()">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="gs-inp" type="text" placeholder="Buscar obras, aditivos, materiais, funcionários..." value="${esc(S.globalSearch||'')}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:15px;outline:none;font-family:'Inter',sans-serif" oninput="S.globalSearch=this.value;renderApp();this.focus();const l=this.value.length;this.setSelectionRange(l,l)" onkeydown="window._gsKey(event)">
+    <kbd style="font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer" onclick="S.globalSearchOpen=false;S.globalSearch='';renderApp()">Esc</kbd>
+  </div>
+  ${res.length
+    ?`<div style="max-height:420px;overflow-y:auto">${res.map((r,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''" onclick="window._gotoSearchResult(${i})"><div style="width:30px;height:30px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${r.icon}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</div><div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.sub)}</div></div><span style="font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:4px;flex-shrink:0;white-space:nowrap">${r.typeLabel}</span></div>`).join('')}</div>`
+    :q.length>=2
+      ?`<div class="empty-state" style="padding:28px"><p>Nenhum resultado para "<strong>${esc(q)}</strong>"</p></div>`
+      :`<div style="padding:18px 20px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Como usar</div><div style="font-size:12px;color:var(--text3);line-height:1.6">Digite 2+ caracteres para buscar em <strong style="color:var(--text2)">obras</strong>, <strong style="color:var(--text2)">aditivos</strong>, <strong style="color:var(--text2)">materiais</strong>, <strong style="color:var(--text2)">funcionários</strong> e <strong style="color:var(--text2)">ferramentas</strong>. Pressione <kbd style="font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px">Enter</kbd> para ir ao primeiro resultado.</div></div>`}
+</div></div>`;
+}
 window._hideMentionMenus=hideMentionMenus;
 
 function makeCd(options,map,currentVal,onSelect,large=false){
@@ -2614,6 +2655,9 @@ let S={
   homeNoticeFilter:'all',
   homeNoticeOpen:false,
   matSearch:'',
+  globalSearchOpen:false,
+  globalSearch:'',
+  obraStatusFilter:'Ativas',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -2679,6 +2723,7 @@ function topbarHtml(){
 </a>
 ${crumbs.length?`<div class="topbar-sep"></div><div class="topbar-crumb">${crumbs.join('')}</div>`:''}
 <div class="topbar-right">
+  <button onclick="S.globalSearchOpen=true;renderApp();setTimeout(()=>document.getElementById('gs-inp')?.focus(),50)" style="background:none;border:1px solid var(--border2);color:var(--text3);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;transition:all .15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border2)'" title="Busca global (Ctrl+K)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Buscar<kbd style="font-size:9px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px">Ctrl K</kbd></button>
   <button class="theme-toggle" onclick="window._toggleTheme()" title="Alternar modo claro/escuro">
     ${themeIconSvg()}
   </button>
@@ -3582,7 +3627,10 @@ function renderDashboard(){
   }
 
   // PAINEL OBRAS  // PAINEL OBRAS (PADRÃO)
-  const obras=getAllObras();
+  const allObras=getAllObras();
+  const obraFilter=S.obraStatusFilter||'Ativas';
+  const OBRA_STATUS_COLORS={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'};
+  const obras=obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');});
   const obraCards=obras.map(obra=>{
     const col=obraColor(obra);
     const ad=sortAditivosDisplay(DB.aditivos.filter(a=>a.obra===obra));
@@ -3591,8 +3639,10 @@ function renderDashboard(){
     const val=ad.reduce((s,a)=>s+(Number(a.valor)||0),0);
     const concl=ad.filter(a=>a.status==='Concluído').length;
     const data=getObraData(obra);
+    const obraSt=data.status||'Ativa';
+    const stCol=OBRA_STATUS_COLORS[obraSt]||'#555';
     const pct=ad.length?Math.round(concl/ad.length*100):0;
-    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div class="obra-card-code">${esc(obra)}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}</div></div>`;
+    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="obra-card-code">${esc(obra)}</div>${obraSt!=='Ativa'?`<span style="font-size:9px;font-weight:700;background:${stCol}33;color:${stCol};padding:2px 7px;border-radius:100px;border:1px solid ${stCol}55;flex-shrink:0">${obraSt}</span>`:''}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}</div></div>`;
   }).join('');
 
   const totalAd=DB.aditivos.length;
@@ -3601,17 +3651,19 @@ function renderDashboard(){
   const totalMat=DB.materiais.filter(m=>m.status==='Pendente').length;
 
   const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.page='gerenciar-obras';renderApp()">⚙ Gerenciar</button></div>`;
+  const obraFilterCounts={Ativas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Ativa').length,Concluídas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Concluída').length,Paralisadas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Paralisada').length,Todas:allObras.length};
   return `<div class="page">
     ${renderPageHero('🏗️','Gestão de Obras','PAINEL DE OBRAS · Selecione uma obra para acessar seus módulos',heroActions)}
     <div class="stats-row">
-      <div class="stat-card" style="--c:#3b82f6"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Obras Ativas</div><div class="stat-value" style="color:#60a5fa">${obras.length}</div><div class="stat-sub">Em operação</div></div>
+      <div class="stat-card" style="--c:#3b82f6"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Obras Ativas</div><div class="stat-value" style="color:#60a5fa">${obraFilterCounts.Ativas}</div><div class="stat-sub">Em operação</div></div>
       <div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Total Aditivos</div><div class="stat-value" style="color:#34d399">${totalAd}</div><div class="stat-sub">${DB.aditivos.filter(a=>a.status==='Concluído').length} concluídos</div></div>
       <div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Funcionários Ativos</div><div class="stat-value" style="color:#c084fc">${totalFunc}</div><div class="stat-sub">Em todas as obras</div></div>
       <div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Materiais Pendentes</div><div class="stat-value" style="color:#fbbf24">${totalMat}</div><div class="stat-sub">Aguardando aprovação</div></div>
     </div>
     ${renderDashboardCharts()}
+    <nav class="obra-nav" style="margin:16px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
     <div class="obra-grid">${obraCards}</div>
-    ${obras.length===0?`<div class="empty-state"><p>Nenhuma obra cadastrada.</p><button class="btn btn-primary" onclick="S.page='gerenciar-obras';renderApp()">+ Cadastrar primeira obra</button></div>`:''}
+    ${obras.length===0?`<div class="empty-state"><p>${allObras.length===0?'Nenhuma obra cadastrada.':'Nenhuma obra '+obraFilter.toLowerCase()+' no momento.'}</p>${allObras.length===0?'<button class="btn btn-primary" onclick="S.page=\'gerenciar-obras\';renderApp()">+ Cadastrar primeira obra</button>':''}</div>`:''}
   </div>`;
 }
 
@@ -3701,6 +3753,8 @@ function renderObraInner(){
   else if(S.obraTab==='ferramentas')content=renderFerramentas(ferramentas,obra);
 
   const col=obraColor(obra);
+  const obraSt=getObraData(obra).status||'Ativa';
+  const obraStCol={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'}[obraSt]||'#555';
   return`<div>
 <div style="height:3px;background:linear-gradient(to right,${col.bar},${col.c})"></div>
 <div class="page">
@@ -3711,7 +3765,10 @@ function renderObraInner(){
   <button class="btn btn-primary btn-sm" style="min-width:80px" onclick="S.page='dashboard';S.obra=null;S.selectedAditivo=null;renderApp()">Obras</button>
 </div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-    <div style="font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px">${esc(obra)}</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px">${esc(obra)}</div>
+      ${obraSt!=='Ativa'?`<span style="font-size:11px;font-weight:700;background:${obraStCol}22;color:${obraStCol};padding:3px 11px;border-radius:100px;border:1px solid ${obraStCol}55">${obraSt}</span>`:''}
+    </div>
     <button class="btn btn-secondary btn-sm" onclick="exportObraConsolidadoPDF('${escJs(obra)}')" title="Relatório consolidado em PDF">📄 Relatório PDF</button>
   </div>
 </div>
@@ -6202,7 +6259,7 @@ function renderGerenciarObras(){
     const val=DB.aditivos.filter(a=>a.obra===obra).reduce((s,a)=>s+(Number(a.valor)||0),0);
     const col=obraColor(obra);
     const totalAditivos=DB.aditivos.filter(a=>a.obra===obra).length;
-    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div></div></div>`;
+    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Status da Obra</label><select data-obra="${esc(obra)}" data-field="status" onchange="window._saveObraField(this);renderApp()" style="width:100%"><option value="Ativa"${(d.status||'Ativa')==='Ativa'?' selected':''}>✅ Ativa</option><option value="Concluída"${d.status==='Concluída'?' selected':''}>🏁 Concluída</option><option value="Paralisada"${d.status==='Paralisada'?' selected':''}>⏸ Paralisada</option></select></div><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div></div></div>`;
   }).join('');
 
   return`<div class="page"><button class="btn btn-secondary btn-sm" onclick="S.page='dashboard';renderApp()" style="margin-bottom:20px">← Voltar ao Painel</button><div class="section-header"><div><div class="section-title">Gerenciar Obras</div><div class="section-sub">Clique no nome para renomear. Salvo automaticamente.</div></div></div>${cards}<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(39,87,217,.16) 0%,rgba(23,60,141,.14) 100%);border:1px solid rgba(79,140,255,.28)"><div class="card-title" style="color:#60a5fa">➕ NOVA OBRA</div><div style="display:flex;gap:8px"><input id="new-obra-input" placeholder="Nome da nova obra..." style="flex:1" onkeydown="if(event.key==='Enter')window._addObra()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addObra()">+ Adicionar</button></div></div></div>`;
@@ -11247,7 +11304,7 @@ function renderApp(){
   if(!currentUser){renderAuth();return;}
   let content='';
   if(S.page==='home'){
-    document.getElementById('root').innerHTML=renderHome()+renderModal();
+    document.getElementById('root').innerHTML=renderHome()+renderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
     updateOnlinePresenceUI();
     applyMobileTableCards();
     syncAppHistory({replace:!_historyBootstrapped});
@@ -11258,7 +11315,7 @@ function renderApp(){
   else if(S.page==='obra')content=renderObraInner();
   else if(S.page==='gerenciar-obras')content=renderGerenciarObras();
 
-  document.getElementById('root').innerHTML=topbarHtml()+content+renderModal();
+  document.getElementById('root').innerHTML=topbarHtml()+content+renderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
   updateOnlinePresenceUI();
   applyMobileTableCards();
   syncAppHistory({replace:!_historyBootstrapped});
