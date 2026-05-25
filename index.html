@@ -3810,13 +3810,9 @@ function renderObraInner(){
   // Persist updated order
   try{if(S.obra)localStorage.setItem('jet-tab-order-'+S.obra,JSON.stringify(S.tabOrder));}catch{}
   const tabs=S.tabOrder.filter(id=>TAB_DEFS[id]).map(id=>({id,...TAB_DEFS[id]}));
-  const nav=tabs.map(t=>`<button
-  class="obra-nav-btn${S.obraTab===t.id?' active':''}"
-  data-tabid="${t.id}"
-  onclick="S.obraTab='${t.id}';S.selectedAditivo=null;if('${t.id}'!=='materiais')S.matSearch='';renderApp();">
-<span class="nav-icon">${t.icon}</span>${t.label}
-<span class="nav-count">${t.count}</span>
-</button>`).join('');
+  const TAB_COLORS={aditivos:'59,130,246',materiais:'249,115,22',funcionarios:'45,212,191',rdo:'192,132,252',todo:'74,222,128',despesas:'245,158,11',ferramentas:'148,163,184'};
+  const TAB_TEXT={aditivos:'#93c5fd',materiais:'#fdba74',funcionarios:'#5eead4',rdo:'#d8b4fe',todo:'#86efac',despesas:'#fcd34d',ferramentas:'#cbd5e1'};
+  const nav=tabs.map(t=>{const rgb=TAB_COLORS[t.id]||'59,130,246';const txt=TAB_TEXT[t.id]||'#93c5fd';const isA=S.obraTab===t.id;return`<button class="obra-nav-btn${isA?' active':''}" style="${isA?`background:rgba(${rgb},.18);border-color:rgba(${rgb},.45);color:${txt}`:`background:rgba(${rgb},.07);border-color:rgba(${rgb},.18)`}" data-tabid="${t.id}" onclick="S.obraTab='${t.id}';S.selectedAditivo=null;if('${t.id}'!=='materiais')S.matSearch='';renderApp();"><span class="nav-icon">${t.icon}</span>${t.label}<span class="nav-count" style="background:rgba(${rgb},.2);color:${txt};border-color:rgba(${rgb},.3)">${t.count}</span></button>`;}).join('');
 
   let content='';
   if(S.selectedAditivo)content=renderAditivoDetail();
@@ -3852,7 +3848,7 @@ function renderObraInner(){
     <button class="btn btn-secondary btn-sm" onclick="exportObraConsolidadoPDF('${escJs(obra)}')" title="Relatório consolidado em PDF">📄 Relatório PDF</button>
   </div>
 </div>
-<nav class="obra-nav">${nav}</nav>
+<nav class="obra-nav" style="padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px;margin-bottom:20px;flex-wrap:wrap">${nav}</nav>
 ${content}
 </div></div>`;
 }
