@@ -3696,7 +3696,7 @@ function renderDashboard(){
   const allObras=getAllObras();
   const obraFilter=S.obraStatusFilter||'Ativas';
   const OBRA_STATUS_COLORS={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'};
-  const obras=obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');});
+  const obras=(obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');})).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const obraCards=obras.map(obra=>{
     const col=obraColor(obra);
     const ad=sortAditivosDisplay(DB.aditivos.filter(a=>a.obra===obra));
