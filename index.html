@@ -1240,6 +1240,8 @@ const OBRA_REGISTRY_PATH='meta/obras-registry.json';
 const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
 const ALMOX_DEPOSITOS_KEY='jet-almox-depositos';
 const FALTAS_PATH='meta/funcionarios-faltas.json';
+const MAT_CONCL_PATH='meta/mat-concl.json';
+const FERR_CONCL_PATH='meta/ferr-concl.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const DESPESA_PENDING_FILES_KEY='jet-despesa-files-pending-sync';
 const ALMOX_MOV_PATH='meta/almox-movimentacoes.json';
@@ -2094,6 +2096,8 @@ async function saveRemoteAlmoxMovimentos(list,{silent=false}={}){
 }
 let _baixadasSyncTimer=null;
 let _faltasSyncTimer=null;
+let _matConclSyncTimer=null;
+let _ferrConclSyncTimer=null;
 let _homeNoticesSyncTimer=null;
 let _propostasSyncTimer=null;
 let _almoxMetaSyncTimer=null;
@@ -2112,6 +2116,60 @@ function queueFaltasSync(notify=false){
   _faltasSyncTimer=setTimeout(async()=>{
     const ok=await saveRemoteFaltas(DB.faltas||[],{silent:!notify});
     if(ok&&notify)toast('Faltas sincronizadas.','#22c55e');
+  },notify?0:420);
+}
+function getLocalMatConcl(){try{return JSON.parse(localStorage.getItem('jet-mat-concl-all')||'{}')||{};}catch{return{};}}
+function saveLocalMatConcl(obj){localStorage.setItem('jet-mat-concl-all',JSON.stringify(obj));}
+async function loadRemoteMatConcl(){
+  try{
+    const{data,error}=await sb.storage.from(BUCKET).download(MAT_CONCL_PATH);
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.matConcl=getLocalMatConcl();return;}throw error;}
+    DB.matConcl=JSON.parse(await data.text())||{};
+    saveLocalMatConcl(DB.matConcl);
+  }catch(err){DB.matConcl=getLocalMatConcl();console.warn('[JET] Mat-concl não carregado:',err?.message||err);}
+}
+async function saveRemoteMatConcl({silent=false}={}){
+  saveLocalMatConcl(DB.matConcl||{});
+  try{
+    const blob=new Blob([JSON.stringify(DB.matConcl||{},null,2)],{type:'application/json'});
+    const{error}=await sb.storage.from(BUCKET).upload(MAT_CONCL_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){console.warn('[JET] Mat-concl não salvo:',err?.message||err);if(!silent)toast('Concluídas salvas neste aparelho. Sincronização falhou.','#f59e0b');return false;}
+}
+function queueMatConclSync(notify=false){
+  saveLocalMatConcl(DB.matConcl||{});
+  clearTimeout(_matConclSyncTimer);
+  _matConclSyncTimer=setTimeout(async()=>{
+    const ok=await saveRemoteMatConcl({silent:!notify});
+    if(ok&&notify)toast('Requisições sincronizadas.','#22c55e');
+  },notify?0:420);
+}
+function getLocalFerrConcl(){try{return JSON.parse(localStorage.getItem('jet-ferr-concl-all')||'{}')||{};}catch{return{};}}
+function saveLocalFerrConcl(obj){localStorage.setItem('jet-ferr-concl-all',JSON.stringify(obj));}
+async function loadRemoteFerrConcl(){
+  try{
+    const{data,error}=await sb.storage.from(BUCKET).download(FERR_CONCL_PATH);
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.ferrConcl=getLocalFerrConcl();return;}throw error;}
+    DB.ferrConcl=JSON.parse(await data.text())||{};
+    saveLocalFerrConcl(DB.ferrConcl);
+  }catch(err){DB.ferrConcl=getLocalFerrConcl();console.warn('[JET] Ferr-concl não carregado:',err?.message||err);}
+}
+async function saveRemoteFerrConcl({silent=false}={}){
+  saveLocalFerrConcl(DB.ferrConcl||{});
+  try{
+    const blob=new Blob([JSON.stringify(DB.ferrConcl||{},null,2)],{type:'application/json'});
+    const{error}=await sb.storage.from(BUCKET).upload(FERR_CONCL_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){console.warn('[JET] Ferr-concl não salvo:',err?.message||err);if(!silent)toast('Ferramentas concluídas salvas neste aparelho. Sincronização falhou.','#f59e0b');return false;}
+}
+function queueFerrConclSync(notify=false){
+  saveLocalFerrConcl(DB.ferrConcl||{});
+  clearTimeout(_ferrConclSyncTimer);
+  _ferrConclSyncTimer=setTimeout(async()=>{
+    const ok=await saveRemoteFerrConcl({silent:!notify});
+    if(ok&&notify)toast('Ferramentas sincronizadas.','#22c55e');
   },notify?0:420);
 }
 function queueHomeNoticesSync(notify=false){
@@ -2522,7 +2580,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
 
 async function _fetchCoreTables(){
   return Promise.all([
@@ -2580,6 +2638,8 @@ async function loadAll(){
   await syncObraRegistry();
   await loadRemoteBaixadas();
   await loadRemoteFaltas();
+  await loadRemoteMatConcl();
+  await loadRemoteFerrConcl();
   await loadRemoteHomeNotices();
   await loadRemoteCommercialCompanies();
   await loadRemotePropostas();
@@ -3797,8 +3857,8 @@ function renderObraInner(){
     despesas:{icon:'💰',label:'Adiantamento',count:desp.length||0},
     ferramentas:{icon:'🔧',label:'Ferramentas',count:ferramentas.length},
   };
-  // Ensure tabOrder always has all tabs including new ones
-  if(!S.tabOrder)S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];
+  // Load saved tab order for this obra from localStorage
+  {try{const _to=JSON.parse(localStorage.getItem('jet-tab-order-'+(S.obra||''))||'[]');if(_to.length)S.tabOrder=_to;}catch{}if(!S.tabOrder||!S.tabOrder.length)S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];}
   const allTabIds=[...DEFAULT_OBRA_TAB_ORDER];
   allTabIds.forEach(tid=>{if(!S.tabOrder.includes(tid))S.tabOrder.push(tid);});
   // Persist updated order
@@ -4135,8 +4195,8 @@ window._saveEditComment=async(aid,idx)=>{
 };
 
 // ─── MATERIAIS ────────────────────────────────────────────────────────────
-function getMatConcluidas(obra){try{return new Set(JSON.parse(localStorage.getItem('jet-mat-concl-'+obra)||'[]'));}catch{return new Set();}}
-function saveMatConcluidas(obra,set){localStorage.setItem('jet-mat-concl-'+obra,JSON.stringify([...set]));}
+function getMatConcluidas(obra){return new Set((DB.matConcl||{})[obra]||[]);}
+function saveMatConcluidas(obra,set){if(!DB.matConcl)DB.matConcl={};DB.matConcl[obra]=[...set];queueMatConclSync();}
 window._matConclReq=(obra,dt)=>{const s=getMatConcluidas(obra);s.add(dt);saveMatConcluidas(obra,s);S.matSubTab='concluidas';renderApp();};
 window._matReopenReq=(obra,dt)=>{const s=getMatConcluidas(obra);s.delete(dt);saveMatConcluidas(obra,s);S.matSubTab='andamento';renderApp();};
 function renderMateriais(mat,obra){
@@ -4418,8 +4478,8 @@ ${(r.fotos||[]).length>0?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin
 }
 
 // ─── FERRAMENTAS / ATIVOS ────────────────────────────────────────────────
-function getFerrConcluidas(obra){try{return new Set(JSON.parse(localStorage.getItem('jet-ferr-concl-'+obra)||'[]'));}catch{return new Set();}}
-function saveFerrConcluidas(obra,set){localStorage.setItem('jet-ferr-concl-'+obra,JSON.stringify([...set]));}
+function getFerrConcluidas(obra){return new Set((DB.ferrConcl||{})[obra]||[]);}
+function saveFerrConcluidas(obra,set){if(!DB.ferrConcl)DB.ferrConcl={};DB.ferrConcl[obra]=[...set];queueFerrConclSync();}
 window._ferrConclItem=(obra,id)=>{const s=getFerrConcluidas(obra);s.add(id);saveFerrConcluidas(obra,s);S.ferrSubTab='concluidas';renderApp();};
 window._ferrReopenItem=(obra,id)=>{const s=getFerrConcluidas(obra);s.delete(id);saveFerrConcluidas(obra,s);S.ferrSubTab='andamento';renderApp();};
 function renderFerramentas(ferramentas,obra){
@@ -11445,8 +11505,6 @@ window.addEventListener('resize',()=>{
 });
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
-// Clear stale tab orders from localStorage (old versions had extra tabs)
-try{Object.keys(localStorage).filter(k=>k.startsWith('jet-tab-order-')).forEach(k=>localStorage.removeItem(k));}catch{}
 try{
   const customRaw=JSON.parse(localStorage.getItem('jet-obras')||'[]');
   const customClean=cleanObraList(customRaw);
