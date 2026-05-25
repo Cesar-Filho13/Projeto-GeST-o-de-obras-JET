@@ -4376,7 +4376,13 @@ window._setRDOStatus=async(id,status)=>{
   toast('Status do RDO atualizado.','#22c55e');
   return true;
 };
+window._rdoEnviar=async(id)=>{S.rdoSubTab='enviados';await window._setRDOStatus(id,'Enviado');};
+window._rdoReabrir=async(id)=>{S.rdoSubTab='elaboracao';await window._setRDOStatus(id,'Elaboração');};
 function renderRDO(rdos,obra){
+  const rdoSubTab=S.rdoSubTab||'elaboracao';
+  const cntElab=rdos.filter(r=>getRDOStatus(r)==='Elaboração').length;
+  const cntEnv=rdos.filter(r=>getRDOStatus(r)!=='Elaboração').length;
+  rdos=rdos.filter(r=>rdoSubTab==='enviados'?getRDOStatus(r)!=='Elaboração':getRDOStatus(r)==='Elaboração');
   return`<div>
 <div class="section-header">
   <div><div class="section-title">RDO — Relatório Diário de Obra</div><div class="section-sub">${rdos.length} relatórios registrados</div></div>
@@ -4387,7 +4393,11 @@ function renderRDO(rdos,obra){
     <button class="btn btn-primary" onclick="_openModal('new-rdo')">+ Novo RDO</button>
   </div>
 </div>
-${rdos.length===0?`<div class="empty-state"><p>Nenhum RDO registrado.</p><button class="btn btn-primary" onclick="_openModal('new-rdo')">+ Primeiro RDO</button></div>`:
+<nav class="obra-nav" style="margin:8px 0 10px">
+  <button class="obra-nav-btn${rdoSubTab==='elaboracao'?' active':''}" onclick="S.rdoSubTab='elaboracao';renderApp()">Em elaboração<span class="nav-count">${cntElab}</span></button>
+  <button class="obra-nav-btn${rdoSubTab==='enviados'?' active':''}" onclick="S.rdoSubTab='enviados';renderApp()">Enviados<span class="nav-count">${cntEnv}</span></button>
+</nav>
+${rdos.length===0?`<div class="empty-state"><p>${rdoSubTab==='enviados'?'Nenhum RDO enviado ainda.':'Nenhum RDO em elaboração.'}</p>${rdoSubTab==='elaboracao'?'<button class="btn btn-primary" onclick="_openModal(\'new-rdo\')">+ Novo RDO</button>':''}</div>`:
 `<div>${rdos.map(r=>`<div class="rdo-card">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
   <div onclick="_openModal('edit-rdo',{id:'${r.id}'})">
@@ -4406,6 +4416,7 @@ ${rdos.length===0?`<div class="empty-state"><p>Nenhum RDO registrado.</p><button
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_duplicateRdo('${r.id}')" title="Duplicar RDO (próximo dia)">⧉</button>
     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-rdo',{id:'${r.id}'})">✎</button>
     <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteRdo('${r.id}')">×</button>
+    ${rdoSubTab==='elaboracao'?`<button class="btn btn-secondary btn-sm" style="color:#22c55e;border-color:#10b981" onclick="event.stopPropagation();window._rdoEnviar('${escJs(r.id)}')" title="Marcar como Enviado">✉ Enviar</button>`:`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window._rdoReabrir('${escJs(r.id)}')" title="Reabrir em Elaboração">↩ Reabrir</button>`}
   </div>
 </div>
 ${r.atividades?`<div class="rdo-activity-card" onclick="_openModal('edit-rdo',{id:'${r.id}'})"><div class="rdo-activity-head"><span>Atividades executadas</span><span class="rdo-activity-hint">Clique para editar</span></div><div class="rdo-preview">${esc(r.atividades)}</div></div>`:''}
