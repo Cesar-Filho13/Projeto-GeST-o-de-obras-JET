@@ -2783,6 +2783,8 @@ let S={
   obraStatusFilter:'Ativas',
   adSubTab:'todos',
   todoSubTab:'todos',
+  almoxFerrObraFilter:'',
+  almoxFerrSubTab:'andamento',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -2829,7 +2831,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false,adSubTab:'todos',todoSubTab:'todos'};
+await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false,adSubTab:'todos',todoSubTab:'todos',almoxFerrObraFilter:'',almoxFerrSubTab:'andamento'};
   renderAuth();
 };
 
@@ -3745,7 +3747,7 @@ function renderDashboard(){
     const expedicoes=buildAlmoxExpedicaoGroups();
     const movimentos=cleanAlmoxMovimentos(DB.almoxMovimentos||[]);
     const transferOpen=(getAlmoxTransferCounts(expedicoes)['Separado']||0)+(getAlmoxTransferCounts(expedicoes)['Em transito']||0);
-    if(!['inventario','expedicao','movimentacoes','alertas'].includes(S.almoxTab))S.almoxTab='inventario';
+    if(!['inventario','expedicao','movimentacoes','alertas','ferramentas'].includes(S.almoxTab))S.almoxTab='inventario';
     const lowStockCount=getAlmoxInventario().filter(isAlmoxLowStock).length;
     const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.almoxPage='gerenciar';renderApp()">⚙ Gerenciar</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>`;
     let html=`<div class="page">${renderPageHero('📦','Almoxarifado','Gestão de estoque, transferências e movimentações',heroActions)}`;
@@ -3760,8 +3762,9 @@ function renderDashboard(){
       <button class="obra-nav-btn${S.almoxTab==='expedicao'?' active':''}" onclick="S.almoxTab='expedicao';renderApp()">🔁 Transferências<span class="nav-count">${expedicoes.length}</span></button>
       <button class="obra-nav-btn${S.almoxTab==='movimentacoes'?' active':''}" onclick="S.almoxTab='movimentacoes';renderApp()">📋 Movimentações<span class="nav-count">${movimentos.length}</span></button>
       <button class="obra-nav-btn${S.almoxTab==='alertas'?' active':''}" onclick="S.almoxTab='alertas';renderApp()" style="${lowStockCount?'color:#f87171':''}">🔔 Alertas<span class="nav-count" style="${lowStockCount?'background:#ef4444;color:#fff':''}">${lowStockCount}</span></button>
+      <button class="obra-nav-btn${S.almoxTab==='ferramentas'?' active':''}" onclick="S.almoxTab='ferramentas';renderApp()">🔧 Ferramentas<span class="nav-count">${(DB.ferramentas||[]).length}</span></button>
     </div>`;
-    html+=S.almoxTab==='inventario'?renderAlmoxInventoryPanel(inventario):S.almoxTab==='expedicao'?renderAlmoxExpedicaoPanel():S.almoxTab==='alertas'?renderAlmoxAlertasPanel():renderAlmoxMovimentacoesPanel();
+    html+=S.almoxTab==='inventario'?renderAlmoxInventoryPanel(inventario):S.almoxTab==='expedicao'?renderAlmoxExpedicaoPanel():S.almoxTab==='alertas'?renderAlmoxAlertasPanel():S.almoxTab==='ferramentas'?renderAlmoxFerramentasPanel():renderAlmoxMovimentacoesPanel();
     html+=`</div>`;
     return html;
   }
@@ -4531,15 +4534,12 @@ ${ferramentas.map(f=>{
   return`<tr style="border-bottom:1px solid var(--border);transition:background .12s" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
   <td style="padding:9px 10px;font-weight:600;color:var(--text)">${esc(f.item||'—')}</td>
   <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${esc(f.numero_serie||f.patrimonio||'—')}</td>
-  <td style="padding:9px 10px">${makeCd(FERR_STATUS_LIST,FERR_STATUS_MAP,f.status||'Disponível',`_updateFerrStatus('${escJs(f.id)}',VAL)`)}</td>
+  <td style="padding:9px 10px"><span style="background:${st.bg};color:${st.c};padding:2px 9px;border-radius:100px;font-size:11px;font-weight:600;white-space:nowrap">${esc(f.status||'Disponível')}</span></td>
   <td style="padding:9px 10px;color:var(--text2)">${f.funcionario_nome?`<span style="font-size:12px">👤 ${esc(f.funcionario_nome)}</span>`:'<span style="color:var(--text3)">—</span>'}</td>
   <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.data_alocacao?fmtD(f.data_alocacao):'—'}</td>
   <td style="padding:9px 10px;text-align:right">
     <div style="display:flex;gap:6px;justify-content:flex-end">
       ${f.funcionario_nome?`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_termoResponsabilidade('${escJs(f.id)}')" title="Termo de Responsabilidade">📄</button>`:''}
-      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-ferramenta',{id:'${escJs(f.id)}'})">✎</button>
-      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteFerramenta('${escJs(f.id)}')">×</button>
-      ${ferrSubTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._ferrConclItem('${escJs(obra)}','${escJs(f.id)}')" title="Encerrar este ativo">✓</button>`:`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window._ferrReopenItem('${escJs(obra)}','${escJs(f.id)}')" title="Reabrir este ativo">↩</button>`}
     </div>
   </td>
 </tr>`;}).join('')}
@@ -4552,14 +4552,13 @@ ${ferramentas.map(f=>{
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('ferramentas',obra)}
-    <button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Nova Ferramenta</button>
   </div>
 </div>
 <nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
   <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" style="${ferrSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.ferrSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntFAnd}</span></button>
   <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" style="${ferrSubTab==='concluidas'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.ferrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntFConcl}</span></button>
 </nav>
-${ferramentas.length===0?`<div class="empty-state"><p>${ferrSubTab==='concluidas'?'Nenhum ativo encerrado ainda.':'Nenhuma ferramenta cadastrada.'}</p>${ferrSubTab==='andamento'?'<button class="btn btn-primary" onclick="_openModal(\'new-ferramenta\')">+ Primeiro Ativo</button>':''}</div>`:tableRows}
+${ferramentas.length===0?`<div class="empty-state"><p>${ferrSubTab==='concluidas'?'Nenhum ativo encerrado ainda.':'Nenhuma ferramenta cadastrada. Gerencie ferramentas no módulo Almoxarifado.'}</p></div>`:tableRows}
 </div>`;
 }
 
@@ -6369,6 +6368,75 @@ function renderAlmoxAlertasPanel(){
       :`<button class="btn btn-secondary btn-sm" onclick="window._criarCotacaoAlmox('${escJs(item.item)}','${escJs(item.obra||'')}')">+ Solicitar</button>`;
     return`<tr style="background:rgba(239,68,68,.04)"><td style="font-weight:600;color:var(--text)">${esc(item.item)}</td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td style="font-weight:700;color:#f87171">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td><td style="color:var(--text3)">${min} ${esc(item.unidade||'un')}</td><td style="color:#fbbf24;font-weight:700">−${deficit} ${esc(item.unidade||'un')}</td><td>${cotacaoCell}</td><td><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={id:'${item.id}'};renderApp()">Receber</button></td></tr>`;
   }).join('')}</tbody></table></div></div>`;
+}
+
+function renderAlmoxFerramentasPanel(){
+  const allObras=getAllObras().sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  const obraFilter=S.almoxFerrObraFilter||'';
+  const allFerrs=DB.ferramentas||[];
+  const isConcluda=(f)=>getFerrConcluidas(f.obra).has(f.id);
+  const ferrSubTab=S.almoxFerrSubTab||'andamento';
+  const ferrsFiltered=obraFilter?allFerrs.filter(f=>f.obra===obraFilter):allFerrs;
+  const ferramentas=ferrsFiltered.filter(f=>ferrSubTab==='concluidas'?isConcluda(f):!isConcluda(f));
+  const cntAnd=ferrsFiltered.filter(f=>!isConcluda(f)).length;
+  const cntConcl=ferrsFiltered.filter(f=>isConcluda(f)).length;
+  const byStatus={Disponível:[],Alocado:[],['Em Manutenção']:[],Baixado:[]};
+  ferramentas.forEach(f=>{const s=f.status||'Disponível';(byStatus[s]||(byStatus[s]=[])).push(f);});
+  const emptyMsg=ferrSubTab==='concluidas'?'Nenhum ativo encerrado ainda.':'Nenhuma ferramenta cadastrada.';
+  const emptyBtn=ferrSubTab==='andamento'?`<button class="btn btn-primary" onclick="_openModal('new-ferramenta',{obra:'${escJs(obraFilter)}'})">+ Primeiro Ativo</button>`:'';
+  const emptyState=`<div class="empty-state"><p>${emptyMsg}</p>${emptyBtn}</div>`;
+  const tableRows=ferramentas.length===0?emptyState:`<table style="width:100%;border-collapse:collapse">
+<thead><tr style="border-bottom:2px solid var(--border)">
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Item</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Obra</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Nº Série / Patrimônio</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Status</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Responsável</th>
+  <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Desde</th>
+  <th style="padding:8px 10px;text-align:right;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Ações</th>
+</tr></thead>
+<tbody>
+${ferramentas.map(f=>{
+  const st=FERR_STATUS_MAP[f.status||'Disponível']||FERR_STATUS_MAP['Disponível'];
+  const fObra=f.obra||'—';
+  return`<tr style="border-bottom:1px solid var(--border);transition:background .12s" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+  <td style="padding:9px 10px;font-weight:600;color:var(--text)">${esc(f.item||'—')}</td>
+  <td style="padding:9px 10px;font-size:12px;color:var(--text3)">${esc(fObra)}</td>
+  <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${esc(f.numero_serie||f.patrimonio||'—')}</td>
+  <td style="padding:9px 10px">${makeCd(FERR_STATUS_LIST,FERR_STATUS_MAP,f.status||'Disponível',`_updateFerrStatus('${escJs(f.id)}',VAL)`)}</td>
+  <td style="padding:9px 10px;color:var(--text2)">${f.funcionario_nome?`<span style="font-size:12px">👤 ${esc(f.funcionario_nome)}</span>`:'<span style="color:var(--text3)">—</span>'}</td>
+  <td style="padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.data_alocacao?fmtD(f.data_alocacao):'—'}</td>
+  <td style="padding:9px 10px;text-align:right">
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      ${f.funcionario_nome?`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_termoResponsabilidade('${escJs(f.id)}')" title="Termo de Responsabilidade">📄</button>`:''}
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-ferramenta',{id:'${escJs(f.id)}'})">✎</button>
+      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteFerramenta('${escJs(f.id)}')">×</button>
+      ${ferrSubTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._ferrConclItem('${escJs(fObra)}','${escJs(f.id)}')" title="Encerrar este ativo">✓</button>`:`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window._ferrReopenItem('${escJs(fObra)}','${escJs(f.id)}')" title="Reabrir este ativo">↩</button>`}
+    </div>
+  </td>
+</tr>`;}).join('')}
+</tbody></table>`;
+  return`<div>
+<div class="section-header">
+  <div>
+    <div class="section-title">Ferramentas & Ativos</div>
+    <div class="section-sub">${ferramentas.length} item(s) · ${byStatus['Disponível'].length} disponível · ${byStatus['Alocado'].length} alocado · ${byStatus['Em Manutenção'].length} em manutenção · ${byStatus['Baixado'].length} baixado</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <select style="background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:13px" onchange="S.almoxFerrObraFilter=this.value;renderApp()">
+      <option value=""${obraFilter===''?' selected':''}>Todas as obras</option>
+      ${allObras.map(o=>`<option value="${esc(o)}"${obraFilter===o?' selected':''}>${esc(o)}</option>`).join('')}
+    </select>
+    ${obraFilter?renderExportMenu('ferramentas',obraFilter):''}
+    <button class="btn btn-primary" onclick="_openModal('new-ferramenta',{obra:'${escJs(obraFilter)}'})">+ Nova Ferramenta</button>
+  </div>
+</div>
+<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
+  <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" style="${ferrSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.almoxFerrSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntAnd}</span></button>
+  <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" style="${ferrSubTab==='concluidas'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.almoxFerrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntConcl}</span></button>
+</nav>
+${tableRows}
+</div>`;
 }
 
 function renderAlmoxGerenciar(){
@@ -8702,8 +8770,11 @@ ${commercialItemsHeaderHtml()}
   else if(m==='new-ferramenta'||m==='edit-ferramenta'){
     const ferr=m==='edit-ferramenta'?DB.ferramentas.find(x=>x.id===d.id):null;
     title=m==='new-ferramenta'?'Nova Ferramenta / Ativo':'Editar Ferramenta';
-    const funcsObra=(DB.funcionarios||[]).filter(f=>f.obra===S.obra&&f.status==='Ativo');
+    const funcsObra=(DB.funcionarios||[]).filter(f=>f.status==='Ativo');
+    const ferrObraDefault=ferr?.obra||d.obra||S.obra||'';
+    const allObrasModal=getAllObras().sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
     body=`<div class="form-grid-2">
+  <div class="form-group" style="grid-column:1/-1"><label>Obra *</label><select id="m-ferr-obra"><option value="">Selecione a obra</option>${allObrasModal.map(o=>`<option value="${esc(o)}"${ferrObraDefault===o?' selected':''}>${esc(o)}</option>`).join('')}</select></div>
   <div class="form-group" style="grid-column:1/-1"><label>Nome / Descrição *</label><input id="m-ferr-item" placeholder="Ex: Furadeira de Impacto 3/4" value="${esc(ferr?.item||'')}"></div>
   <div class="form-group"><label>Nº de Série</label><input id="m-ferr-serie" placeholder="Ex: SN-20241001" value="${esc(ferr?.numero_serie||'')}"></div>
   <div class="form-group"><label>Nº Patrimônio</label><input id="m-ferr-pat" placeholder="Ex: PAT-0042" value="${esc(ferr?.patrimonio||'')}"></div>
@@ -9017,8 +9088,10 @@ window._duplicateRdo=async(id)=>{
 window._saveFerramenta=async(editId)=>{
   const item=document.getElementById('m-ferr-item')?.value?.trim();
   if(!item){toast('Informe o nome da ferramenta.','#ef4444');return;}
+  const obra=document.getElementById('m-ferr-obra')?.value||S.obra||'';
+  if(!obra){toast('Selecione a obra.','#ef4444');return;}
   const obj={
-    obra:S.obra,item,
+    obra,item,
     numero_serie:document.getElementById('m-ferr-serie')?.value?.trim()||'',
     patrimonio:document.getElementById('m-ferr-pat')?.value?.trim()||'',
     status:document.getElementById('m-ferr-status')?.value||'Disponível',
