@@ -3728,8 +3728,13 @@ function renderDashboard(){
       <div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Funcionários Ativos</div><div class="stat-value" style="color:#c084fc">${totalFunc}</div><div class="stat-sub">Em todas as obras</div></div>
       <div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Materiais Pendentes</div><div class="stat-value" style="color:#fbbf24">${totalMat}</div><div class="stat-sub">Aguardando aprovação</div></div>
     </div>
-    ${renderDashboardCharts()}
-    ${renderAlertas()}
+    <div style="margin:8px 0 4px">
+      <button onclick="S.dashExpanded=!S.dashExpanded;renderApp()" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border2);border-radius:10px;padding:7px 14px;cursor:pointer;color:var(--text3);font-size:12px;font-family:inherit;width:100%;justify-content:center">
+        <span style="font-size:11px;transition:transform .2s;display:inline-block;transform:rotate(${S.dashExpanded?'180':'0'}deg)">▼</span>
+        ${S.dashExpanded?'Ocultar gráficos e alertas':'Ver gráficos e alertas'}
+      </button>
+    </div>
+    ${S.dashExpanded?renderDashboardCharts()+''+renderAlertas():''}
     <nav class="obra-nav" style="margin:16px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
     <div class="obra-grid">${obraCards}</div>
     ${obras.length===0?`<div class="empty-state"><p>${allObras.length===0?'Nenhuma obra cadastrada.':'Nenhuma obra '+obraFilter.toLowerCase()+' no momento.'}</p>${allObras.length===0?'<button class="btn btn-primary" onclick="S.page=\'gerenciar-obras\';renderApp()">+ Cadastrar primeira obra</button>':''}</div>`:''}
