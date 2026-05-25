@@ -3873,8 +3873,7 @@ function renderObraInner(){
     despesas:{icon:'💰',label:'Adiantamento',count:desp.length||0},
     ferramentas:{icon:'🔧',label:'Ferramentas',count:ferramentas.length},
   };
-  // Load saved tab order for this obra from localStorage
-  {try{const _to=JSON.parse(localStorage.getItem('jet-tab-order-'+(S.obra||''))||'[]');if(_to.length)S.tabOrder=_to;}catch{}if(!S.tabOrder||!S.tabOrder.length)S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];}
+  S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];
   const allTabIds=[...DEFAULT_OBRA_TAB_ORDER];
   allTabIds.forEach(tid=>{if(!S.tabOrder.includes(tid))S.tabOrder.push(tid);});
   // Persist updated order
