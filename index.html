@@ -1643,7 +1643,7 @@ function cleanProposta(row={}){
     updated_at:row?.updated_at||new Date().toISOString()
   };
 }
-function cleanPropostas(list){return(Array.isArray(list)?list:[]).map(cleanProposta).filter(p=>p.cliente||p.nome||p.itens.length).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,300);}
+function cleanPropostas(list){return(Array.isArray(list)?list:[]).map(cleanProposta).filter(p=>p.cliente||p.nome||p.itens.length).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,1000);}
 function getLocalPropostas(){try{return cleanPropostas(JSON.parse(localStorage.getItem('jet-propostas')||'[]'));}catch{return[];}}
 function saveLocalPropostas(list){localStorage.setItem('jet-propostas',JSON.stringify(cleanPropostas(list)));}
 function getLocalHomeNotices(){try{return cleanNotices(JSON.parse(localStorage.getItem('jet-home-notices')||'[]'));}catch{return[];}}
@@ -2603,6 +2603,7 @@ let S={
   funcHideDocs:false,
   homeNoticeFilter:'all',
   homeNoticeOpen:false,
+  matSearch:'',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -3636,7 +3637,7 @@ function renderObraInner(){
   const nav=tabs.map(t=>`<button
   class="obra-nav-btn${S.obraTab===t.id?' active':''}"
   data-tabid="${t.id}"
-  onclick="S.obraTab='${t.id}';S.selectedAditivo=null;renderApp();">
+  onclick="S.obraTab='${t.id}';S.selectedAditivo=null;if('${t.id}'!=='materiais')S.matSearch='';renderApp();">
 <span class="nav-icon">${t.icon}</span>${t.label}
 <span class="nav-count">${t.count}</span>
 </button>`).join('');
@@ -3890,7 +3891,7 @@ async function _doUpload(aid,file){
   await sb.from('aditivos').update({arquivos:arqs}).eq('id',aid);a.arquivos=arqs;
   toast(`${file.name} enviado!`);renderApp();
 }
-window._delFile=async(aid,fid)=>{if(!confirm('Remover arquivo?'))return;const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const fo=(a.arquivos||[]).find(f=>f.id===fid);if(fo)await sb.storage.from(BUCKET).remove([fo.path]);const arqs=(a.arquivos||[]).filter(f=>f.id!==fid);await sb.from('aditivos').update({arquivos:arqs}).eq('id',aid);a.arquivos=arqs;toast('Removido.','#f59e0b');renderApp();};
+window._delFile=async(aid,fid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const fo=(a.arquivos||[]).find(f=>f.id===fid);if(!confirm(`Remover arquivo "${fo?.name||fid}"?`))return;if(fo)await sb.storage.from(BUCKET).remove([fo.path]);const arqs=(a.arquivos||[]).filter(f=>f.id!==fid);await sb.from('aditivos').update({arquivos:arqs}).eq('id',aid);a.arquivos=arqs;toast('Removido.','#f59e0b');renderApp();};
 
 // ─── COMENTÁRIOS ──────────────────────────────────────────────────────────
 let _mentionActive=false,_mentionStart=-1,_mentionQuery='',_mentionIdx=0;
@@ -3924,8 +3925,9 @@ function _pickMention(name){const el=document.getElementById('c-text');if(!el)re
 window._sendComment=async(aid)=>{const el=document.getElementById('c-text');const txt=el?.value?.trim();if(!txt)return;const autor=currentUser?currentUser.email.split('@')[0]:'Anônimo';const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const cs=[...(a.comentarios||[]),{id:uid(),autor,texto:txt,data:new Date().toISOString().slice(0,10)}];await sb.from('aditivos').update({comentarios:cs}).eq('id',aid);a.comentarios=cs;el.value='';el.style.height='auto';_mentionActive=false;renderApp();};
 
 window._deleteComment=async(aid,idx)=>{
-  if(!confirm('Excluir comentário?'))return;
   const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;
+  const c=(a.comentarios||[])[idx];
+  if(!confirm(`Excluir comentário de @${c?.autor||'?'}?`))return;
   const cs=[...(a.comentarios||[])];cs.splice(idx,1);
   await sb.from('aditivos').update({comentarios:cs}).eq('id',aid);
   a.comentarios=cs;toast('Comentário excluído.','#f59e0b');renderApp();
@@ -3956,20 +3958,24 @@ window._saveEditComment=async(aid,idx)=>{
 
 // ─── MATERIAIS ────────────────────────────────────────────────────────────
 function renderMateriais(mat,obra){
+  const search=(S.matSearch||'').toLowerCase().trim();
+  const filtered=search?mat.filter(m=>String(m.item||'').toLowerCase().includes(search)||String(m.solicitante||'').toLowerCase().includes(search)||String(m.disciplina||'').toLowerCase().includes(search)||String(m.status||'').toLowerCase().includes(search)):mat;
   const pend=mat.filter(m=>m.status==='Pendente').length;
   return`<div>
 <div class="section-header">
-  <div><div class="section-title">Solicitação de Materiais</div><div class="section-sub">${mat.length} solicitações · ${pend} pendentes</div></div>
+  <div><div class="section-title">Solicitação de Materiais</div><div class="section-sub">${mat.length} solicitações · ${pend} pendentes${search?' · '+filtered.length+' exibidos':''}</div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input type="search" placeholder="Buscar material, solicitante..." value="${esc(S.matSearch||'')}" oninput="S.matSearch=this.value;renderApp();const l=this.value.length;this.focus();this.setSelectionRange(l,l)" style="padding:6px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--text);font-size:12px;width:220px;outline:none">
     ${renderExportMenu('materiais',obra)}
     <button class="btn btn-primary" onclick="_openModal('new-material')">+ Nova Solicitação</button>
   </div>
 </div>
 ${mat.length===0?`<div class="empty-state"><p>Nenhum material solicitado.</p><button class="btn btn-primary" onclick="_openModal('new-material')">+ Primeira Solicitação</button></div>`:
+search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontrado para "<strong>${esc(search)}</strong>".</p></div>`:
 (()=>{
   const DISC_MAP={'Elétrica':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Hidráulica':{bg:'#062018',c:'#34d399',d:'#10b981'},'EPI':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Geral':{bg:'#161616',c:'#888',d:'#555'},'Civil':{bg:'#1a0f2e',c:'#c084fc',d:'#a855f7'},'Lógica':{bg:'#0f1e20',c:'#2dd4bf',d:'#14b8a6'}};
   const byDate={};
-  mat.forEach(m=>{const d=m.data_solicitacao||'9999';if(!byDate[d])byDate[d]=[];byDate[d].push(m);});
+  filtered.forEach(m=>{const d=m.data_solicitacao||'9999';if(!byDate[d])byDate[d]=[];byDate[d].push(m);});
   const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
   const collapKey='mat-date-collapsed-'+obra;
   if(!window._matCollapsed)window._matCollapsed={};
@@ -4399,7 +4405,8 @@ window._setPrioridade=async(id,val)=>{
   DB.todos=DB.todos.map(x=>x.id===id?{...x,prioridade:val}:x);renderApp();
 };
 window._deleteTodo=async(id)=>{
-  if(!confirm('Excluir tarefa?'))return;
+  const t=DB.todos.find(x=>x.id===id);
+  if(!confirm(`Excluir tarefa: "${String(t?.descricao||'').slice(0,60)}"?`))return;
   await sb.from('todos').delete().eq('id',id);
   DB.todos=DB.todos.filter(t=>t.id!==id);renderApp();
 };
@@ -7808,7 +7815,7 @@ function renderModal(){
   else if(m==='edit-requisicao'){
     const ids=d.ids||[];
     const mats=ids.map(id=>DB.materiais.find(x=>x.id===id)).filter(Boolean);
-    if(!mats.length){_closeModal();return '';}
+    if(!mats.length){toast('Nenhum material encontrado para esta requisição.','#f59e0b');_closeModal();return '';}
     const first=mats[0];
     title='Editar Requisição de Materiais';
     const inpSt='padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:#0f0f0f;color:var(--text);font-size:12px;font-family:\'Inter\',sans-serif;outline:none;width:100%';
@@ -7848,7 +7855,7 @@ ${mats.map(mt=>`<div class="req-item-row" data-id="${mt.id}">
     const funcObra=m==='edit-func'?(ef?.obra||S.obra||''):(d.obra||S.obra||'');
     title=m==='new-func'?`Novo Funcionário${funcObra?' — '+funcObra:''}`:`Editar — ${gv('nome')}`;
     body=`<div class="form-grid-2">
-${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra</label><input value="${esc(funcObra)}" disabled></div>`:''}
+${funcObra?`<div class="form-group" style="grid-column:1/-1"><label>Obra <span style="font-size:10px;color:var(--text3);font-weight:400">(somente leitura)</span></label><input value="${esc(funcObra)}" disabled style="background:var(--bg3);color:var(--text3);cursor:not-allowed;opacity:.8"></div>`:''}
 <div class="form-group"><label>Nome Completo *</label><input id="m-fnome" value="${esc(gv('nome'))}" placeholder="Nome completo..."></div>
 <div class="form-group"><label>Função / Cargo</label><input id="m-ffunc" value="${esc(gv('funcao'))}" placeholder="Ex: Eletricista, Pedreiro..."></div>
 <div class="form-group"><label>Empresa</label><input id="m-femp" value="${esc(gv('empresa'))}" placeholder="Empresa contratada..."></div>
@@ -7884,7 +7891,8 @@ ${replyTarget?`<div class="form-group" style="grid-column:1/-1;margin-bottom:0">
   <label>${replyTarget?'Resposta':'Aviso'} *</label>
   <div class="comment-input-wrap">
     <div id="home-modal-mention-menu" class="mention-menu"></div>
-    <textarea id="m-home-aviso-text" class="comment-input" rows="4" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this)" onkeydown="window._homeNoticeKey(event)" onblur="setTimeout(()=>window._hideMentionMenus&&window._hideMentionMenus(),120)">${esc(d.prefill||'')}</textarea>
+    <textarea id="m-home-aviso-text" class="comment-input" rows="4" maxlength="2000" placeholder="Escreva um aviso e use @nome para marcar alguém" oninput="window._homeNoticeInput(this);const c=document.getElementById('m-aviso-chars');if(c)c.textContent=this.value.length+'/2000'" onkeydown="window._homeNoticeKey(event)" onblur="setTimeout(()=>window._hideMentionMenus&&window._hideMentionMenus(),120)">${esc(d.prefill||'')}</textarea>
+    <div id="m-aviso-chars" style="text-align:right;font-size:10px;color:var(--text3);margin-top:2px">${(d.prefill||'').length}/2000</div>
   </div>
 </div>
 ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><input type="hidden" id="m-home-aviso-pin" value="">':`<div class="form-group" style="margin-bottom:0"><label>Prioridade</label><select id="m-home-aviso-priority">${HOME_NOTICE_PRIORITIES.map(priority=>`<option value="${esc(priority)}"${priority==='Media'?' selected':''}>${esc(priority)}</option>`).join('')}</select></div>
@@ -8104,7 +8112,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     title=selectedId?'Registrar Entrada de Material':'Recebimento de Material';
     body=`<div class="form-grid-2">
 <div class="form-group"><label>Somar em item existente</label><select id="m-ent-item-id" onchange="window._syncAlmoxEntradaSelection()">${getAlmoxSelectOptions(selectedId)}</select><div style="margin-top:6px;font-size:11px;color:var(--text3)">Selecione um item para somar ao saldo ou deixe em branco para cadastrar um material novo.</div></div>
-<div class="form-group"><label>Saldo atual</label><input id="m-ent-saldo" value="${selectedId?`${est.qtd||0} ${est.unidade||'un'}`:'Novo recebimento'}" disabled></div>
+<div class="form-group"><label>Saldo atual <span style="font-size:10px;color:var(--text3);font-weight:400">(calculado)</span></label><input id="m-ent-saldo" value="${selectedId?`${est.qtd||0} ${est.unidade||'un'}`:'Novo recebimento'}" disabled style="background:var(--bg3);color:var(--text3);cursor:not-allowed;opacity:.8"></div>
 <div class="form-group"><label>Item do material *</label><input id="m-ent-item" value="${esc(est.item||'')}" placeholder="Ex: Cabo Flexivel 4mm"></div>
 <div class="form-group"><label>Unidade</label><select id="m-ent-unit">${materialUnitOptions(est.unidade||'un')}</select></div>
 <div class="form-group"><label>Depósito *</label><input id="m-ent-obra" list="almox-centros" value="${esc(d.obra||est.obra||getAllObras()[0]||'GLOBAL')}" placeholder="Ex: APL - Paulista"><datalist id="almox-centros">${obrasOpts}</datalist></div>
@@ -8125,14 +8133,14 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     title=selectedId?'Registrar Saida para Obra':'Separar Material para Obra';
     body=`<div class="form-grid-2">
 <div class="form-group"><label>Item do estoque *</label><select id="m-sai-item-id" onchange="window._syncAlmoxSaidaSelection()">${getAlmoxSelectOptions(selectedId,{includeEmpty:false})}</select><div style="margin-top:6px;font-size:11px;color:var(--text3)">Selecione o item de origem. O saldo disponivel aparece no proprio nome do item.</div></div>
-<div class="form-group"><label>Saldo disponivel</label><input id="m-sai-saldo" value="${selectedId?`${selectedItem.qtd||0} ${selectedItem.unidade||'un'}`:'Escolha um item no seletor acima'}" disabled></div>
+<div class="form-group"><label>Saldo disponivel <span style="font-size:10px;color:var(--text3);font-weight:400">(calculado)</span></label><input id="m-sai-saldo" value="${selectedId?`${selectedItem.qtd||0} ${selectedItem.unidade||'un'}`:'Escolha um item no seletor acima'}" disabled style="background:var(--bg3);color:var(--text3);cursor:not-allowed;opacity:.8"></div>
 <div class="form-group"><label>Quantidade a sair *</label><input id="m-sai-qtd" type="number" min="1" step="1" max="${esc(String(selectedItem.qtd||''))}" placeholder="0"></div>
 <div class="form-group"><label>Data da saida *</label><input id="m-sai-data" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Obra destino *</label><input id="m-sai-obra" list="almox-obras" value="${esc(S.obra||d.obra||est.obra||'')}" placeholder="Selecione a obra"><datalist id="almox-obras">${obrasOpts}</datalist></div>
-<div class="form-group"><label>Origem</label><input id="m-sai-origem" value="${esc(selectedItem.obra||'ALMOX CENTRAL')}" disabled></div>
+<div class="form-group"><label>Origem <span style="font-size:10px;color:var(--text3);font-weight:400">(automático)</span></label><input id="m-sai-origem" value="${esc(selectedItem.obra||'ALMOX CENTRAL')}" disabled style="background:var(--bg3);color:var(--text3);cursor:not-allowed;opacity:.8"></div>
 <div class="form-group"><label>No controle</label><input id="m-sai-num" value="${esc(d.num||('EXP-'+uid().slice(0,6).toUpperCase()))}" style="font-family:'DM Mono',monospace"><div class="almox-inline-note">Use um codigo de transferencia proprio para nao misturar com o numero do inventario.</div></div>
 <div class="form-group"><label>Responsavel</label><input id="m-sai-resp" value="${esc(currentUser?.email?.split('@')[0]||selectedItem.responsavel||'')}"></div>
-<div class="form-group"><label>Unidade</label><input id="m-sai-unit-view" value="${esc(selectedItem.unidade||'un')}" disabled><div class="almox-inline-note">A transferencia nasce como <strong>Separado</strong> e depois segue para despacho e recebimento.</div></div>
+<div class="form-group"><label>Unidade <span style="font-size:10px;color:var(--text3);font-weight:400">(automático)</span></label><input id="m-sai-unit-view" value="${esc(selectedItem.unidade||'un')}" disabled style="background:var(--bg3);color:var(--text3);cursor:not-allowed;opacity:.8"><div class="almox-inline-note">A transferencia nasce como <strong>Separado</strong> e depois segue para despacho e recebimento.</div></div>
 <div class="form-group" style="grid-column:1/-1"><label>Observacao</label><textarea id="m-sai-obs" placeholder="Ex: Separado para frente de servico">${esc(est.observacao||'')}</textarea></div>
 </div>`;
     onSave=`_saveAlmoxSaida('${d.id||''}')`;
@@ -8556,7 +8564,7 @@ window._saveAditivo=async(mode,eid)=>{
   toast('Aditivo salvo!');_closeModal();
 };
 
-window._deleteAditivo=async(id)=>{if(!confirm('Excluir este aditivo?'))return;await sb.from('aditivos').delete().eq('id',id);DB.aditivos=DB.aditivos.filter(a=>a.id!==id);S.selectedAditivo=null;toast('Excluído.','#f59e0b');renderApp();};
+window._deleteAditivo=async(id)=>{const a=DB.aditivos.find(x=>x.id===id);if(!confirm(`Excluir aditivo ${a?.numero||id}?`))return;await sb.from('aditivos').delete().eq('id',id);DB.aditivos=DB.aditivos.filter(a=>a.id!==id);S.selectedAditivo=null;toast('Excluído.','#f59e0b');renderApp();};
 
 window._addMatRow=()=>{
   const list=document.getElementById('mat-items-list');if(!list)return;
@@ -8586,7 +8594,7 @@ window._saveMaterial=async()=>{
   _closeModal();
 };
 
-window._deleteRdo=async(id)=>{if(!confirm('Excluir este RDO?'))return;await sb.from('rdo').delete().eq('id',id);DB.rdo=DB.rdo.filter(r=>r.id!==id);toast('RDO excluído.','#f59e0b');renderApp();};
+window._deleteRdo=async(id)=>{const r=DB.rdo.find(x=>x.id===id);if(!confirm(`Excluir RDO ${r?.rdo_numero||''}${r?.data?' ('+fmtD(r.data)+')':''}?`))return;await sb.from('rdo').delete().eq('id',id);DB.rdo=DB.rdo.filter(r=>r.id!==id);toast('RDO excluído.','#f59e0b');renderApp();};
 window._duplicateRdo=async(id)=>{
   const src=DB.rdo.find(r=>r.id===id);
   if(!src)return;
@@ -8628,7 +8636,8 @@ window._saveFerramenta=async(editId)=>{
   toast('Ferramenta salva!');_closeModal();renderApp();
 };
 window._deleteFerramenta=async(id)=>{
-  if(!confirm('Excluir esta ferramenta?'))return;
+  const ferr=DB.ferramentas.find(x=>x.id===id);
+  if(!confirm(`Excluir ferramenta: "${ferr?.item||id}"?`))return;
   await sb.from('ferramentas').delete().eq('id',id);
   DB.ferramentas=DB.ferramentas.filter(f=>f.id!==id);
   toast('Ferramenta removida.','#f59e0b');renderApp();
@@ -8675,7 +8684,7 @@ td{padding:8px 12px;border:1px solid #ccc}td:first-child{font-weight:700;width:4
 
 window._matCollapsed={};
 window._toggleMatGroup=(cid)=>{window._matCollapsed[cid]=window._matCollapsed[cid]===false?true:false;renderApp();};
-window._deleteMaterial=async(id)=>{if(!confirm('Excluir solicitação?'))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
+window._deleteMaterial=async(id)=>{const mat=DB.materiais.find(x=>x.id===id);if(!confirm(`Excluir solicitação: "${mat?.item||'item'}"?`))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
 
 window._editMaterial=async(id)=>{
   const item=document.getElementById('m-eitem')?.value?.trim();
@@ -8941,7 +8950,7 @@ window._editFuncionario=async(id)=>{
   DB.funcionarios=DB.funcionarios.map(f=>f.id===id?{...f,...obj}:f);
   toast('Funcionário atualizado!');_closeModal();
 };
-window._deleteFuncionario=async(id)=>{if(!confirm('Excluir funcionário?'))return;const func=DB.funcionarios.find(f=>f.id===id);await sb.from('funcionarios').delete().eq('id',id);DB.funcionarios=DB.funcionarios.filter(f=>f.id!==id);toast('Excluído.','#f59e0b');scheduleUndo('funcionario',func);renderApp();};
+window._deleteFuncionario=async(id)=>{const func=DB.funcionarios.find(f=>f.id===id);if(!confirm(`Excluir funcionário: "${func?.nome||id}"?`))return;await sb.from('funcionarios').delete().eq('id',id);DB.funcionarios=DB.funcionarios.filter(f=>f.id!==id);toast('Excluído.','#f59e0b');scheduleUndo('funcionario',func);renderApp();};
 
 function funcionarioImportKey(value=''){
   return stripAccents(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -9395,8 +9404,8 @@ window._expExportPDF=(num)=>{
 };
 
 window._deleteEstoque=async(id)=>withAlmoxActionLock(async()=>{
-  if(!confirm('Deletar este item?'))return;
   const row=DB.estoque.find(e=>e.id===id);
+  if(!confirm(`Deletar item: "${row?.item||id}"?`))return;
   const transferKey=row&&isExpedicaoTipo(row.tipo)?getAlmoxTransferKey(row.numero_controle||row.id):'';
   const {error}=await sb.from('estoque').delete().eq('id',id);
   if(error){toast('Erro ao deletar item: '+error.message,'#ef4444');return;}
@@ -9470,7 +9479,7 @@ window.estoqueAlmoxPDF=()=>{
 };
 
 
-window._deleteItem=async(table,id)=>{if(!confirm('Excluir?'))return;await sb.from(table).delete().eq('id',id);DB[table]=DB[table].filter(i=>i.id!==id);toast('Excluído.','#f59e0b');renderApp();};
+window._deleteItem=async(table,id)=>{const item=DB[table]?.find(i=>i.id===id);const label=item?.nome||item?.item||item?.descricao||item?.titulo||id;if(!confirm(`Excluir "${label}"?`))return;await sb.from(table).delete().eq('id',id);DB[table]=DB[table].filter(i=>i.id!==id);toast('Excluído.','#f59e0b');renderApp();};
 
 // ─── NOVO ESTOQUE ─────────────────────────────────────────────────────────
 window._addEstoqueRow=()=>{
