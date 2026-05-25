@@ -2781,7 +2781,7 @@ let S={
   globalSearchOpen:false,
   globalSearch:'',
   obraStatusFilter:'Ativas',
-  adSubTab:'andamento',
+  adSubTab:'todos',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -3949,12 +3949,14 @@ function _thCol(field,icon,label,minW){
 }
 
 function renderAditivos(ads,obra){
-  const adSubTab=S.adSubTab||'andamento';
+  const adSubTab=S.adSubTab||'todos';
+  const cntTodos=ads.length;
   const cntAnd=ads.filter(a=>a.status!=='Concluído').length;
   const cntConcl=ads.filter(a=>a.status==='Concluído').length;
-  const filtered=ads.filter(a=>adSubTab==='concluidos'?a.status==='Concluído':a.status!=='Concluído');
+  const filtered=adSubTab==='concluidos'?ads.filter(a=>a.status==='Concluído'):adSubTab==='andamento'?ads.filter(a=>a.status!=='Concluído'):ads;
   const val=filtered.reduce((s,a)=>s+(Number(a.valor)||0),0);
   const subNav=`<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
+  <button class="obra-nav-btn${adSubTab==='todos'?' active':''}" style="${adSubTab==='todos'?'background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.45);color:#93c5fd':'background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.18)'}" onclick="S.adSubTab='todos';renderApp()">Todos<span class="nav-count" style="background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.3)">${cntTodos}</span></button>
   <button class="obra-nav-btn${adSubTab==='andamento'?' active':''}" style="${adSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.adSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntAnd}</span></button>
   <button class="obra-nav-btn${adSubTab==='concluidos'?' active':''}" style="${adSubTab==='concluidos'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.adSubTab='concluidos';renderApp()">Concluídos<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntConcl}</span></button>
 </nav>`;
@@ -3962,7 +3964,7 @@ function renderAditivos(ads,obra){
 <div class="section-header">
   <div>
     <div class="section-title">Aditivos de Obra</div>
-    <div class="section-sub">${ads.length} aditivos · ${fmtV(val)} ${adSubTab==='concluidos'?'concluídos':'em andamento'}</div>
+    <div class="section-sub">${filtered.length} aditivos · ${fmtV(val)}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('aditivos',obra)}
@@ -3970,7 +3972,7 @@ function renderAditivos(ads,obra){
   </div>
 </div>
 ${subNav}
-${filtered.length===0?`<div class="empty-state"><p>${adSubTab==='concluidos'?'Nenhum aditivo concluído ainda.':'Nenhum aditivo cadastrado para esta obra.'}</p>${adSubTab==='andamento'?'<button class="btn btn-primary" onclick="_openModal(\'new-aditivo\')">+ Primeiro Aditivo</button>':''}</div>`:
+${filtered.length===0?`<div class="empty-state"><p>${adSubTab==='concluidos'?'Nenhum aditivo concluído ainda.':adSubTab==='andamento'?'Nenhum aditivo em andamento.':'Nenhum aditivo cadastrado para esta obra.'}</p>${adSubTab!=='concluidos'?'<button class="btn btn-primary" onclick="_openModal(\'new-aditivo\')">+ Primeiro Aditivo</button>':''}</div>`:
 `<div class="tbl-wrap" id="ad-tbl-wrap"><table id="ad-tbl" style="width:100%;border-collapse:collapse;min-width:1000px">
 <thead><tr>
 ${_thCol('nome','Aa','Nome',200)}
