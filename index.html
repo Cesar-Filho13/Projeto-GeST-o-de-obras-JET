@@ -1426,7 +1426,7 @@ async function saveRemoteObras(list){
 async function syncObraRegistry(){
   const localNames=getObrasData().map(o=>o?.nome).filter(Boolean);
   const depositos=getAlmoxDepositos();
-  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras()]).filter(o=>!depositos.has(o));
+  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras()]).filter(o=>!depositos.has(o)&&o!=='Sem obra');
   if(!sameObraList(DB.obraRegistry,merged))await saveRemoteObras(merged);
 }
 function getDbObras(){
@@ -2225,7 +2225,7 @@ function getAllObras(){
   const obraDataNames=getObrasData().map(o=>o?.nome).filter(Boolean);
   const hidden=new Set([...getHiddenObras(),...getArchivedObras()]);
   const depositos=getAlmoxDepositos();
-  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o)&&!depositos.has(o));
+  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o)&&!depositos.has(o)&&o!=='Sem obra');
 }
 function getTrailingNumber(value){const nums=String(value||'').match(/\d+/g)||[];return nums.length?Number(nums[nums.length-1]):null;}
 function sortAditivosDisplay(list=[]){return[...(Array.isArray(list)?list:[])].sort((a,b)=>{const na=getTrailingNumber(a?.numero||a?.nome||a?.id);const nb=getTrailingNumber(b?.numero||b?.nome||b?.id);if(na!=null||nb!=null){const diff=(nb??-1)-(na??-1);if(diff!==0)return diff;}const da=String(b?.data||b?.created_at||'');const db=String(a?.data||a?.created_at||'');if(da!==db)return da.localeCompare(db);return String(b?.created_at||b?.id||'').localeCompare(String(a?.created_at||a?.id||''));});}
@@ -3582,7 +3582,7 @@ function renderDashboard(){
     const concl=ad.filter(a=>a.status==='Concluído').length;
     const data=getObraData(obra);
     const pct=ad.length?Math.round(concl/ad.length*100):0;
-    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div class="obra-card-code">${esc(obra)}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}</div></div>`;
+    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div class="obra-card-code">${esc(obra)}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}</div></div>`;
   }).join('');
 
   const totalAd=DB.aditivos.length;
@@ -7999,7 +7999,7 @@ ${replyTarget?'<input type="hidden" id="m-home-aviso-priority" value="Media"><in
     saveLabel='Anexar fotos';
     body=`<div class="form-grid-2">
 <div class="form-group" style="margin-bottom:0"><label>Obra</label><input id="m-rdo-foto-import-obra" value="${esc(S.obra||'APL - AV. Paulista')}" oninput="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
-<div class="form-group" style="margin-bottom:0"><label>Importar a partir de</label><input id="m-rdo-foto-import-start" type="date" value="2026-04-09" onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
+<div class="form-group" style="margin-bottom:0"><label>Importar a partir de</label><input id="m-rdo-foto-import-start" type="date" value="${todayISO()}" onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-foto-import-atividades" checked onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"> Sugerir/preencher atividades a partir das legendas da planilha</label></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label class="landing-notice-pin" style="width:100%;justify-content:flex-start"><input type="checkbox" id="m-rdo-foto-import-proteger" checked onchange="window._refreshRDOFotoImportPreview&&window._refreshRDOFotoImportPreview()"> Não sobrescrever atividades já preenchidas</label></div>
 <div class="form-group" style="grid-column:1/-1;margin-bottom:0"><label>Planilha de índice de fotos</label><input id="m-rdo-foto-import-file" type="file" accept=".xlsx,.xls" onchange="window._previewRDOFotoImport(this.files&&this.files[0])"><div class="section-sub" style="margin-top:6px">Use a aba “Índice de Fotos”. A prévia cruza por data com os RDOs da obra, preserva fotos já anexadas e ignora links duplicados.</div></div>
