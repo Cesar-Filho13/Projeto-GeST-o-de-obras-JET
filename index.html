@@ -2123,7 +2123,15 @@ function saveLocalMatConcl(obj){localStorage.setItem('jet-mat-concl-all',JSON.st
 async function loadRemoteMatConcl(){
   try{
     const{data,error}=await sb.storage.from(BUCKET).download(MAT_CONCL_PATH);
-    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.matConcl=getLocalMatConcl();return;}throw error;}
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){
+      const existing=getLocalMatConcl();
+      if(Object.keys(existing).length){DB.matConcl=existing;return;}
+      const migrated={};
+      try{Object.keys(localStorage).filter(k=>k.startsWith('jet-mat-concl-')&&k!=='jet-mat-concl-all').forEach(k=>{const obra=k.slice('jet-mat-concl-'.length);try{const v=JSON.parse(localStorage.getItem(k)||'[]');if(v.length)migrated[obra]=v;}catch{}});}catch{}
+      DB.matConcl=migrated;
+      if(Object.keys(migrated).length){saveLocalMatConcl(migrated);saveRemoteMatConcl({silent:true});}
+      return;
+    }throw error;}
     DB.matConcl=JSON.parse(await data.text())||{};
     saveLocalMatConcl(DB.matConcl);
   }catch(err){DB.matConcl=getLocalMatConcl();console.warn('[JET] Mat-concl não carregado:',err?.message||err);}
@@ -2150,7 +2158,15 @@ function saveLocalFerrConcl(obj){localStorage.setItem('jet-ferr-concl-all',JSON.
 async function loadRemoteFerrConcl(){
   try{
     const{data,error}=await sb.storage.from(BUCKET).download(FERR_CONCL_PATH);
-    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.ferrConcl=getLocalFerrConcl();return;}throw error;}
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){
+      const existing=getLocalFerrConcl();
+      if(Object.keys(existing).length){DB.ferrConcl=existing;return;}
+      const migrated={};
+      try{Object.keys(localStorage).filter(k=>k.startsWith('jet-ferr-concl-')&&k!=='jet-ferr-concl-all').forEach(k=>{const obra=k.slice('jet-ferr-concl-'.length);try{const v=JSON.parse(localStorage.getItem(k)||'[]');if(v.length)migrated[obra]=v;}catch{}});}catch{}
+      DB.ferrConcl=migrated;
+      if(Object.keys(migrated).length){saveLocalFerrConcl(migrated);saveRemoteFerrConcl({silent:true});}
+      return;
+    }throw error;}
     DB.ferrConcl=JSON.parse(await data.text())||{};
     saveLocalFerrConcl(DB.ferrConcl);
   }catch(err){DB.ferrConcl=getLocalFerrConcl();console.warn('[JET] Ferr-concl não carregado:',err?.message||err);}
