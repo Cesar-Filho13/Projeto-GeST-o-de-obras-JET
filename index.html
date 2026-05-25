@@ -4168,7 +4168,7 @@ function renderMateriais(mat,obra){
     <button class="btn btn-primary" onclick="_openModal('new-material')">+ Nova Solicitação</button>
   </div>
 </div>
-<nav class="obra-nav" style="margin:8px 0 10px">
+<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
   <button class="obra-nav-btn${subTab==='andamento'?' active':''}" onclick="S.matSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntAnd}</span></button>
   <button class="obra-nav-btn${subTab==='concluidas'?' active':''}" onclick="S.matSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntConcl}</span></button>
 </nav>
@@ -4393,7 +4393,7 @@ function renderRDO(rdos,obra){
     <button class="btn btn-primary" onclick="_openModal('new-rdo')">+ Novo RDO</button>
   </div>
 </div>
-<nav class="obra-nav" style="margin:8px 0 10px">
+<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
   <button class="obra-nav-btn${rdoSubTab==='elaboracao'?' active':''}" onclick="S.rdoSubTab='elaboracao';renderApp()">Em elaboração<span class="nav-count">${cntElab}</span></button>
   <button class="obra-nav-btn${rdoSubTab==='enviados'?' active':''}" onclick="S.rdoSubTab='enviados';renderApp()">Enviados<span class="nav-count">${cntEnv}</span></button>
 </nav>
@@ -4478,7 +4478,7 @@ ${ferramentas.map(f=>{
     <button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Nova Ferramenta</button>
   </div>
 </div>
-<nav class="obra-nav" style="margin:8px 0 10px">
+<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
   <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" onclick="S.ferrSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntFAnd}</span></button>
   <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" onclick="S.ferrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntFConcl}</span></button>
 </nav>
