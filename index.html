@@ -2781,6 +2781,7 @@ let S={
   globalSearchOpen:false,
   globalSearch:'',
   obraStatusFilter:'Ativas',
+  adSubTab:'andamento',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -2827,7 +2828,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false};
+await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false,adSubTab:'andamento'};
   renderAuth();
 };
 
@@ -3948,21 +3949,28 @@ function _thCol(field,icon,label,minW){
 }
 
 function renderAditivos(ads,obra){
-  const val=ads.reduce((s,a)=>s+(Number(a.valor)||0),0);
-  const concl=ads.filter(a=>a.status==='Concluído').length;
-  const elab=ads.filter(a=>a.status==='Em Elaboração').length;
+  const adSubTab=S.adSubTab||'andamento';
+  const cntAnd=ads.filter(a=>a.status!=='Concluído').length;
+  const cntConcl=ads.filter(a=>a.status==='Concluído').length;
+  const filtered=ads.filter(a=>adSubTab==='concluidos'?a.status==='Concluído':a.status!=='Concluído');
+  const val=filtered.reduce((s,a)=>s+(Number(a.valor)||0),0);
+  const subNav=`<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
+  <button class="obra-nav-btn${adSubTab==='andamento'?' active':''}" style="${adSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.adSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntAnd}</span></button>
+  <button class="obra-nav-btn${adSubTab==='concluidos'?' active':''}" style="${adSubTab==='concluidos'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.adSubTab='concluidos';renderApp()">Concluídos<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntConcl}</span></button>
+</nav>`;
   return`<div>
 <div class="section-header">
   <div>
     <div class="section-title">Aditivos de Obra</div>
-    <div class="section-sub">${ads.length} aditivos · ${fmtV(val)} total · ${concl} concluídos</div>
+    <div class="section-sub">${ads.length} aditivos · ${fmtV(val)} ${adSubTab==='concluidos'?'concluídos':'em andamento'}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('aditivos',obra)}
     <button class="btn btn-primary" onclick="_openModal('new-aditivo')">+ Novo Aditivo</button>
   </div>
 </div>
-${ads.length===0?`<div class="empty-state"><p>Nenhum aditivo cadastrado para esta obra.</p><button class="btn btn-primary" onclick="_openModal('new-aditivo')">+ Primeiro Aditivo</button></div>`:
+${subNav}
+${filtered.length===0?`<div class="empty-state"><p>${adSubTab==='concluidos'?'Nenhum aditivo concluído ainda.':'Nenhum aditivo cadastrado para esta obra.'}</p>${adSubTab==='andamento'?'<button class="btn btn-primary" onclick="_openModal(\'new-aditivo\')">+ Primeiro Aditivo</button>':''}</div>`:
 `<div class="tbl-wrap" id="ad-tbl-wrap"><table id="ad-tbl" style="width:100%;border-collapse:collapse;min-width:1000px">
 <thead><tr>
 ${_thCol('nome','Aa','Nome',200)}
@@ -3975,7 +3983,7 @@ ${_thCol('proposta','◉','Proposta',125)}
 ${_thCol('responsavel','○','Responsável',130)}
 <th style="width:60px;text-align:center"><div class="th-inner" style="justify-content:center"><span>↗</span></div></th>
 </tr></thead>
-<tbody>${ads.map(a=>`<tr style="border-bottom:1px solid var(--border)">
+<tbody>${filtered.map(a=>`<tr style="border-bottom:1px solid var(--border)">
 <td style="padding:5px 8px"><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(a.nome)}" onclick="event.stopPropagation()" onblur="if(this.value.trim())updateField('aditivos','${a.id}','nome',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:5px 8px"><input class="ci" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:100%" value="${esc(a.numero)}" onclick="event.stopPropagation()" onblur="if(this.value.trim())updateField('aditivos','${a.id}','numero',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:5px 8px" onclick="event.stopPropagation()">${makeCd(SL,SS,a.status,`updateField('aditivos','${a.id}','status',VAL)`)}</td>
