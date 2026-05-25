@@ -4414,7 +4414,16 @@ ${(r.fotos||[]).length>0?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin
 }
 
 // ─── FERRAMENTAS / ATIVOS ────────────────────────────────────────────────
+function getFerrConcluidas(obra){try{return new Set(JSON.parse(localStorage.getItem('jet-ferr-concl-'+obra)||'[]'));}catch{return new Set();}}
+function saveFerrConcluidas(obra,set){localStorage.setItem('jet-ferr-concl-'+obra,JSON.stringify([...set]));}
+window._ferrConclItem=(obra,id)=>{const s=getFerrConcluidas(obra);s.add(id);saveFerrConcluidas(obra,s);S.ferrSubTab='concluidas';renderApp();};
+window._ferrReopenItem=(obra,id)=>{const s=getFerrConcluidas(obra);s.delete(id);saveFerrConcluidas(obra,s);S.ferrSubTab='andamento';renderApp();};
 function renderFerramentas(ferramentas,obra){
+  const ferrSubTab=S.ferrSubTab||'andamento';
+  const ferrConcl=getFerrConcluidas(obra);
+  const cntFAnd=ferramentas.filter(f=>!ferrConcl.has(f.id)).length;
+  const cntFConcl=ferramentas.filter(f=>ferrConcl.has(f.id)).length;
+  ferramentas=ferramentas.filter(f=>ferrSubTab==='concluidas'?ferrConcl.has(f.id):!ferrConcl.has(f.id));
   const byStatus={Disponível:[],Alocado:[],['Em Manutenção']:[],Baixado:[]};
   ferramentas.forEach(f=>{const s=f.status||'Disponível';(byStatus[s]||(byStatus[s]=[])).push(f);});
   const tableRows=ferramentas.length===0?'':`<table style="width:100%;border-collapse:collapse">
@@ -4440,6 +4449,7 @@ ${ferramentas.map(f=>{
       ${f.funcionario_nome?`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_termoResponsabilidade('${escJs(f.id)}')" title="Termo de Responsabilidade">📄</button>`:''}
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_openModal('edit-ferramenta',{id:'${escJs(f.id)}'})">✎</button>
       <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();_deleteFerramenta('${escJs(f.id)}')">×</button>
+      ${ferrSubTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._ferrConclItem('${escJs(obra)}','${escJs(f.id)}')" title="Encerrar este ativo">✓</button>`:`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window._ferrReopenItem('${escJs(obra)}','${escJs(f.id)}')" title="Reabrir este ativo">↩</button>`}
     </div>
   </td>
 </tr>`;}).join('')}
@@ -4455,7 +4465,11 @@ ${ferramentas.map(f=>{
     <button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Nova Ferramenta</button>
   </div>
 </div>
-${ferramentas.length===0?`<div class="empty-state"><p>Nenhuma ferramenta cadastrada.</p><button class="btn btn-primary" onclick="_openModal('new-ferramenta')">+ Primeiro Ativo</button></div>`:tableRows}
+<nav class="obra-nav" style="margin:8px 0 10px">
+  <button class="obra-nav-btn${ferrSubTab==='andamento'?' active':''}" onclick="S.ferrSubTab='andamento';renderApp()">Em andamento<span class="nav-count">${cntFAnd}</span></button>
+  <button class="obra-nav-btn${ferrSubTab==='concluidas'?' active':''}" onclick="S.ferrSubTab='concluidas';renderApp()">Concluídas<span class="nav-count">${cntFConcl}</span></button>
+</nav>
+${ferramentas.length===0?`<div class="empty-state"><p>${ferrSubTab==='concluidas'?'Nenhum ativo encerrado ainda.':'Nenhuma ferramenta cadastrada.'}</p>${ferrSubTab==='andamento'?'<button class="btn btn-primary" onclick="_openModal(\'new-ferramenta\')">+ Primeiro Ativo</button>':''}</div>`:tableRows}
 </div>`;
 }
 
