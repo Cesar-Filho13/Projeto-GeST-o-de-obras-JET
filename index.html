@@ -2782,6 +2782,7 @@ let S={
   globalSearch:'',
   obraStatusFilter:'Ativas',
   adSubTab:'todos',
+  todoSubTab:'todos',
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -2828,7 +2829,7 @@ window._login=async()=>{
 };
 
 window._logout=async()=>{
-await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false,adSubTab:'andamento'};
+await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;S={page:'home',modulo:'obras',escritorioTab:'financeiro',comprasTab:'pedidos',obra:null,obraTab:'aditivos',modal:null,modalData:{},selectedAditivo:null,detailTab:'info',showExport:false,userMenuOpen:false,sessionTimeout:null,tabOrder:[],almoxTab:'inventario',funcFilter:'Todos',funcSort:null,funcSection:'equipe',funcBaixadaFilter:'Todos',funcHideDocs:false,homeNoticeFilter:'all',homeNoticeOpen:false,adSubTab:'todos',todoSubTab:'todos'};
   renderAuth();
 };
 
@@ -4567,6 +4568,16 @@ const TODO_PRIOR={'Crítico':{bg:'#200c0c',c:'#f87171',d:'#ef4444'},'Urgente':{b
 const TODO_STATUS_MAP={'Pendente':{bg:'#2a1d06',c:'#fbbf24'},'Em andamento':{bg:'#0e1f3d',c:'#60a5fa'},'Concluído':{bg:'#062018',c:'#34d399'}};
 
 function renderTodo(todos,obra){
+  const todoSubTab=S.todoSubTab||'todos';
+  const cntTodos=todos.length;
+  const cntAnd=todos.filter(t=>t.status!=='Concluído').length;
+  const cntConcl=todos.filter(t=>t.status==='Concluído').length;
+  todos=todoSubTab==='concluidos'?todos.filter(t=>t.status==='Concluído'):todoSubTab==='andamento'?todos.filter(t=>t.status!=='Concluído'):todos;
+  const todoSubNav=`<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
+  <button class="obra-nav-btn${todoSubTab==='todos'?' active':''}" style="${todoSubTab==='todos'?'background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.45);color:#93c5fd':'background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.18)'}" onclick="S.todoSubTab='todos';renderApp()">Todos<span class="nav-count" style="background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.3)">${cntTodos}</span></button>
+  <button class="obra-nav-btn${todoSubTab==='andamento'?' active':''}" style="${todoSubTab==='andamento'?'background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fca5a5':'background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.18)'}" onclick="S.todoSubTab='andamento';renderApp()">Em andamento<span class="nav-count" style="background:rgba(239,68,68,.2);color:#fca5a5;border-color:rgba(239,68,68,.3)">${cntAnd}</span></button>
+  <button class="obra-nav-btn${todoSubTab==='concluidos'?' active':''}" style="${todoSubTab==='concluidos'?'background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);color:#86efac':'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.18)'}" onclick="S.todoSubTab='concluidos';renderApp()">Concluídos<span class="nav-count" style="background:rgba(34,197,94,.2);color:#86efac;border-color:rgba(34,197,94,.3)">${cntConcl}</span></button>
+</nav>`;
   const taskRow=(t)=>{
     const pr=TODO_PRIOR[t.prioridade]||TODO_PRIOR['Normal'];
     return`<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border)">
@@ -4629,6 +4640,7 @@ ${collapsed?'':
     <button class="btn btn-primary" onclick="_openModal('new-todo')">+ Nova Tarefa</button>
   </div>
 </div>
+${todoSubNav}
 
 <div class="card" style="margin-bottom:16px">
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
