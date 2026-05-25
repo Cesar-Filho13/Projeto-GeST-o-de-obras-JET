@@ -2266,6 +2266,18 @@ window._copyMaterialGroup=async(obra,idsCsv)=>{
   if(!items.length){toast('Nenhum item para copiar.','#f59e0b');return;}
   await copyText(buildMaterialGroupCopy(obra,items),'Lista de materiais copiada.');
 };
+window._duplicateMaterialGroup=async(obra,idsCsv)=>{
+  const ids=String(idsCsv||'').split(',').filter(Boolean);
+  const src=(DB.materiais||[]).filter(m=>ids.includes(String(m.id)));
+  if(!src.length){toast('Nenhum item para duplicar.','#f59e0b');return;}
+  const today=new Date().toISOString().slice(0,10);
+  const copies=src.map(m=>({...m,id:uid(),data_solicitacao:today,status:'Pendente',status_history:[]}));
+  const{error}=await sb.from('materiais').insert(copies);
+  if(error){toast('Erro ao duplicar: '+error.message,'#ef4444');return;}
+  copies.forEach(c=>DB.materiais.unshift(c));
+  toast(`${copies.length} item${copies.length!==1?'s':''} duplicado${copies.length!==1?'s':''}!`,'#22c55e');
+  renderApp();
+};
 window._copyTodoGroup=async(obra,idsCsv)=>{
   const ids=String(idsCsv||'').split(',').filter(Boolean);
   const items=(DB.todos||[]).filter(t=>ids.includes(String(t.id)));
@@ -4135,7 +4147,7 @@ search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontr
   ${pend>0?`<span style="font-size:11px;color:#fbbf24;background:#2a1d06;padding:1px 8px;border-radius:100px;font-weight:600">⏳ ${pend} pendente${pend!==1?'s':''}</span>`:''}
   ${concl===items.length?`<span style="font-size:11px;color:#34d399;background:#062018;padding:1px 8px;border-radius:100px;font-weight:600">✓ Concluído</span>`:''}
   ${items[0]?.solicitante?`<span style="font-size:11px;color:var(--text3);margin-left:4px">por ${esc(items[0].solicitante)}</span>`:''}
-  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._copyMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Copiar lista">Copiar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button></span>
+  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._duplicateMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Duplicar requisição (nova data — hoje)">⧉ Duplicar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button></span>
 </div>
 ${collapsed?'':
 `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">
