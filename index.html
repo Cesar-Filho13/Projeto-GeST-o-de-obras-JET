@@ -2538,16 +2538,22 @@ async function updateField(table,id,field,value){
 async function _onMaterialAprovado(matId){
   const mat=DB.materiais.find(m=>m.id===matId);
   if(!mat||!mat.item)return;
+  if(mat.almox_baixado){
+    toast('Estoque já foi baixado para este item.','#f59e0b');
+    return;
+  }
   const normItem=normalizeMaterialSpec(mat.item);
   const estoqueItem=(DB.estoque||[]).find(e=>normalizeMaterialSpec(e.item)===normItem);
   if(!estoqueItem)return;
   const qtdDeduzir=parseFloat(mat.quantidade)||0;
   const novaQtd=Math.max(0,Number(estoqueItem.qtd||0)-qtdDeduzir);
   const{error}=await sb.from('estoque').update({qtd:novaQtd}).eq('id',estoqueItem.id);
-  if(!error){
-    estoqueItem.qtd=novaQtd;
-    toast(`Estoque: "${estoqueItem.item}" → ${novaQtd} ${estoqueItem.unidade||'un'}`,'#22c55e');
-  }
+  if(error)return;
+  estoqueItem.qtd=novaQtd;
+  // Mark this material as already deducted to prevent double-deduction
+  const{error:me}=await sb.from('materiais').update({almox_baixado:true}).eq('id',matId);
+  if(!me)mat.almox_baixado=true;
+  toast(`Estoque: "${estoqueItem.item}" → ${novaQtd} ${estoqueItem.unidade||'un'}`,'#22c55e');
   const minimo=getAlmoxMinStock(estoqueItem);
   if(novaQtd<=minimo){
     const cot={id:uid(),obra:mat.obra,item:`Reposição: ${mat.item}`,cotacoes:[],status:'Solicitada',data:todayISO(),origem:'auto-reposicao',created_at:new Date().toISOString()};
