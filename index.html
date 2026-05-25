@@ -6331,7 +6331,7 @@ function renderCotacoes(cot,obra){
 
 // ─── GERENCIAR OBRAS ──────────────────────────────────────────────────────
 function renderGerenciarObras(){
-  const obras=getAllObras();
+  const obras=getAllObras().sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const cards=obras.map(obra=>{
     const d=getObraData(obra);
     const linkedMap=buildObraDeleteMap(obra);
