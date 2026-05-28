@@ -1437,9 +1437,13 @@ function getDbObras(){
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
 function getAlmoxDepositos(){
-  // Only collect from inventory items (not expedição destination rows which carry obra names)
+  // Only treat as deposito if it is NOT a known real obra
+  const knownObras=new Set([...(DB.obraRegistry||[]),...getCustomObras()]);
   const s=new Set(['ALMOX CENTRAL']);
-  getAlmoxInventario().forEach(e=>{const n=String(e?.obra||'').trim();if(n)s.add(n);});
+  getAlmoxInventario().forEach(e=>{
+    const n=String(e?.obra||'').trim();
+    if(n&&!knownObras.has(n))s.add(n);
+  });
   return s;
 }
 
@@ -8648,7 +8652,8 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div id="m-ir-preview" style="margin-top:10px"></div>
 <button type="button" onclick="window._previewAlmoxImport()" style="margin-top:8px;background:none;border:1px dashed var(--blue);border-radius:7px;color:var(--blue);cursor:pointer;font-size:12px;padding:8px;font-family:'Inter',sans-serif;width:100%;transition:all .15s">🔍 Visualizar itens antes de salvar</button>
 </div>`;
-    onSave=`_saveAlmoxImportRetorno()`;
+    onSave=`_saveAlmoxImportRetorno()`;saveLabel='↩ Salvar e gerar devolutiva';
+    footer=`<button class="btn btn-secondary" onclick="window._almoxRetornoPDF(document.getElementById('m-ir-num')?.value||'',document.getElementById('m-ir-obra')?.value||'',document.getElementById('m-ir-data')?.value||'',document.getElementById('m-ir-resp')?.value||'',document.getElementById('m-ir-obs')?.value||'',window._parseAlmoxImportListaPreview())">📄 Só gerar devolutiva</button>`;
   }
   else if(m==='new-pedido' || m==='edit-pedido'){
     const pd=m==='edit-pedido'?(DB.pedidos.find(p=>p.id===d.id)||{}):(d.prefill||{});
@@ -10197,6 +10202,7 @@ window._confirmAlmoxRecebimento=async(num)=>withAlmoxActionLock(async()=>{
 });
 
 // ─── IMPORTAR RETORNO DE MATERIAL ────────────────────────────────────────────
+window._parseAlmoxImportListaPreview=()=>parseAlmoxImportLista(document.getElementById('m-ir-lista')?.value||'').map(i=>({...i,unidade:'un'}));
 function parseAlmoxImportLista(texto){
   return texto.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
     const m=l.match(/^(\d+)\s*[=:x\-]\s*(.+)$/i);
@@ -10232,9 +10238,74 @@ window._saveAlmoxImportRetorno=async()=>withAlmoxActionLock(async()=>{
     else if(!DB.estoque.find(e=>e.id===obj.id))DB.estoque.unshift(obj);
   }
   if(erros){toast(`${objs.length-erros} inserido(s) · ${erros} erro(s). Verifique o console.`,'#f59e0b');}
-  else{toast(`✓ ${objs.length} item(ns) registrado(s) como retorno de ${obra}!`,'#22c55e');}
+  else{
+    toast(`✓ ${objs.length} item(ns) registrado(s) como retorno de ${obra}!`,'#22c55e');
+    setTimeout(()=>_almoxRetornoPDF(num,obra,data,resp,obs,objs),400);
+  }
   _closeModal();renderApp();
 });
+
+window._almoxRetornoPDF=(num,obra,data,resp,obs,itemsOverride)=>{
+  const items=itemsOverride||(DB.estoque||[]).filter(e=>e.numero_controle===num);
+  const dataFmt=fmtD(data)||data;
+  const agora=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows=items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(it.item)}</td><td style="text-align:center;font-weight:700">${Number(it.qtd||0)}</td><td style="text-align:center">${esc(it.unidade||'un')}</td></tr>`).join('');
+  const total=items.reduce((s,i)=>s+Number(i.qtd||0),0);
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Devolutiva ${num}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#111;background:#fff;font-size:12px}
+  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1a2e6b;padding-bottom:12px;margin-bottom:18px}
+  .header-title{text-align:center;flex:1}
+  .header-title h1{margin:0;font-size:18px;color:#1a2e6b;text-transform:uppercase;letter-spacing:1px}
+  .header-title p{margin:4px 0 0;font-size:11px;color:#555}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;background:#f0f4ff;border:1px solid #c8d6f8;border-radius:6px;padding:12px 16px;margin-bottom:18px}
+  .meta-item label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+  .meta-item span{font-weight:700;font-size:13px}
+  .obs-box{background:#fffbe6;border:1px solid #f0d060;border-radius:5px;padding:8px 12px;margin-bottom:18px;font-size:11px;color:#7a5c00}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  thead tr{background:#1a2e6b;color:#fff}
+  th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase}
+  td{padding:7px 10px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
+  tr:nth-child(even) td{background:#f8faff}
+  .total-row td{font-weight:700;background:#e8f0ff!important;border-top:2px solid #1a2e6b}
+  .sign-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:36px}
+  .sign-box{border-top:1px solid #888;padding-top:6px;text-align:center;font-size:10px;color:#555}
+  .footer{text-align:right;font-size:10px;color:#999;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:8px}
+  @media print{body{padding:10px}.footer{display:none}}
+</style></head><body>
+<div class="header">
+  <div style="width:80px"></div>
+  <div class="header-title">
+    <h1>Devolutiva de Material</h1>
+    <p>JET Serviços de Engenharia</p>
+  </div>
+  <div style="width:80px;text-align:right;font-size:10px;color:#888">${esc(num)}</div>
+</div>
+<div class="meta-grid">
+  <div class="meta-item"><label>Obra de origem</label><span>${esc(obra)}</span></div>
+  <div class="meta-item"><label>Data do retorno</label><span>${dataFmt}</span></div>
+  <div class="meta-item"><label>Nº Controle</label><span>${esc(num)}</span></div>
+  <div class="meta-item"><label>Responsável</label><span>${esc(resp||'—')}</span></div>
+</div>
+${obs?`<div class="obs-box">📝 ${esc(obs)}</div>`:''}
+<table>
+  <thead><tr><th style="width:36px;text-align:center">#</th><th>Descrição do Material</th><th style="width:60px;text-align:center">Qtd</th><th style="width:50px;text-align:center">Und</th></tr></thead>
+  <tbody>${rows}<tr class="total-row"><td colspan="2">Total de itens: ${items.length}</td><td style="text-align:center">${total}</td><td></td></tr></tbody>
+</table>
+<div class="sign-grid">
+  <div class="sign-box">Entregue por / Obra<br><br>${esc(resp||'_________________')}</div>
+  <div class="sign-box">Conferido por / Almoxarife<br><br>_________________</div>
+  <div class="sign-box">Recebido por / Responsável<br><br>_________________</div>
+</div>
+<div class="footer">Gerado em ${agora} · JET Gestão de Obras</div>
+<scr`+'ipt>window.onload=()=>{window.print()}<\/script'+`>
+</body></html>`;
+  const w=window.open('','_blank');
+  if(!w){toast('Permita pop-ups para gerar o PDF.','#f59e0b');return;}
+  w.document.write(html);
+  w.document.close();
+};
 
 window._addPedidoRow=()=>{
   const list=document.getElementById('ped-items-list');if(!list)return;
