@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260523191928">
+<meta name="jet-build" content="202605261710">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -2668,18 +2668,6 @@ async function loadAll(){
   await loadRemoteAlmoxMovimentos();
 }
 
-window._refreshAppData=async()=>{
-  try{
-    toast('Atualizando dados do Supabase...','#60a5fa');
-    await loadAll();
-    renderApp();
-    toast('Dados atualizados.','#22c55e');
-  }catch(err){
-    console.error('[JET] Falha ao atualizar dados:',err);
-    toast('Não consegui atualizar os dados. Veja o console.','#ef4444');
-  }
-};
-
 const UPDATE_FIELD_ALLOWLIST={
   aditivos:new Set(['nome','numero','status','valor','solicitacao','proposta','responsavel','data']),
   materiais:new Set(['item','quantidade','unidade','disciplina','urgencia','status','observacao_item']),
@@ -3764,7 +3752,7 @@ function renderDashboard(){
     const transferOpen=(getAlmoxTransferCounts(expedicoes)['Separado']||0)+(getAlmoxTransferCounts(expedicoes)['Em transito']||0);
     if(!['inventario','expedicao','movimentacoes','alertas','ferramentas'].includes(S.almoxTab))S.almoxTab='inventario';
     const lowStockCount=getAlmoxInventario().filter(isAlmoxLowStock).length;
-    const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.almoxPage='gerenciar';renderApp()">⚙ Gerenciar</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>`;
+    const heroActions=`<button class="btn btn-secondary btn-sm" onclick="S.page='home';renderApp()">← Home</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.almoxPage='gerenciar';renderApp()">⚙ Gerenciar</button><button class="btn btn-secondary btn-sm" onclick="S.modal='almox-import-retorno';S.modalData={};renderApp()">↩ Importar Retorno</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div>`;
     let html=`<div class="page">${renderPageHero('📦','Almoxarifado','Gestão de estoque, transferências e movimentações',heroActions)}`;
     html+=`<div class="stats-row">
       <div class="stat-card" style="cursor:default"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Itens em estoque</div><div class="stat-value" style="color:#60a5fa">${inventario.length}</div><div class="stat-sub">${inventario.reduce((sum,i)=>sum+Number(i.qtd||0),0)} unidades totais</div></div>
@@ -4562,7 +4550,7 @@ ${ferramentas.map(f=>{
   return`<div>
 <div class="section-header">
   <div>
-    <div class="section-title">Ferramentas & Ativos</div>
+    <div class="section-title">Ferramentas &amp; Ativos</div>
     <div class="section-sub">${ferramentas.length} item(s) · ${byStatus['Disponível'].length} disponível · ${byStatus['Alocado'].length} alocado · ${byStatus['Em Manutenção'].length} em manutenção · ${byStatus['Baixado'].length} baixado</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -4655,7 +4643,6 @@ ${collapsed?'':
   </div>
 </div>
 ${todoSubNav}
-
 <div class="card" style="margin-bottom:16px">
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <input id="todo-quick" placeholder="✏ Adicionar tarefa rápida... (Enter)" style="flex:1;min-width:200px;height:40px" onkeydown="if(event.key==='Enter')window._quickTodo(this)">
@@ -4965,22 +4952,7 @@ const METRO_RECEIPT_REFERENCE={
   "00006157-PHOTO-2026-04-17-21-12-25.jpg":{data:"2026-04-17",descricao:"Metr\u00f4 Rai",valor:54.00},
   "00006196-PHOTO-2026-04-18-06-21-23.jpg":{data:"2026-04-18",descricao:"Metr\u00f4 Caio",valor:16.20},
   "2026-04-20_autopass_severino_54.00.png":{data:"2026-04-20",descricao:"Metr\u00f4 Severino",valor:54.00},
-  "2026-04-20_autopass_janderson_54.00.png":{data:"2026-04-20",descricao:"Metr\u00f4 Janderson",valor:54.00},
-  "00006298-PHOTO-2026-04-20-14-55-55.jpg":{data:"2026-04-20",descricao:"Metr\u00f4 Severino",valor:54.00},
-  "00006301-PHOTO-2026-04-20-15-47-36.jpg":{data:"2026-04-20",descricao:"Metr\u00f4 Janderson",valor:54.00},
-  "00006371-PHOTO-2026-04-21-21-45-14.jpg":{data:"2026-04-21",descricao:"Metr\u00f4 Rafael",valor:54.00},
-  "00006449-PHOTO-2026-04-22-01-16-07.jpg":{data:"2026-04-21",descricao:"Transfer\u00eancia para Jos\u00e9 Nielson",valor:11.95},
-  "00006462-PHOTO-2026-04-22-06-54-16.jpg":{data:"2026-04-22",descricao:"Metr\u00f4 Jos\u00e9 Nielson",valor:54.00},
-  "00006477-PHOTO-2026-04-22-19-31-29.jpg":{data:"2026-04-22",descricao:"Metr\u00f4 Neiton",valor:54.00},
-  "00006532-PHOTO-2026-04-23-13-50-13.jpg":{data:"2026-04-23",descricao:"Metr\u00f4 Magno",valor:54.00},
-  "00006807-PHOTO-2026-04-27-14-08-10.jpg":{data:"2026-04-27",descricao:"Metr\u00f4 Erenilson",valor:32.40},
-  "00006835-PHOTO-2026-04-28-02-12-16.jpg":{data:"2026-04-28",descricao:"Transfer\u00eancia para Jos\u00e9 Nielson",valor:87.93},
-  "00007119-PHOTO-2026-04-30-06-11-14.jpg":{data:"2026-04-30",descricao:"Metr\u00f4 Janderson",valor:54.00},
-  "00007121-PHOTO-2026-04-30-06-12-32.jpg":{data:"2026-04-30",descricao:"Metr\u00f4 Larissa",valor:54.00},
-  "00007125-PHOTO-2026-04-30-07-47-21.jpg":{data:"2026-04-30",descricao:"Metr\u00f4 Erenilson",valor:54.00},
-  "00007140-PHOTO-2026-04-30-23-09-25.jpg":{data:"2026-04-30",descricao:"Metr\u00f4 Raionei",valor:54.00},
-  "00007200-PHOTO-2026-05-01-11-06-21.jpg":{data:"2026-05-01",descricao:"Metr\u00f4 Silvaney",valor:54.00},
-  "00007205-PHOTO-2026-05-01-16-20-57.jpg":{data:"2026-05-01",descricao:"Metr\u00f4 Severino",valor:54.00}
+  "2026-04-20_autopass_janderson_54.00.png":{data:"2026-04-20",descricao:"Metr\u00f4 Janderson",valor:54.00}
 };
 function metroReceiptReferenceKey(file={}){
   return despImportBasename(file.name||file.path||file.url||'').replace(/^\d{3}_/,'');
@@ -6208,7 +6180,7 @@ ${collapsed?'':`<div style="overflow-x:auto"><table style="width:100%;border-col
   const _lojaMax=Math.max(..._lojaEntries.map(([,v])=>v),1);
   const lojaChart=_lojaEntries.length?`<div class="card" style="padding:14px;margin:4px 0"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Saídas por loja / fornecedor</div>${_lojaEntries.map(([l,v])=>{const pct=Math.max(Math.round(v/_lojaMax*100),2);return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px"><div style="width:100px;font-size:10px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l)}">${esc(l)}</div><div style="flex:1;height:14px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:#ef4444;border-radius:3px;min-width:2px"></div></div><div style="width:70px;text-align:right;font-size:10px;font-weight:700;color:#f87171;white-space:nowrap">${fmtV(v)}</div></div>`;}).join('')}</div>`:'';
   const _dkpi=`<div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Lançamentos</div><div class="stat-value" style="color:#60a5fa">${ledger.length}</div><div class="stat-sub">${docsLancados} com NFe / doc</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#22c55e;border-radius:10px 0 0 10px"></div><div class="stat-label">Entradas PIX</div><div class="stat-value" style="color:#22c55e">${fmtV(totalAdiant)}</div><div class="stat-sub">${pixCount} adiantamento${pixCount!==1?'s':''} recebido${pixCount!==1?'s':''}</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ef4444;border-radius:10px 0 0 10px"></div><div class="stat-label">Saídas</div><div class="stat-value" style="color:#ef4444">${fmtV(totalConta)}</div><div class="stat-sub">Despesas pagas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Saldo Atual</div><div class="stat-value" style="color:${saldoAtual<0?'#ef4444':'#c084fc'}">${fmtV(saldoAtual)}</div><div class="stat-sub">Entradas menos saídas</div></div></div>`;
-  return`<div>${repairNotice}${collapsibleBlock('desp-kpi','Resumo financeiro e gráficos',_dkpi+lojaChart)}<div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-secondary btn-sm" title="Recarregar dados do Supabase" onclick="window._refreshAppData()">↻ Atualizar dados</button><button class="btn btn-success btn-sm" title="Registrar entrada de adiantamento ou importar comprovante PIX" onclick="_openModal('new-adiantamento',{mode:'pix'})">+ Adiantamento</button><button class="btn btn-expense btn-sm" title="Registrar uma saída/despesa" onclick="_openModal('new-despesa')">− Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-success" onclick="_openModal('new-adiantamento',{mode:'pix'})">+ Primeiro adiantamento</button></div>`:groups}</div>`;
+  return`<div>${repairNotice}${collapsibleBlock('desp-kpi','Resumo financeiro e gráficos',_dkpi+lojaChart)}<div class="section-header"><div><div class="section-title">💰 Adiantamento de Despesas</div><div class="section-sub">${ledger.length} lançamentos · extrato financeiro: entrada PIX, saída e saldo após cada movimentação</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window._exportDespCSV('${escJs(obra)}')">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespXLSX('${escJs(obra)}')">📊 Excel</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespPDF('${escJs(obra)}')">📑 PDF</button><button class="btn btn-secondary btn-sm" onclick="exportDespesaWorkbook('${escJs(obra)}')">📘 Planilha</button><button class="btn btn-secondary btn-sm" onclick="window._exportDespesaPackage('${escJs(obra)}')">📦 Prestação ZIP</button><button class="btn btn-secondary btn-sm" onclick="_openModal('import-despesas')">⬆ Importar prestação</button><button class="btn btn-success btn-sm" title="Registrar entrada de adiantamento ou importar comprovante PIX" onclick="_openModal('new-adiantamento',{mode:'pix'})">+ Adiantamento</button><button class="btn btn-expense btn-sm" title="Registrar uma saída/despesa" onclick="_openModal('new-despesa')">− Despesa</button></div></div>${ledger.length===0?`<div class="empty-state"><p>Nenhum lançamento registrado.</p><button class="btn btn-success" onclick="_openModal('new-adiantamento',{mode:'pix'})">+ Primeiro adiantamento</button></div>`:groups}</div>`;
 }
 
 window._toggleDespGroup=(cid)=>{if(!window._despCollapsed)window._despCollapsed={};window._despCollapsed[cid]=!window._despCollapsed[cid];renderApp();};
@@ -6379,6 +6351,7 @@ function renderAlmoxMovimentacoesPanel(){
   </div>
   <div style="display:flex;gap:6px;margin-bottom:18px">${shortcutBtns}</div>
   ${collapsibleBlock('almox-stats','Estatísticas do período',`<div class="stats-row" style="margin-bottom:18px"><div class="stat-card" style="cursor:default"><div class="stat-label">Total filtrado</div><div class="stat-value" style="color:#60a5fa">${rows.length}</div><div class="stat-sub">${allRows.length} no histórico total</div></div><div class="stat-card" style="cursor:default"><div class="stat-label">Entradas</div><div class="stat-value" style="color:#34d399">${totals['Entrada']||0}</div><div class="stat-sub">Recebimentos no período</div></div><div class="stat-card" style="cursor:default"><div class="stat-label">Saídas</div><div class="stat-value" style="color:#fbbf24">${totals['Saida']||0}</div><div class="stat-sub">Separações no período</div></div><div class="stat-card" style="cursor:default"><div class="stat-label">Recebimentos</div><div class="stat-value" style="color:#a78bfa">${totals['Recebimento']||0}</div><div class="stat-sub">Confirmações na obra</div></div></div>`)}
+  </div>
   ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Saldo</th><th>Controle</th><th>Responsável</th></tr></thead><tbody>${rows.map(row=>{const tone=ALMOX_MOVEMENT_MAP[row.tipo]||{bg:'rgba(59,130,246,.12)',c:'#60a5fa'};const saldoAntes=Number(row.saldo_anterior||0);const saldoDepois=Number(row.saldo_atual||0);const saldoDelta=saldoDepois-saldoAntes;const saldoColor=saldoDelta>0?'#34d399':saldoDelta<0?'#f87171':'var(--text3)';return`<tr><td style="white-space:nowrap;color:var(--text3)">${fmtD(row.data)}</td><td><span class="badge" style="background:${tone.bg};color:${tone.c};border-color:${tone.bg}"><span class="badge-dot" style="background:${tone.c};box-shadow:none"></span>${esc(row.tipo)}</span></td><td style="font-weight:600;color:var(--text)">${esc(row.item||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.obra_origem||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.obra_destino||'-')}</td><td style="font-weight:700;color:var(--text)">${Number(row.qtd||0)} ${esc(row.unidade||'un')}</td><td style="white-space:nowrap"><span style="color:var(--text3);font-size:11px">${saldoAntes}</span><span style="color:var(--text3);margin:0 4px">→</span><span style="font-weight:700;color:${saldoColor}">${saldoDepois}</span></td><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${esc(row.numero_controle||'-')}</td><td style="color:var(--text3);font-size:12px">${esc(row.responsavel||'-')}</td></tr>`;}).join('')}</tbody></table></div>`:`<div class="empty-state"><p>${hasFilter?'Nenhuma movimentação para o filtro atual.':'Nenhuma movimentação registrada ainda.'}</p></div>`}
   </div>`;
 }
@@ -6471,10 +6444,8 @@ ${tableRows}
 
 function renderAlmoxGerenciar(){
   const inventario=getAlmoxInventario();
-  // Depósitos: unique obra values from estoque
   const depositosSet=new Set(inventario.map(i=>i.obra||'GLOBAL'));
   const depositos=[...depositosSet].sort();
-
   const depositoCards=depositos.length?depositos.map(dep=>{
     const itens=inventario.filter(i=>(i.obra||'GLOBAL')===dep);
     const totalQtd=itens.reduce((s,i)=>s+Number(i.qtd||0),0);
@@ -6498,37 +6469,23 @@ function renderAlmoxGerenciar(){
       </div>
     </div>`;
   }).join(''):`<div class="empty-state"><p>Nenhum depósito cadastrado. Receba material para criar o primeiro.</p></div>`;
-
-  // Novo depósito
   const novoDepositoCard=`<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(59,130,246,.12) 0%,rgba(29,78,216,.1) 100%);border:1px solid rgba(59,130,246,.28)">
     <div class="card-title" style="color:#60a5fa">➕ NOVO DEPÓSITO</div>
     <div style="display:flex;gap:8px"><input id="new-deposito-input" placeholder="Nome do novo depósito..." style="flex:1" onkeydown="if(event.key==='Enter')window._addAlmoxDeposito()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addAlmoxDeposito()">+ Adicionar</button></div>
   </div>`;
-
-  // Configuração de itens — tabela com mínimo editável
   const all=[...inventario].sort((a,b)=>String(a.item||'').localeCompare(String(b.item||'')));
   const itensCfg=all.length?`<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Código</th><th>Depósito</th><th>Unidade</th><th>Saldo atual</th><th>Qtd Mínima</th></tr></thead><tbody>${all.map(item=>{
     const min=getAlmoxMinStock(item);
     const low=isAlmoxLowStock(item);
     const codigo=getAlmoxItemCodigo(item);
-    return`<tr>
-      <td style="font-weight:600;color:var(--text)">${esc(item.item)}</td>
-      <td><input class="ci" style="width:110px;font-family:'DM Mono',monospace;font-size:12px;text-align:center" placeholder="JET-000000" value="${esc(codigo)}" onblur="window._setAlmoxItemCodigo('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Código interno do item"></td>
-      <td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td>
-      <td>${materialUnitSelect('ci',item.unidade||'un','width:80px',`onchange="updateField('estoque','${item.id}','unidade',this.value)"`)}</td>
-      <td style="font-weight:700;color:${low?'#f87171':'#34d399'}">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td>
-      <td><input class="ci ci-num" type="number" min="0" step="1" style="width:80px;text-align:center" value="${min}" onblur="window._setAlmoxMinStock('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Quantidade mínima antes de gerar alerta"></td>
-    </tr>`;
+    return`<tr><td style="font-weight:600;color:var(--text)">${esc(item.item)}</td><td><input class="ci" style="width:110px;font-family:'DM Mono',monospace;font-size:12px;text-align:center" placeholder="JET-000000" value="${esc(codigo)}" onblur="window._setAlmoxItemCodigo('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Código interno do item"></td><td style="color:var(--text3)">${esc(item.obra||'GLOBAL')}</td><td>${materialUnitSelect('ci',item.unidade||'un','width:80px',`onchange="updateField('estoque','${item.id}','unidade',this.value)"`)}</td><td style="font-weight:700;color:${low?'#f87171':'#34d399'}">${Number(item.qtd||0)} ${esc(item.unidade||'un')}</td><td><input class="ci ci-num" type="number" min="0" step="1" style="width:80px;text-align:center" value="${min}" onblur="window._setAlmoxMinStock('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Quantidade mínima antes de gerar alerta"></td></tr>`;
   }).join('')}</tbody></table></div>`:`<div class="empty-state"><p>Nenhum item no estoque para configurar.</p></div>`;
-
   return`<div class="page">
   <button class="btn btn-secondary btn-sm" onclick="S.almoxPage='main';renderApp()" style="margin-bottom:20px">← Voltar ao Almoxarifado</button>
   <div class="section-header"><div><div class="section-title">⚙ Gerenciar Almoxarifado</div><div class="section-sub">Configure depósitos e parâmetros de estoque. Salvo automaticamente.</div></div></div>
-
   <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:24px 0 12px">📦 Depósitos</div>
   ${depositoCards}
   ${novoDepositoCard}
-
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:32px 0 12px;flex-wrap:wrap">
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">🔢 Itens — Código, Unidade e Estoque Mínimo <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">— edite código, unidade e quantidade mínima de alerta</span></div>
     <button class="btn btn-secondary btn-sm" onclick="window._autoGerarCodigos()" title="Gera JET-000001, JET-000002... para itens sem código">⚡ Auto-gerar códigos</button>
@@ -8674,6 +8631,25 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     onSave=m==='edit-estoque'?`_editEstoque('${d.id}')`:(`_saveEstoque()`);
     footer='<button class="btn btn-secondary" onclick="window.estoqueXLSX()">📊 Excel</button><button class="btn btn-secondary" onclick="window.estoqueAlmoxPDF()">📄 PDF</button>';
   }
+  else if(m==='almox-import-retorno'){
+    title='↩ Importar Retorno de Material';
+    const obrasOpts=getAllObras().map(o=>`<option value="${esc(o)}">`).join('');
+    const defaultNum='RET-'+new Date().toISOString().slice(2,10).replace(/-/g,'');
+    body=`<div>
+<div class="form-grid-2" style="margin-bottom:14px">
+  <div class="form-group" style="margin-bottom:0"><label>Obra de origem *</label><input id="m-ir-obra" list="ir-obras-list" placeholder="Ex: APL" value="${esc(d.obra||'')}"><datalist id="ir-obras-list">${obrasOpts}</datalist><div class="almox-inline-note">Obra que está devolvendo o material.</div></div>
+  <div class="form-group" style="margin-bottom:0"><label>Data do retorno *</label><input id="m-ir-data" type="date" value="${d.data||new Date().toISOString().slice(0,10)}"></div>
+  <div class="form-group" style="margin-bottom:0"><label>Nº Controle</label><input id="m-ir-num" value="${esc(d.num||defaultNum)}" placeholder="${defaultNum}" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)"></div>
+  <div class="form-group" style="margin-bottom:0"><label>Responsável</label><input id="m-ir-resp" value="${esc(currentUser?.email?.split('@')[0]||'')}"></div>
+  <div class="form-group" style="margin-bottom:0;grid-column:1/-1"><label>Observação geral</label><input id="m-ir-obs" placeholder="Ex: Material retornado da obra APL - 22/05/2026" value="${esc(d.obs||'')}"></div>
+</div>
+<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Lista de materiais <span style="font-weight:400;text-transform:none;font-size:11px">(formato: <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">quantidade = descrição do item</code>, um por linha)</span></div>
+<textarea id="m-ir-lista" style="width:100%;min-height:220px;font-family:'DM Mono',monospace;font-size:12px;padding:10px;background:#0a0a0a;border:1px solid var(--border2);border-radius:8px;color:var(--text);resize:vertical;line-height:1.7" placeholder="450 = Prensa cabo 1/2&#10;35 = Saida de calha para eletroduto&#10;48 = T de perfilado&#10;...">${esc(d.lista||'')}</textarea>
+<div id="m-ir-preview" style="margin-top:10px"></div>
+<button type="button" onclick="window._previewAlmoxImport()" style="margin-top:8px;background:none;border:1px dashed var(--blue);border-radius:7px;color:var(--blue);cursor:pointer;font-size:12px;padding:8px;font-family:'Inter',sans-serif;width:100%;transition:all .15s">🔍 Visualizar itens antes de salvar</button>
+</div>`;
+    onSave=`_saveAlmoxImportRetorno()`;
+  }
   else if(m==='new-pedido' || m==='edit-pedido'){
     const pd=m==='edit-pedido'?(DB.pedidos.find(p=>p.id===d.id)||{}):(d.prefill||{});
     title=(m==='edit-pedido'?'Editar':'Novo')+' Pedido de Compra';
@@ -8858,7 +8834,7 @@ ${_opt('pdf-opt-anexos','📎','Anexos da solicitação',_reqFileCnt>0?`${_reqFi
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -9170,7 +9146,7 @@ td{padding:8px 12px;border:1px solid #ccc}td:first-child{font-weight:700;width:4
 @media print{button{display:none}}
 </style></head><body>
 <h2>TERMO DE RESPONSABILIDADE</h2>
-<p class="sub">JET Serviços de Engenharia &middot; ${esc(f.obra||'')}</p>
+<p class="sub">JET Servi&ccedil;os de Engenharia &middot; ${esc(f.obra||'')}</p>
 <table>
 <tr><td>Ferramenta / Ativo</td><td><strong>${esc(f.item||'')}</strong></td></tr>
 <tr><td>N&ordm; de S&eacute;rie</td><td>${esc(f.numero_serie||'&mdash;')}</td></tr>
@@ -9763,7 +9739,6 @@ window._renameAlmoxDeposito=async el=>{
   const target=novo==='GLOBAL'?null:novo;
   await Promise.allSettled(ids.map(id=>sb.from('estoque').update({obra:target}).eq('id',id)));
   DB.estoque=DB.estoque.map(e=>(e.obra||'GLOBAL')===orig?{...e,obra:target}:e);
-  // migrate depositoMeta key
   const oldMeta=getAlmoxDepositoMeta(orig);
   setAlmoxDepositoMeta(novo,oldMeta);
   el.dataset.orig=novo;
@@ -9775,7 +9750,6 @@ window._addAlmoxDeposito=()=>{
   const v=i.value.trim();if(!v){toast('Digite um nome para o depósito.','#f59e0b');return;}
   const existe=new Set(getAlmoxInventario().map(it=>it.obra||'GLOBAL')).has(v);
   if(existe){toast('Depósito já existe.','#f59e0b');return;}
-  // Depósito sem itens ainda: salva só o meta
   setAlmoxDepositoMeta(v,{responsavel:'',localizacao:'',observacao:''});
   i.value='';
   toast(`Depósito "${v}" criado. Receba material para populá-lo.`,'#22c55e');
@@ -10220,6 +10194,46 @@ window._confirmAlmoxRecebimento=async(num)=>withAlmoxActionLock(async()=>{
   toast(`Transferencia ${key} recebida com sucesso.`, '#22c55e');
   _closeModal();
   renderApp();
+});
+
+// ─── IMPORTAR RETORNO DE MATERIAL ────────────────────────────────────────────
+function parseAlmoxImportLista(texto){
+  return texto.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const m=l.match(/^(\d+)\s*[=:x\-]\s*(.+)$/i);
+    if(!m)return null;
+    return{qtd:Number(m[1]),item:m[2].trim()};
+  }).filter(Boolean);
+}
+window._previewAlmoxImport=()=>{
+  const lista=document.getElementById('m-ir-lista')?.value||'';
+  const items=parseAlmoxImportLista(lista);
+  const el=document.getElementById('m-ir-preview');
+  if(!el)return;
+  if(!items.length){el.innerHTML='<div style="color:#f87171;font-size:12px;margin-top:6px">Nenhum item reconhecido. Use o formato: <code>quantidade = descrição</code></div>';return;}
+  const rows=items.map((i,idx)=>`<tr><td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${idx+1}</td><td style="font-weight:600">${esc(i.item)}</td><td style="text-align:center;color:#60a5fa;font-weight:700">${i.qtd}</td><td style="text-align:center;color:var(--text3)">un</td></tr>`).join('');
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:#22c55e;margin-bottom:6px">✓ ${items.length} item(ns) reconhecido(s)</div><div class="tbl-wrap" style="max-height:200px;overflow-y:auto"><table><thead><tr><th style="width:30px">#</th><th>Item</th><th style="width:60px;text-align:center">Qtd</th><th style="width:50px;text-align:center">Und</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+};
+window._saveAlmoxImportRetorno=async()=>withAlmoxActionLock(async()=>{
+  const obra=(document.getElementById('m-ir-obra')?.value||'').trim();
+  const data=document.getElementById('m-ir-data')?.value||todayISO();
+  const num=(document.getElementById('m-ir-num')?.value||'').trim()||('RET-'+data.replace(/-/g,'').slice(2));
+  const resp=(document.getElementById('m-ir-resp')?.value||'').trim();
+  const obs=(document.getElementById('m-ir-obs')?.value||'').trim();
+  const lista=document.getElementById('m-ir-lista')?.value||'';
+  if(!obra){toast('Informe a obra de origem.','#ef4444');return;}
+  if(!data){toast('Informe a data do retorno.','#ef4444');return;}
+  const items=parseAlmoxImportLista(lista);
+  if(!items.length){toast('Nenhum item reconhecido na lista.','#ef4444');return;}
+  const objs=items.map(i=>({id:uid(),obra,item:i.item,qtd:i.qtd,unidade:'un',tipo:'Inventário',numero_controle:num,responsavel:resp,observacao:[obs,`Retorno de ${obra} em ${fmtD(data)}`].filter(Boolean).join(' | '),entrada:data,saida:null,created_at:new Date().toISOString()}));
+  let erros=0;
+  for(const obj of objs){
+    const{error}=await sb.from('estoque').insert(obj);
+    if(error){erros++;console.error('Erro ao inserir',obj.item,error);}
+    else if(!DB.estoque.find(e=>e.id===obj.id))DB.estoque.unshift(obj);
+  }
+  if(erros){toast(`${objs.length-erros} inserido(s) · ${erros} erro(s). Verifique o console.`,'#f59e0b');}
+  else{toast(`✓ ${objs.length} item(ns) registrado(s) como retorno de ${obra}!`,'#22c55e');}
+  _closeModal();renderApp();
 });
 
 window._addPedidoRow=()=>{
