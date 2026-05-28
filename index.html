@@ -1438,7 +1438,7 @@ function getDbObras(){
 }
 function getAlmoxDepositos(){
   // Only treat as deposito if it is NOT a known real obra
-  const knownObras=new Set([...(DB.obraRegistry||[]),...getCustomObras()]);
+  const knownObras=new Set([...(DB.obraRegistry||[]),...getCustomObras(),...getDbObras()]);
   const s=new Set(['ALMOX CENTRAL']);
   getAlmoxInventario().forEach(e=>{
     const n=String(e?.obra||'').trim();
@@ -6292,8 +6292,28 @@ function renderAlmoxInventoryPanel(inventario){
     :(all.length
       ?`<div class="empty-state"><p>Nenhum item encontrado para o filtro atual.</p><button class="btn btn-secondary btn-sm" onclick="S.almoxInvSearch='';S.almoxInvSituation='todos';renderApp()">Limpar filtros</button></div>`
       :`<div class="empty-state"><p>Nenhum item no estoque.</p><button class="btn btn-primary" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Primeiro recebimento</button></div>`);
+  // ── bloco de retornos recentes (agrupados por numero_controle RET-*)
+  const retGrupos={};
+  (DB.estoque||[]).filter(e=>String(e.numero_controle||'').startsWith('RET-')).forEach(e=>{
+    const k=e.numero_controle;
+    if(!retGrupos[k])retGrupos[k]={num:k,obra:e.obra||'',data:e.entrada||'',resp:e.responsavel||'',obs:e.observacao||'',items:[]};
+    retGrupos[k].items.push(e);
+  });
+  const retKeys=Object.keys(retGrupos).sort((a,b)=>b.localeCompare(a)).slice(0,5);
+  const retBloco=retKeys.length?`<div style="margin-bottom:20px">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">↩ Retornos registrados</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${retKeys.map(k=>{const g=retGrupos[k];return`<div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--bg2);min-width:220px;flex:1;max-width:340px">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue);margin-bottom:4px">${esc(g.num)}</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:2px">${esc(g.obra)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">${fmtD(g.data)} · ${g.items.length} item(s)</div>
+        <button class="btn btn-secondary btn-sm" onclick="window._almoxRetornoPDF('${escJs(g.num)}','${escJs(g.obra)}','${escJs(g.data||'')}','${escJs(g.resp||'')}','${escJs(g.obs||'')}',null)">📄 Devolutiva</button>
+      </div>`;}).join('')}
+    </div>
+  </div>`:'';
   return `<div>
   <div class="section-header"><div><div class="section-title">📦 Lista Mestra de Estoque</div><div class="section-sub">${items.length === all.length ? `${all.length} item(s)` : `${items.length} de ${all.length} item(s)`} · ${items.reduce((s,i)=>s+Number(i.qtd||0),0)} unidades exibidas</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="window.estoqueXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.estoqueAlmoxPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='almox-entrada';S.modalData={};renderApp()">+ Receber material</button></div></div>
+  ${retBloco}
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">${searchBar}${pills}</div>
   ${tableRows}</div>`;
 }
@@ -10240,6 +10260,10 @@ window._saveAlmoxImportRetorno=async()=>withAlmoxActionLock(async()=>{
   if(erros){toast(`${objs.length-erros} inserido(s) · ${erros} erro(s). Verifique o console.`,'#f59e0b');}
   else{
     toast(`✓ ${objs.length} item(ns) registrado(s) como retorno de ${obra}!`,'#22c55e');
+    // Garante que a obra de origem está no registry (evita sumir de getAllObras)
+    if(!DB.obraRegistry.includes(obra)){
+      await saveRemoteObras([...DB.obraRegistry, obra]);
+    }
     setTimeout(()=>_almoxRetornoPDF(num,obra,data,resp,obs,objs),400);
   }
   _closeModal();renderApp();
