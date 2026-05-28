@@ -1428,17 +1428,22 @@ async function saveRemoteObras(list){
 }
 async function syncObraRegistry(){
   const localNames=getObrasData().map(o=>o?.nome).filter(Boolean);
+  const retObras=getRetornoObras(); // obras de retorno são sempre reais
   const depositos=getAlmoxDepositos();
-  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras()]).filter(o=>!depositos.has(o)&&o!=='Sem obra');
+  const merged=uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...localNames,...getDbObras(),...retObras]).filter(o=>!depositos.has(o)&&o!=='Sem obra');
   if(!sameObraList(DB.obraRegistry,merged))await saveRemoteObras(merged);
 }
 function getDbObras(){
   const tables=['aditivos','materiais','funcionarios','rdo','todos','despesas','pedidos','cotacoes','ferramentas'];
   return uniqObras(tables.flatMap(t=>(DB[t]||[]).map(r=>r?.obra).filter(Boolean)));
 }
+function getRetornoObras(){
+  // Obras que aparecem em itens com numero_controle RET-* são obras reais confirmadas
+  return(DB.estoque||[]).filter(e=>String(e.numero_controle||'').startsWith('RET-')).map(e=>String(e.obra||'').trim()).filter(Boolean);
+}
 function getAlmoxDepositos(){
-  // Only treat as deposito if it is NOT a known real obra
-  const knownObras=new Set([...(DB.obraRegistry||[]),...getCustomObras(),...getDbObras()]);
+  // Não classifica como deposito nenhuma obra conhecida (registry, localStorage, DB, ou origem de retorno)
+  const knownObras=new Set([...(DB.obraRegistry||[]),...getCustomObras(),...getDbObras(),...getRetornoObras()]);
   const s=new Set(['ALMOX CENTRAL']);
   getAlmoxInventario().forEach(e=>{
     const n=String(e?.obra||'').trim();
@@ -2304,7 +2309,8 @@ function getAllObras(){
   const obraDataNames=getObrasData().map(o=>o?.nome).filter(Boolean);
   const hidden=new Set([...getHiddenObras(),...getArchivedObras()]);
   const depositos=getAlmoxDepositos();
-  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras()]).filter(o=>!hidden.has(o)&&!depositos.has(o)&&o!=='Sem obra');
+  const retObras=getRetornoObras(); // obras de retorno nunca podem ser filtradas
+  return uniqObras([...(DB.obraRegistry||[]),...getCustomObras(),...obraDataNames,...getDbObras(),...retObras]).filter(o=>!hidden.has(o)&&!depositos.has(o)&&o!=='Sem obra');
 }
 function getTrailingNumber(value){const nums=String(value||'').match(/\d+/g)||[];return nums.length?Number(nums[nums.length-1]):null;}
 function sortAditivosDisplay(list=[]){return[...(Array.isArray(list)?list:[])].sort((a,b)=>{const na=getTrailingNumber(a?.numero||a?.nome||a?.id);const nb=getTrailingNumber(b?.numero||b?.nome||b?.id);if(na!=null||nb!=null){const diff=(nb??-1)-(na??-1);if(diff!==0)return diff;}const da=String(b?.data||b?.created_at||'');const db=String(a?.data||a?.created_at||'');if(da!==db)return da.localeCompare(db);return String(b?.created_at||b?.id||'').localeCompare(String(a?.created_at||a?.id||''));});}
