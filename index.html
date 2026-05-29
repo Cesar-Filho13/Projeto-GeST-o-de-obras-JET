@@ -3654,7 +3654,7 @@ function renderCotacaoComercialCard(c){
   const vencedor=cotacaoVencedor(fornecedores);
   const company=getCotacaoCompany(c);
   const expanded=window._cotExpanded&&window._cotExpanded[c.id];
-  return `<div class="quote-card"><div class="quote-card-head"><div><div class="quote-card-title">${esc(c.item||'Cotação sem título')}</div><div class="quote-card-sub">${esc(c.obra||'Sem obra')} · ${fmtD(c.data)}${company?` · ${esc(company.short||company.nome)}`:''}${vencedor?` · vencedor: ${esc(vencedor.fornecedor)}`:''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${makeCd(COTACAO_STATUS_LIST,COTACAO_STATUS_MAP,normalizeCotacaoStatus(c.status),`window._updateCotacaoStatus('${id}',VAL)`)}<button class="btn btn-secondary btn-sm" onclick="window._toggleCotacaoExpand('${id}')">${expanded?'Ocultar':'Expandir'}</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoTXT('${id}')">TXT</button></div></div><div class="quote-metrics"><span class="quote-metric">${baseItems.length} item(ns)</span><span class="quote-metric">${fornecedores.length} fornecedor(es)</span><span class="quote-metric">${melhor!=null?`Melhor ${fmtV(melhor)}`:'Aguardando preço'}</span></div>${expanded?renderCotacaoComercialExpanded(c,fornecedores,baseItems):''}</div>`;
+  return `<div class="quote-card"><div class="quote-card-head"><div><div class="quote-card-title">${esc(c.item||'Cotação sem título')}</div><div class="quote-card-sub">${esc(c.obra||'Sem obra')} · ${fmtD(c.data)}${company?` · ${esc(company.short||company.nome)}`:''}${vencedor?` · vencedor: ${esc(vencedor.fornecedor)}`:''}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${makeCd(COTACAO_STATUS_LIST,COTACAO_STATUS_MAP,normalizeCotacaoStatus(c.status),`window._updateCotacaoStatus('${id}',VAL)`)}<button class="btn btn-secondary btn-sm" onclick="S.modal='edit-cotacao';S.modalData={id:'${id}'};renderApp()">✏ Editar</button><button class="btn btn-secondary btn-sm" onclick="window._toggleCotacaoExpand('${id}')">${expanded?'Ocultar':'Expandir'}</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoPDF('${id}')">PDF</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoXLSX('${id}')">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacaoTXT('${id}')">TXT</button><button class="btn btn-danger btn-sm" onclick="window._deleteCotacao('${id}')">Excluir</button></div></div><div class="quote-metrics"><span class="quote-metric">${baseItems.length} item(ns)</span><span class="quote-metric">${fornecedores.length} fornecedor(es)</span><span class="quote-metric">${melhor!=null?`Melhor ${fmtV(melhor)}`:'Aguardando preço'}</span></div>${expanded?renderCotacaoComercialExpanded(c,fornecedores,baseItems):''}</div>`;
 }
 function renderCotacaoComercialExpanded(c,fornecedores=[],baseItems=[]){
   const id=escJs(c.id);
@@ -9026,6 +9026,37 @@ ${commercialItemsHeaderHtml()}
     onSave=`_saveCotacao()`;
   }
 
+  else if(m==='edit-cotacao'){
+    const cot=DB.cotacoes.find(x=>x.id===d.id)||{};
+    const obras=getAllObras();
+    const obraAtual=cot.obra||S.obra||obras[0]||'';
+    const fornecedoresAtivos=DB.fornecedores.filter(f=>f.ativo!==false);
+    const existingFornNames=normalizeCotacaoItems(cot.cotacoes||[]).map(f=>f.fornecedor);
+    const baseItems=getCotacaoBaseItems(cot);
+    const isOrcamento=S.modulo==='comercial'||S.comercialTab==='cotacoes';
+    title=isOrcamento?'Editar Orçamento':'Editar Cotação';
+    body=`<div>
+<div class="commercial-form-note">Edite os dados do ${isOrcamento?'orçamento':'cotação'}. Fornecedores e itens podem ser ajustados. Os preços existentes serão mantidos.</div>
+<div class="form-grid-2" style="margin-bottom:14px">
+  <div class="form-group"><label>Obra</label><select id="m-cobra">${obras.map(obra=>`<option value="${esc(obra)}"${obra===obraAtual?' selected':''}>${esc(obra)}</option>`).join('')}</select></div>
+  <div class="form-group"><label>Data</label><input id="m-cdata" type="date" value="${esc(cot.data||todayISO())}"></div>
+  <div class="form-group"><label>Empresa</label><select id="m-cempresa" onchange="window._refreshCotacaoEmpresaPreview(this.value)">${commercialCompanyOptions(cot.empresa_id||'')}</select></div>
+  <div class="form-group" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-secondary" style="width:100%" onclick="window._prefillCotacaoEmpresa(document.getElementById('m-cempresa')?.value)">Aplicar empresa</button></div>
+  <div class="form-group" style="grid-column:1/-1"><div id="m-cempresa-preview">${renderCommercialCompanyPreview(getCommercialCompany(cot.empresa_id||''))}</div></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Nome / Escopo *</label><input id="m-citem" placeholder="Ex: Materiais SPDA - NASP" value="${esc(cot.item||'')}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Fornecedores</label><div style="display:flex;gap:8px;flex-wrap:wrap">${fornecedoresAtivos.length?fornecedoresAtivos.map(f=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)"><input type="checkbox" class="m-cforn" value="${esc(f.nome)}"${existingFornNames.includes(f.nome)?' checked':''}> ${esc(f.nome)}</label>`).join(''):'<span style="font-size:12px;color:var(--text3)">Sem fornecedores cadastrados.</span>'}</div></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Fornecedores avulsos</label><input id="m-cforn-manual" placeholder="Ex: Fornecedor A; Fornecedor B" value="${esc(existingFornNames.filter(fn=>!fornecedoresAtivos.find(f=>f.nome===fn)).join('; '))}"></div>
+</div>
+<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens</div>
+${commercialItemsHeaderHtml()}
+<div id="cot-items-list">${commercialItemRowsHtml(baseItems,'cot')}</div>
+<button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin:4px 0 12px" onclick="window._addCommercialItemRow('cot')">+ Adicionar item</button>
+<div class="commercial-total-preview"><span>Valor de referência</span><strong id="cot-items-total">${fmtV(calcCommercialItemsTotal(baseItems))}</strong><input type="hidden" id="cot-items-total-value" value="${calcCommercialItemsTotal(baseItems)||0}"></div>
+</div>`;
+    onSave=`_updateCotacao('${escJs(cot.id||'')}')`;
+    footer=`<button class="btn btn-secondary" onclick="window.cotacaoPDF('${escJs(cot.id||'')}')">PDF</button>`;
+  }
+
   else if(m==='new-ferramenta'||m==='edit-ferramenta'){
     const ferr=m==='edit-ferramenta'?DB.ferramentas.find(x=>x.id===d.id):null;
     title=m==='new-ferramenta'?'Nova Ferramenta / Ativo':'Editar Ferramenta';
@@ -9087,7 +9118,7 @@ ${_opt('pdf-opt-anexos','📎','Anexos da solicitação',_reqFileCnt>0?`${_reqFi
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='edit-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -10855,6 +10886,40 @@ window._saveCotacao=async()=>{
   if(!DB.cotacoes.find(c=>c.id===obj.id))DB.cotacoes.unshift(obj);
   toast('✓ Cotação solicitada!');
   _closeModal();renderApp();
+};
+window._updateCotacao=async(id)=>{
+  const cot=DB.cotacoes.find(c=>c.id===id);
+  if(!cot){toast('Orçamento não encontrado.','#ef4444');return;}
+  const obra=document.getElementById('m-cobra')?.value||cot.obra||'';
+  const item=document.getElementById('m-citem')?.value?.trim();
+  const itensBase=window._getCommercialModalItems('cot');
+  const fornSelecionados=Array.from(document.querySelectorAll('.m-cforn:checked')).map(el=>el.value);
+  const avulsos=String(document.getElementById('m-cforn-manual')?.value||'').split(/[;,]/).map(v=>v.trim()).filter(Boolean);
+  const novosForn=[...new Set([...fornSelecionados,...avulsos])];
+  if(!obra||!item){toast('Obra e escopo são obrigatórios.','#ef4444');return;}
+  const empresa=normalizeCommercialCompany(document.getElementById('m-cempresa')?.value||null);
+  // Mantém fornecedores existentes com preços; adiciona novos; remove removidos
+  const existingForn=normalizeCotacaoItems(cot.cotacoes||[]);
+  const updatedForn=novosForn.map(nome=>{
+    const existing=existingForn.find(f=>f.fornecedor===nome);
+    return existing?{...existing,itens:itensBase}:{fornecedor:nome,preco:null,prazo:'',observacao:'',itens:itensBase,empresa_id:empresa?.id||'',escolhido:false};
+  });
+  const updates={obra,item,empresa_id:empresa?.id||cot.empresa_id||'',cotacoes:updatedForn,data:document.getElementById('m-cdata')?.value||cot.data};
+  const{error}=await sb.from('cotacoes').update(updates).eq('id',id);
+  if(error){toast('Erro ao salvar: '+error.message,'#ef4444');return;}
+  Object.assign(cot,updates);
+  toast('✓ Orçamento atualizado!');
+  _closeModal();renderApp();
+};
+window._deleteCotacao=async(id)=>{
+  const cot=DB.cotacoes.find(c=>c.id===id);
+  if(!cot)return;
+  if(!confirm(`Excluir o orçamento "${cot.item||id}"?`))return;
+  const{error}=await sb.from('cotacoes').delete().eq('id',id);
+  if(error){toast('Erro: '+error.message,'#ef4444');return;}
+  DB.cotacoes=DB.cotacoes.filter(c=>c.id!==id);
+  toast('Orçamento removido.','#f59e0b');
+  renderApp();
 };
 window._saveFornecedorInline=async(id,field,value)=>{
   const val=field==='cnpj'?formatCNPJ(value):String(value||'').trim();
