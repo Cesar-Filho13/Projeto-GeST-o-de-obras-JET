@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -789,6 +789,34 @@ html[data-theme="light"] .pdp-client-card{background:#f7faff}
 .proposal-actions{display:flex;gap:8px;flex-wrap:wrap}
 .commercial-subnav{margin-bottom:18px}
 .commercial-form-note{border:1px solid rgba(59,130,246,.16);background:rgba(59,130,246,.08);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.5;margin-bottom:14px}
+/* Autocomplete cliente */
+.cliente-ac-wrap{position:relative}
+.cliente-ac-list{position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:400;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.28);max-height:230px;overflow-y:auto;display:none}
+.cliente-ac-list.show{display:block}
+.cliente-ac-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.cliente-ac-item:last-child{border-bottom:none}
+.cliente-ac-item:hover{background:rgba(79,140,255,.1)}
+.cliente-ac-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.cliente-ac-meta{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+/* Catálogo de produtos */
+.prod-cat-overlay{position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+.prod-cat-box{width:min(680px,100%);max-height:82vh;background:var(--bg2);border:1px solid var(--border2);border-radius:18px;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.prod-cat-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.prod-cat-search{flex:1;height:38px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.25);color:var(--text);font:600 13px 'Inter',sans-serif;padding:0 12px;outline:none}
+.prod-cat-search:focus{border-color:var(--border2)}
+.prod-cat-body{flex:1;overflow-y:auto;padding:8px}
+.prod-cat-row{display:grid;grid-template-columns:1fr 60px 80px 80px;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.prod-cat-row:last-child{border-bottom:none}
+.prod-cat-row:hover{background:rgba(79,140,255,.08)}
+.prod-cat-nome{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.prod-cat-desc{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.prod-cat-und{font-size:10px;color:var(--text3);text-align:center}
+.prod-cat-tipo{font-size:9px;padding:2px 7px;border-radius:999px;background:rgba(79,140,255,.1);border:1px solid rgba(79,140,255,.16);color:#93c5fd;white-space:nowrap;text-align:center}
+.prod-cat-valor{font-family:'DM Mono',monospace;font-size:11px;font-weight:800;color:#34d399;text-align:right}
+.prod-cat-empty{padding:28px;text-align:center;color:var(--text3);font-size:12px}
+html[data-theme="light"] .cliente-ac-list{background:#fff;box-shadow:0 8px 24px rgba(0,0,40,.15)}
+html[data-theme="light"] .prod-cat-box{background:#fff}
+html[data-theme="light"] .prod-cat-search{background:#f7faff}
 .commercial-company-card{display:grid;gap:4px;border:1px solid rgba(59,130,246,.16);background:rgba(79,140,255,.07);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.35}
 .commercial-company-card strong{color:var(--text);font-size:13px}
 .commercial-company-card span{color:var(--text3)}
@@ -8944,7 +8972,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group"><label>Emissão</label><input id="m-prop-emissao" type="date" value="${esc(base.data_emissao)}"></div>
   <div class="form-group"><label>Vencimento</label><input id="m-prop-venc" type="date" value="${esc(base.data_vencimento)}"></div>
   <div class="form-group" style="grid-column:1/-1"><label>Nome do orçamento *</label><input id="m-prop-nome" value="${esc(base.nome)}" placeholder="Ex: Proposta Projeto SPDA - NASP"></div>
-  <div class="form-group"><label>Cliente *</label><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Nome/Razão social"></div>
+  <div class="form-group"><label>Cliente * <span style="font-size:10px;color:var(--text3);font-weight:400">(${FIELD_CLIENTES.length} do catálogo Field)</span></label><div class="cliente-ac-wrap"><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Digite para buscar no catálogo..." autocomplete="off" oninput="window._clienteAutoSearch(this.value)" onblur="setTimeout(()=>window._closeClienteAc(),200)"><div id="m-prop-cliente-ac" class="cliente-ac-list"></div></div></div>
   <div class="form-group"><label>CNPJ</label><input id="m-prop-cnpj" inputmode="numeric" maxlength="18" value="${esc(formatCNPJ(base.cnpj))}" placeholder="00.000.000/0000-00" oninput="window._formatCNPJInput(this)" onblur="window._validateCNPJInput(this)"></div>
   <div class="form-group"><label>Inscrição Estadual</label><input id="m-prop-ie" value="${esc(base.inscricao_estadual)}" placeholder="ISENTA / nº inscrição"></div>
   <div class="form-group"><label>Contato</label><input id="m-prop-contato" value="${esc(base.contato)}" placeholder="Pessoa de contato"></div>
@@ -8957,7 +8985,10 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
 <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Itens da proposta</div>
 ${commercialItemsHeaderHtml()}
 <div id="prop-items-list">${commercialItemRowsHtml(base.itens,'prop')}</div>
-<button type="button" class="btn btn-secondary btn-sm" style="width:100%;margin:4px 0 12px" onclick="window._addCommercialItemRow('prop')">+ Adicionar item</button>
+<div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin:4px 0 12px">
+  <button type="button" class="btn btn-secondary btn-sm" onclick="window._addCommercialItemRow('prop')">+ Adicionar item vazio</button>
+  <button type="button" class="btn btn-primary btn-sm" onclick="window._openProdCatalog()">📦 Do catálogo Field</button>
+</div>
 <div class="form-grid-2">
   <div class="form-group"><label>Desconto (R$)</label><input id="m-prop-desconto" type="number" step="0.01" value="${base.desconto||''}" placeholder="0,00" oninput="window._recalcCommercialTotal('prop')"></div>
   <div class="commercial-total-preview"><span>Total dos itens</span><strong id="prop-items-total">${fmtV(base.subtotal)}</strong><input type="hidden" id="prop-items-total-value" value="${base.subtotal||0}"></div>
@@ -10700,6 +10731,94 @@ window._saveProposta=async(id=null)=>{
   toast(id?'Proposta atualizada.':'Proposta criada.','#22c55e');
   _closeModal();
 };
+// ── AUTOCOMPLETE CLIENTE ──────────────────────────────────────────────────
+window._clienteAutoSearch=(val)=>{
+  const ac=document.getElementById('m-prop-cliente-ac');
+  if(!ac)return;
+  const q=(val||'').trim().toLowerCase();
+  if(q.length<2){ac.classList.remove('show');ac.innerHTML='';return;}
+  const matches=(typeof FIELD_CLIENTES!=='undefined'?FIELD_CLIENTES:[]).filter(c=>c.n.toLowerCase().includes(q)).slice(0,14);
+  if(!matches.length){ac.classList.remove('show');return;}
+  ac.innerHTML=matches.map((c,i)=>`<div class="cliente-ac-item" onmousedown="window._selectCatalogCliente(${i+'_'+Date.now()},'${escJs(c.n)}','${escJs(c.c)}','${escJs(c.e)}','${escJs(c.t)}','${escJs(c.a)}')">
+    <div class="cliente-ac-name">${esc(c.n)}</div>
+    <div class="cliente-ac-meta">${c.c?esc(c.c)+' · ':''}${c.ci?esc(c.ci)+'/'+esc(c.uf):''}</div>
+  </div>`).join('');
+  ac.classList.add('show');
+};
+window._selectCatalogCliente=(_idx,nome,cnpj,email,tel,end)=>{
+  const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  setVal('m-prop-cliente',nome);
+  setVal('m-prop-cnpj',cnpj);
+  setVal('m-prop-email',email);
+  setVal('m-prop-telefone',tel);
+  setVal('m-prop-endereco',end);
+  window._closeClienteAc();
+};
+window._closeClienteAc=()=>{
+  const ac=document.getElementById('m-prop-cliente-ac');
+  if(ac){ac.classList.remove('show');}
+};
+
+// ── CATÁLOGO DE PRODUTOS ──────────────────────────────────────────────────
+window._openProdCatalog=()=>{
+  const existing=document.getElementById('prod-cat-overlay-el');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='prod-cat-overlay-el';
+  overlay.className='prod-cat-overlay';
+  overlay.innerHTML=`
+    <div class="prod-cat-box">
+      <div class="prod-cat-head">
+        <input class="prod-cat-search" id="prod-cat-q" type="search" placeholder="Buscar produto por nome, tipo, código..." autofocus oninput="window._filterProdCatalog(this.value)">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('prod-cat-overlay-el')?.remove()">Fechar</button>
+      </div>
+      <div class="prod-cat-body" id="prod-cat-body">${window._renderProdCatalogRows('')}</div>
+    </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.getElementById('prod-cat-q')?.focus(),60);
+};
+window._filterProdCatalog=(q)=>{
+  const body=document.getElementById('prod-cat-body');
+  if(body)body.innerHTML=window._renderProdCatalogRows(q);
+};
+window._renderProdCatalogRows=(q)=>{
+  const catalog=typeof FIELD_PRODUTOS!=='undefined'?FIELD_PRODUTOS:[];
+  const lower=(q||'').toLowerCase();
+  const rows=lower.length<1?catalog:catalog.filter(p=>
+    p.n.toLowerCase().includes(lower)||(p.t||'').toLowerCase().includes(lower)||(p.c||'').toLowerCase().includes(lower)
+  );
+  if(!rows.length)return`<div class="prod-cat-empty">Nenhum produto encontrado para "${esc(q)}".</div>`;
+  return rows.slice(0,120).map((p,i)=>{
+    const idx=lower.length<1?i:catalog.indexOf(p);
+    return`<div class="prod-cat-row" onclick="window._addCatalogProduto(${idx})">
+      <div><div class="prod-cat-nome">${esc(p.n)}</div><div class="prod-cat-desc">${esc(p.d||'')}</div></div>
+      <div class="prod-cat-und">${esc(p.u||'un')}</div>
+      <div class="prod-cat-tipo">${esc(p.t||'—')}</div>
+      <div class="prod-cat-valor">${p.v>0?'R$ '+Number(p.v).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</div>
+    </div>`;
+  }).join('');
+};
+window._addCatalogProduto=(idx)=>{
+  const catalog=typeof FIELD_PRODUTOS!=='undefined'?FIELD_PRODUTOS:[];
+  const p=catalog[idx];
+  if(!p)return;
+  const list=document.getElementById('prop-items-list');
+  if(!list)return;
+  const unidMap={'Metros':'m','Metro':'m','Unidades':'un','Unidade':'un','Horas':'h','Hora':'h','Kg':'kg','Litros':'L','Litro':'L','Caixas':'cx','Caixa':'cx','Pares':'par'};
+  const unid=unidMap[p.u]||p.u||'un';
+  list.insertAdjacentHTML('beforeend',commercialItemRowHtml({
+    tipo:'Produto',
+    nome:p.n,
+    descricao:p.d||'',
+    quantidade:1,
+    unidade:unid,
+    valor_unitario:p.v||''
+  },'prop'));
+  window._recalcCommercialTotal('prop');
+  document.getElementById('prod-cat-overlay-el')?.remove();
+};
+
 window._openPropostaPanel=(id)=>{
   if(S.selectedPropostaId===id){S.selectedPropostaId='';S.propostaDetailTab='geral';}
   else{S.selectedPropostaId=id;S.propostaDetailTab=S.propostaDetailTab||'geral';}
