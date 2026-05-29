@@ -716,18 +716,76 @@ html[data-theme="light"] .baixada-days-input{background:rgba(20,149,107,.08);col
 .quote-empty{padding:18px;border:1px dashed var(--border);border-radius:14px;text-align:center;color:var(--text3)}
 html[data-theme="light"] .quote-vendor-table th{background:#edf3ff;color:#1a2e6b}
 
+/* ── Propostas: tabela + painel deslizante (Field-style) ── */
+.propostas-shell{display:flex;position:relative;min-height:300px;gap:0}
+.propostas-table-wrap{flex:1;min-width:0;overflow:hidden}
+.propostas-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.propostas-filter-pills{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.propostas-filter-pill{padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text3);font:700 11px 'Inter',sans-serif;cursor:pointer;transition:all .15s}
+.propostas-filter-pill:hover{border-color:var(--border2);color:var(--text)}
+.propostas-filter-pill.active{background:rgba(79,140,255,.16);border-color:rgba(79,140,255,.32);color:#93c5fd}
+.propostas-tbl-outer{overflow-x:auto;border:1px solid var(--border);border-radius:14px;background:var(--bg2)}
+.propostas-tbl{width:100%;border-collapse:collapse}
+.propostas-tbl th{padding:9px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;user-select:none}
+.propostas-tbl th:first-child{border-radius:14px 0 0 0}
+.propostas-tbl th:last-child{border-radius:0 14px 0 0}
+.propostas-tbl td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);vertical-align:middle;white-space:nowrap}
+.propostas-tbl tbody tr:last-child td{border-bottom:none}
+.proposta-row{cursor:pointer;transition:background .12s}
+.proposta-row:hover td{background:rgba(79,140,255,.055)}
+.proposta-row.selected td{background:rgba(79,140,255,.11)}
+.proposta-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text3)}
+.proposta-nome{font-size:12px;font-weight:700;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;display:block}
+.proposta-cliente-cell{color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;display:block}
+.proposta-total-cell{font-family:'DM Mono',monospace;font-size:12px;font-weight:800;color:#34d399}
+.proposta-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
+.proposta-status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pst-rascunho{background:rgba(59,130,246,.1);color:#93c5fd;border:1px solid rgba(59,130,246,.22)}.pst-rascunho .proposta-status-dot{background:#3b82f6}
+.pst-enviada{background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.22)}.pst-enviada .proposta-status-dot{background:#f59e0b}
+.pst-aprovada{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.2)}.pst-aprovada .proposta-status-dot{background:#22c55e}
+.pst-recusada{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.2)}.pst-recusada .proposta-status-dot{background:#ef4444}
+.pst-vencida{background:rgba(249,115,22,.1);color:#fdba74;border:1px solid rgba(249,115,22,.18)}.pst-vencida .proposta-status-dot{background:#f97316}
+/* Painel deslizante */
+.propostas-detail-panel{position:fixed;top:0;right:0;width:460px;max-width:100vw;height:100vh;background:var(--bg2);border-left:1px solid var(--border);z-index:250;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.22,1,.36,1);box-shadow:-8px 0 32px rgba(0,0,0,.22)}
+.propostas-detail-panel.open{transform:translateX(0)}
+.pdp-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;min-height:56px}
+.pdp-header-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:800;color:#93c5fd;text-transform:uppercase;margin-bottom:2px}
+.pdp-header-title{font-size:14px;font-weight:900;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdp-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .14s}
+.pdp-close:hover{background:var(--surface2);color:var(--text)}
+.pdp-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.pdp-tab{padding:10px 14px;border:none;background:none;color:var(--text3);font:700 12px 'Inter',sans-serif;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .14s;flex-shrink:0}
+.pdp-tab:hover{color:var(--text2)}
+.pdp-tab.active{color:#60a5fa;border-bottom-color:#3b82f6}
+.pdp-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.pdp-section-label{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.pdp-section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.pdp-client-card{border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(79,140,255,.04)}
+.pdp-client-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pdp-client-avatar{width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.22);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#60a5fa;flex-shrink:0;overflow:hidden}
+.pdp-client-avatar img{width:100%;height:100%;object-fit:contain}
+.pdp-client-name{font-size:13px;font-weight:800;color:var(--text);line-height:1.2}
+.pdp-client-cnpj{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px}
+.pdp-info-row{display:grid;grid-template-columns:88px 1fr;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.pdp-info-row:last-child{border-bottom:none}
+.pdp-info-label{color:var(--text3);font-weight:700}
+.pdp-info-value{color:var(--text2);word-break:break-word}
+.pdp-items-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.pdp-items-tbl th{padding:6px 8px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)}
+.pdp-items-tbl td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);color:var(--text2)}
+.pdp-items-tbl tr:last-child td{border-bottom:none}
+.pdp-items-total{display:flex;justify-content:space-between;align-items:center;padding:10px 8px 0;margin-top:4px;border-top:1px solid var(--border);font-weight:700;color:var(--text2)}
+.pdp-items-total strong{color:#34d399;font-size:14px}
+.pdp-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html[data-theme="light"] .propostas-tbl-outer{background:#fff}
+html[data-theme="light"] .propostas-tbl th{background:#f1f5fb}
+html[data-theme="light"] .proposta-row:hover td{background:#f0f5ff}
+html[data-theme="light"] .proposta-row.selected td{background:#e8f0fe}
+html[data-theme="light"] .propostas-detail-panel{background:#fff;box-shadow:-4px 0 24px rgba(0,0,40,.1)}
+html[data-theme="light"] .pdp-client-card{background:#f7faff}
+/* compat: keep old classes used elsewhere */
 .commercial-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.proposal-card{border:1px solid var(--border);border-radius:20px;background:linear-gradient(180deg,rgba(19,37,72,.95),rgba(9,18,36,.96));padding:18px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
-.proposal-card::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#2f6fff,#22c55e,#f59e0b)}
-.proposal-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.proposal-number{font-family:'DM Mono',monospace;font-size:11px;color:#93c5fd;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.proposal-card h3{margin:0;color:var(--text);font-size:18px;line-height:1.25}
-.proposal-card p{margin:4px 0 0;color:var(--text3);font-size:12px}
-.proposal-meta,.proposal-values{display:flex;gap:8px;flex-wrap:wrap}
-.proposal-meta span,.proposal-values span{padding:7px 10px;border-radius:999px;background:rgba(79,140,255,.08);border:1px solid rgba(79,140,255,.14);font-size:11px;color:var(--text2);font-weight:700}
-.proposal-values strong{color:var(--text);margin-left:4px}
-.proposal-total{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:12px;color:var(--text2);font-weight:700}
-.proposal-total strong{font-size:20px;color:#34d399}
+.proposal-number{font-family:'DM Mono',monospace;font-size:11px;color:#93c5fd;text-transform:uppercase;letter-spacing:.08em}
 .proposal-actions{display:flex;gap:8px;flex-wrap:wrap}
 .commercial-subnav{margin-bottom:18px}
 .commercial-form-note{border:1px solid rgba(59,130,246,.16);background:rgba(59,130,246,.08);border-radius:14px;padding:10px 12px;color:var(--text2);font-size:12px;line-height:1.5;margin-bottom:14px}
@@ -3428,8 +3486,126 @@ function renderComercialModule(){
   const section=tab==='cotacoes'?renderCotacoesComerciais(cotacoes):renderPropostasComerciais(propostas);
   return `<div class="compras-subnav commercial-subnav">${subnav}</div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Propostas</div><div class="stat-value" style="color:#60a5fa">${propostas.length}</div><div class="stat-sub">${fmtV(totalPropostas)} em propostas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Aprovadas</div><div class="stat-value" style="color:#34d399">${propostas.filter(p=>p.status==='Aprovada').length}</div><div class="stat-sub">${abertas} em rascunho/envio</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Orçamentos</div><div class="stat-value" style="color:#fbbf24">${cotacoes.length}</div><div class="stat-sub">${cotAbertas} processo(s) aberto(s)</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Modelo</div><div class="stat-value" style="color:#c084fc">JET</div><div class="stat-sub">PDF no padrão da proposta enviada</div></div></div>${section}`;
 }
+function propostaStatusClass(status){
+  return{Rascunho:'pst-rascunho',Enviada:'pst-enviada',Aprovada:'pst-aprovada',Recusada:'pst-recusada',Vencida:'pst-vencida'}[status]||'pst-rascunho';
+}
 function renderPropostasComerciais(propostas=[]){
-  return `<div><div class="section-header"><div><div class="section-title">📄 Propostas Comerciais</div><div class="section-sub">Geração de proposta em PDF no padrão JET, com itens, valores, vencimento e resposta do cliente.</div></div></div>${!propostas.length?`<div class="empty-state"><p>Nenhuma proposta cadastrada ainda.</p><button class="btn btn-primary" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Criar primeira proposta</button></div>`:`<div class="commercial-card-grid">${propostas.map(p=>renderPropostaCard(p)).join('')}</div>`}</div>`;
+  const filter=S.propostaStatusFilter||'Todos';
+  const filtered=filter==='Todos'?propostas:propostas.filter(p=>p.status===filter);
+  const selected=S.selectedPropostaId||'';
+  const pills=['Todos',...PROPOSTA_STATUS_LIST].map(st=>`<button class="propostas-filter-pill${filter===st?' active':''}" onclick="S.propostaStatusFilter='${st}';S.selectedPropostaId='';renderApp()">${esc(st)}${st!=='Todos'?' ('+propostas.filter(p=>p.status===st).length+')':' ('+propostas.length+')'}</button>`).join('');
+  const rows=filtered.length?filtered.map(p=>{
+    const id=escJs(p.id);
+    const itens=normalizeCommercialItems(p.itens||[]);
+    const isSel=selected===p.id;
+    return `<tr class="proposta-row${isSel?' selected':''}" onclick="window._openPropostaPanel('${id}')">
+      <td><span class="proposta-num">${esc(p.numero||'—')}</span></td>
+      <td><span class="proposta-nome" title="${esc(p.nome||'')}"><span style="display:block;font-weight:700;color:var(--text);font-size:12px">${esc(p.nome||'Sem título')}</span></span></td>
+      <td><span class="proposta-cliente-cell" title="${esc(p.cliente||'')}">${esc(p.cliente||'—')}</span></td>
+      <td><span class="proposta-status-badge ${propostaStatusClass(p.status)}"><span class="proposta-status-dot"></span>${esc(p.status||'Rascunho')}</span></td>
+      <td>${fmtD(p.data_emissao)}</td>
+      <td>${fmtD(p.data_vencimento)}</td>
+      <td><span class="proposta-total-cell">${fmtV(p.total)}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();S.modal='edit-proposta';S.modalData={id:'${id}'};renderApp()" title="Editar">✏</button>
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window.propostaPDF('${id}')" title="PDF">PDF</button>
+      </td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="8" style="padding:32px;text-align:center;color:var(--text3)">Nenhuma proposta encontrada para este filtro.</td></tr>`;
+  const table=`<div class="propostas-tbl-outer"><table class="propostas-tbl"><thead><tr><th>Nº</th><th>Nome</th><th>Cliente</th><th>Status</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const panel=selected?renderPropostaDetailPanel(propostas.find(p=>p.id===selected)):'';
+  return `<div>
+    <div class="propostas-toolbar">
+      <div class="propostas-filter-pills">${pills}</div>
+      <button class="btn btn-primary btn-sm" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Nova Proposta</button>
+    </div>
+    <div class="propostas-shell">
+      <div class="propostas-table-wrap">${!propostas.length?`<div class="empty-state"><p>Nenhuma proposta cadastrada ainda.</p><button class="btn btn-primary" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Criar primeira proposta</button></div>`:table}</div>
+    </div>
+  </div>${panel}`;
+}
+function renderPropostaDetailPanel(p){
+  if(!p)return'';
+  const id=escJs(p.id);
+  const tab=S.propostaDetailTab||'geral';
+  const itens=normalizeCommercialItems(p.itens||[]);
+  const serv=calcCommercialItemsTotal(itens,'Serviço');
+  const prod=calcCommercialItemsTotal(itens,'Produto');
+  const desp=calcCommercialItemsTotal(itens,'Despesa');
+  const avatarHtml=p.cliente_logo?`<img src="${esc(p.cliente_logo)}" alt="logo">`:`${esc((p.cliente||'?').slice(0,2).toUpperCase())}`;
+  const tabs=['geral','itens','acoes'].map(t=>`<button class="pdp-tab${tab===t?' active':''}" onclick="S.propostaDetailTab='${t}';renderApp()">${{geral:'Geral',itens:`Itens (${itens.length})`,acoes:'Ações'}[t]}</button>`).join('');
+  let body='';
+  if(tab==='geral'){
+    body=`
+      <div>
+        <div class="pdp-section-label">Dados do cliente</div>
+        <div class="pdp-client-card">
+          <div class="pdp-client-head">
+            <div class="pdp-client-avatar">${avatarHtml}</div>
+            <div><div class="pdp-client-name">${esc(p.cliente||'Não informado')}</div><div class="pdp-client-cnpj">${esc(p.cnpj||'—')}</div></div>
+          </div>
+          ${p.contato?`<div class="pdp-info-row"><span class="pdp-info-label">Contato</span><span class="pdp-info-value">${esc(p.contato)}</span></div>`:''}
+          ${p.email?`<div class="pdp-info-row"><span class="pdp-info-label">E-mail</span><span class="pdp-info-value">${esc(p.email)}</span></div>`:''}
+          ${p.telefone?`<div class="pdp-info-row"><span class="pdp-info-label">Telefone</span><span class="pdp-info-value">${esc(p.telefone)}</span></div>`:''}
+          ${p.endereco?`<div class="pdp-info-row"><span class="pdp-info-label">Endereço</span><span class="pdp-info-value">${esc(p.endereco)}</span></div>`:''}
+          ${p.inscricao_estadual?`<div class="pdp-info-row"><span class="pdp-info-label">IE</span><span class="pdp-info-value">${esc(p.inscricao_estadual)}</span></div>`:''}
+        </div>
+      </div>
+      <div>
+        <div class="pdp-section-label">Dados da proposta</div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Número</span><span class="pdp-info-value" style="font-family:'DM Mono',monospace">${esc(p.numero||'—')}</span></div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Status</span><span class="pdp-info-value">${makeCd(PROPOSTA_STATUS_LIST,PROPOSTA_STATUS_MAP,p.status||'Rascunho',`window._updatePropostaStatus('${id}',VAL)`)}</span></div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Responsável</span><span class="pdp-info-value">${esc(p.responsavel||'—')}</span></div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Emissão</span><span class="pdp-info-value">${fmtD(p.data_emissao)}</span></div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Vencimento</span><span class="pdp-info-value">${fmtD(p.data_vencimento)}</span></div>
+        <div class="pdp-info-row"><span class="pdp-info-label">Total</span><span class="pdp-info-value" style="color:#34d399;font-weight:800;font-size:14px">${fmtV(p.total)}</span></div>
+        ${p.desconto?`<div class="pdp-info-row"><span class="pdp-info-label">Desconto</span><span class="pdp-info-value">${fmtV(p.desconto)}</span></div>`:''}
+        ${p.observacoes?`<div class="pdp-info-row" style="grid-template-columns:1fr"><span class="pdp-info-label" style="margin-bottom:4px">Observações</span><span class="pdp-info-value" style="color:var(--text2);line-height:1.5;white-space:pre-wrap">${esc(p.observacoes)}</span></div>`:''}
+      </div>`;
+  } else if(tab==='itens'){
+    const itensPorTipo=['Serviço','Produto','Despesa'].map(tipo=>{
+      const grupo=itens.filter(i=>i.tipo===tipo);
+      if(!grupo.length)return'';
+      return`<div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:7px">${tipo}s — ${fmtV(calcCommercialItemsTotal(grupo,tipo))}</div>
+        <table class="pdp-items-tbl"><thead><tr><th>Item</th><th>Qtd</th><th>Unitário</th><th>Total</th></tr></thead>
+        <tbody>${grupo.map(it=>`<tr>
+          <td><strong style="color:var(--text)">${esc(it.nome||'—')}</strong>${it.descricao?`<div style="color:var(--text3);font-size:10px;margin-top:2px">${esc(it.descricao)}</div>`:''}</td>
+          <td>${esc(it.quantidade||1)} ${esc(it.unidade||'un')}</td>
+          <td>${fmtV(it.valor_unitario)}</td>
+          <td style="color:#34d399;font-weight:700">${fmtV((Number(it.quantidade)||1)*(Number(it.valor_unitario)||0))}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    }).join('');
+    body=`${itensPorTipo||'<div style="padding:24px;text-align:center;color:var(--text3)">Nenhum item cadastrado.</div>'}
+      <div class="pdp-items-total"><span>Total da proposta</span><strong>${fmtV(p.total)}</strong></div>`;
+  } else {
+    body=`<div class="pdp-actions-grid">
+      <button class="btn btn-primary" onclick="S.modal='edit-proposta';S.modalData={id:'${id}'};renderApp()">✏ Editar proposta</button>
+      <button class="btn btn-secondary" onclick="window.propostaPDF('${id}')">📄 Exportar PDF</button>
+      <button class="btn btn-secondary" onclick="window.propostaXLSX('${id}')">📊 Exportar Excel</button>
+      <button class="btn btn-secondary" onclick="window.propostaTXT('${id}')">📝 Exportar TXT</button>
+    </div>
+    <div style="margin-top:14px">
+      <div class="pdp-section-label">Alterar status</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${PROPOSTA_STATUS_LIST.map(st=>`<button class="btn${p.status===st?' btn-primary':' btn-secondary'} btn-sm" onclick="window._updatePropostaStatus('${id}','${escJs(st)}')">${esc(st)}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn btn-danger" style="width:100%" onclick="window._deleteProposta('${id}')">🗑 Excluir proposta</button>
+    </div>`;
+  }
+  return`<div class="propostas-detail-panel open">
+    <div class="pdp-header">
+      <div style="flex:1;min-width:0">
+        <div class="pdp-header-num">${esc(p.numero||'Proposta')}</div>
+        <div class="pdp-header-title">${esc(p.nome||'Sem título')}</div>
+      </div>
+      <button class="pdp-close" onclick="S.selectedPropostaId='';renderApp()" title="Fechar">✕</button>
+    </div>
+    <div class="pdp-tabs">${tabs}</div>
+    <div class="pdp-body">${body}</div>
+  </div>`;
 }
 function renderPropostaCard(p){
   const id=escJs(p.id);
@@ -10524,6 +10700,11 @@ window._saveProposta=async(id=null)=>{
   toast(id?'Proposta atualizada.':'Proposta criada.','#22c55e');
   _closeModal();
 };
+window._openPropostaPanel=(id)=>{
+  if(S.selectedPropostaId===id){S.selectedPropostaId='';S.propostaDetailTab='geral';}
+  else{S.selectedPropostaId=id;S.propostaDetailTab=S.propostaDetailTab||'geral';}
+  renderApp();
+};
 window._updatePropostaStatus=(id,status)=>{
   const p=DB.propostas.find(item=>item.id===id);if(!p)return;
   p.status=PROPOSTA_STATUS_LIST.includes(status)?status:'Rascunho';p.updated_at=new Date().toISOString();
@@ -10533,6 +10714,7 @@ window._deleteProposta=(id)=>{
   const p=DB.propostas.find(item=>item.id===id);if(!p)return;
   if(!confirm(`Excluir proposta ${p.numero||p.nome}?`))return;
   DB.propostas=DB.propostas.filter(item=>item.id!==id);
+  if(S.selectedPropostaId===id){S.selectedPropostaId='';S.propostaDetailTab='geral';}
   queuePropostasSync(true);
   toast('Proposta removida.','#f59e0b');
   renderApp();
