@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260530012737">
+<meta name="jet-build" content="20260530014214">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -3616,21 +3616,34 @@ function renderComercialModule(){
 // ── EQUIPAMENTOS (estilo tabela Field) ────────────────────────────────────
 function equipCliente(e){return String(e&&(e.nome_cliente||e.cliente)||'').trim();}
 function getEquipTipos(list){return[...new Set((list||[]).map(e=>String(e.tipo_equipamento||'').trim()).filter(Boolean))].sort();}
-function renderEquipamentosComerciais(equipamentos=[]){
+function getEquiposDoCliente(nome){
+  const n=String(nome||'').trim().toLowerCase();
+  if(!n)return[];
+  return (DB.equipamentos||[]).filter(e=>!e.arquivado&&equipCliente(e).toLowerCase()===n);
+}
+// Filtro compartilhado entre a tabela e as exportações (respeita busca + tipo)
+function getFilteredEquipamentos(equipamentos=DB.equipamentos||[]){
   const q=(S.equipSearch||'').trim().toLowerCase();
   const fTipo=S.equipTipoFilter||'Todos';
-  const tipos=getEquipTipos(equipamentos);
-  let list=equipamentos.filter(e=>!e.arquivado);
+  let list=(equipamentos||[]).filter(e=>!e.arquivado);
   if(fTipo!=='Todos')list=list.filter(e=>String(e.tipo_equipamento||'').trim()===fTipo);
   if(q)list=list.filter(e=>[e.numero_serie,e.modelo,equipCliente(e),e.localizacao,e.tipo_equipamento,e.setor,e.ambiente,e.observacoes,e.etiquetas].map(v=>String(v||'').toLowerCase()).join(' ').includes(q));
-  const tipoPills=['Todos',...tipos].map(t=>`<button class="propostas-filter-pill${fTipo===t?' active':''}" onclick="S.equipTipoFilter='${escJs(t)}';renderApp()">${esc(t)}${t!=='Todos'?' ('+equipamentos.filter(e=>!e.arquivado&&String(e.tipo_equipamento||'').trim()===t).length+')':' ('+equipamentos.filter(e=>!e.arquivado).length+')'}</button>`).join('');
+  return list;
+}
+function renderEquipamentosComerciais(equipamentos=[]){
+  const fTipo=S.equipTipoFilter||'Todos';
+  const tipos=getEquipTipos(equipamentos);
+  const ativos=equipamentos.filter(e=>!e.arquivado);
+  const list=getFilteredEquipamentos(equipamentos);
+  const clientesDistintos=new Set(list.map(e=>equipCliente(e)).filter(Boolean)).size;
+  const tipoPills=['Todos',...tipos].map(t=>`<button class="propostas-filter-pill${fTipo===t?' active':''}" onclick="S.equipTipoFilter='${escJs(t)}';renderApp()">${esc(t)}${t!=='Todos'?' ('+ativos.filter(e=>String(e.tipo_equipamento||'').trim()===t).length+')':' ('+ativos.length+')'}</button>`).join('');
   const rows=list.length?list.map(e=>{
     const id=escJs(e.id);
     const tipoShort=String(e.tipo_equipamento||'').replace(/Central de Inc[eê]ndio\s*/i,'').trim()||'—';
     const ambiente=[e.setor,e.ambiente].map(v=>String(v||'').trim()).filter(Boolean).join(' / ')||'—';
     return `<tr class="proposta-row">
       <td><span class="proposta-num">${esc(e.numero_serie||'—')}</span></td>
-      <td><span style="display:block;font-weight:700;color:var(--text);font-size:12px">${esc(equipCliente(e)||'—')}</span></td>
+      <td><span class="equip-cliente-link" title="Filtrar por este cliente" onclick="S.equipSearch='${escJs(equipCliente(e))}';renderApp()" style="display:block;font-weight:700;color:var(--text);font-size:12px;cursor:pointer">${esc(equipCliente(e)||'—')}</span></td>
       <td>${esc(e.localizacao||'—')}</td>
       <td><span class="proposta-status-badge pst-enviada"><span class="proposta-status-dot"></span>${esc(tipoShort)}</span></td>
       <td>${esc(e.modelo||'—')}</td>
@@ -3645,15 +3658,18 @@ function renderEquipamentosComerciais(equipamentos=[]){
   }).join(''):`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--text3)">${equipamentos.length?'Nenhum equipamento para este filtro/busca.':'Nenhum equipamento cadastrado. Rode o db_equipamentos.sql no Supabase ou cadastre um novo.'}</td></tr>`;
   return `<div>
     <div class="propostas-toolbar">
-      <input class="ci" style="flex:1;min-width:200px;max-width:340px" type="search" placeholder="Buscar por série, modelo, cliente, local..." value="${esc(S.equipSearch||'')}" oninput="S.equipSearch=this.value;clearTimeout(window._equipSearchT);window._equipSearchT=setTimeout(renderApp,250)">
+      <input class="ci" style="flex:1;min-width:200px;max-width:300px" type="search" placeholder="Buscar por série, modelo, cliente, local..." value="${esc(S.equipSearch||'')}" oninput="S.equipSearch=this.value;clearTimeout(window._equipSearchT);window._equipSearchT=setTimeout(renderApp,250)">
       <div class="propostas-filter-pills" style="flex:1">${tipoPills}</div>
+      <button class="btn btn-secondary btn-sm" onclick="window.equipamentosTXT()">TXT</button>
+      <button class="btn btn-secondary btn-sm" onclick="window.equipamentosXLSX()">Excel</button>
+      <button class="btn btn-secondary btn-sm" onclick="window.equipamentosPDF()">PDF</button>
       <button class="btn btn-primary btn-sm" onclick="window._openEquipamentoNew()">+ Novo Equipamento</button>
     </div>
     <div class="propostas-tbl-outer"><table class="propostas-tbl">
       <thead><tr><th>Nº Série</th><th>Cliente</th><th>Localização</th><th>Tipo</th><th>Modelo</th><th>Setor/Ambiente</th><th>Observações</th><th>Criado em</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    <div style="padding:10px 4px;font-size:11px;color:var(--text3)">${list.length} de ${equipamentos.filter(e=>!e.arquivado).length} equipamento(s)</div>
+    <div style="padding:10px 4px;font-size:11px;color:var(--text3)">${list.length} de ${ativos.length} equipamento(s) · ${clientesDistintos} cliente(s) distinto(s)${(S.equipSearch||(fTipo!=='Todos'))?` · <span style="cursor:pointer;color:#60a5fa" onclick="S.equipSearch='';S.equipTipoFilter='Todos';renderApp()">limpar filtros</span>`:''}</div>
   </div>`;
 }
 function propostaStatusClass(status){
@@ -3721,6 +3737,14 @@ function renderPropostaDetailPanel(p){
           ${p.inscricao_estadual?`<div class="pdp-info-row"><span class="pdp-info-label">IE</span><span class="pdp-info-value">${esc(p.inscricao_estadual)}</span></div>`:''}
         </div>
       </div>
+      ${(()=>{const eqs=getEquiposDoCliente(p.cliente);if(!eqs.length)return'';return `<div>
+        <div class="pdp-section-label">Equipamentos do cliente (${eqs.length})</div>
+        <div class="pdp-client-card" style="padding:10px">
+          ${eqs.slice(0,8).map(e=>`<div class="pdp-info-row" style="padding:5px 0"><span class="pdp-info-label" style="flex:1;min-width:0">${esc(e.modelo||e.tipo_equipamento||'Equipamento')}${e.localizacao?` · ${esc(e.localizacao)}`:''}</span><span class="pdp-info-value" style="font-family:'DM Mono',monospace;font-size:11px">${esc(e.numero_serie||'—')}</span></div>`).join('')}
+          ${eqs.length>8?`<div style="font-size:10px;color:var(--text3);padding:4px 0">+${eqs.length-8} equipamento(s)…</div>`:''}
+          <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:6px" onclick="S.comercialTab='equipamentos';S.equipSearch='${escJs(p.cliente||'')}';S.equipTipoFilter='Todos';S.selectedPropostaId='';renderApp()">Ver na aba Equipamentos</button>
+        </div>
+      </div>`;})()}
       <div>
         <div class="pdp-section-label">Dados da proposta</div>
         <div class="pdp-info-row"><span class="pdp-info-label">Número</span><span class="pdp-info-value" style="font-family:'DM Mono',monospace">${esc(p.numero||'—')}</span></div>
@@ -8298,6 +8322,39 @@ function drawProposalClientPDFBlock(doc,p,x,y,w){
 window.propostasTXT=()=>{
   const rows=propostaExportRows();
   exportTXT(rows.map(r=>[r.numero,r.empresa,r.cliente,r.nome,r.status,r.emissao,r.vencimento,r.responsavel,r.itens,fmtV(r.total)]),['Numero','Empresa','Cliente','Proposta','Status','Emissao','Vencimento','Responsavel','Itens','Total'],'Propostas_Comerciais');
+};
+// ── EXPORTAÇÃO DE EQUIPAMENTOS (respeita busca + filtro de tipo ativos na tela) ──
+function equipamentoExportRows(list=getFilteredEquipamentos()){
+  return (list||[]).map((e,i)=>({idx:i+1,serie:e.numero_serie||'',cliente:equipCliente(e),localizacao:e.localizacao||'',
+    tipo:e.tipo_equipamento||'',modelo:e.modelo||'',setor:[e.setor,e.ambiente].map(v=>String(v||'').trim()).filter(Boolean).join(' / '),
+    etiquetas:e.etiquetas||'',observacoes:e.observacoes||'',criado:String(e.criado_em||'').slice(0,16)}));
+}
+window.equipamentosXLSX=()=>{
+  const rows=equipamentoExportRows();
+  if(!rows.length){toast('Sem equipamentos para exportar.','#f59e0b');return;}
+  return exportStyledXLSX({sheetName:'Equipamentos',filename:'Equipamentos_'+todayISO(),title:'Equipamentos · JET',meta:[`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} equipamento(s)`],columns:[{header:'#',key:'idx',width:6,align:'center'},{header:'Nº Série',key:'serie',width:16},{header:'Cliente',key:'cliente',width:34},{header:'Localização',key:'localizacao',width:24},{header:'Tipo',key:'tipo',width:28},{header:'Modelo',key:'modelo',width:24},{header:'Setor/Ambiente',key:'setor',width:20},{header:'Etiquetas',key:'etiquetas',width:14},{header:'Observações',key:'observacoes',width:28},{header:'Criado em',key:'criado',width:16}],rows});
+};
+window.equipamentosTXT=()=>{
+  const rows=equipamentoExportRows();
+  if(!rows.length){toast('Sem equipamentos para exportar.','#f59e0b');return;}
+  exportTXT(rows.map(r=>[r.serie,r.cliente,r.localizacao,r.tipo,r.modelo,r.setor,r.etiquetas,r.observacoes,r.criado]),['Numero Serie','Cliente','Localizacao','Tipo','Modelo','Setor/Ambiente','Etiquetas','Observacoes','Criado em'],'Equipamentos');
+};
+window.equipamentosPDF=()=>{
+  if(!window.jspdf){toast('Biblioteca jsPDF não carregada.','#f59e0b');return;}
+  const rows=equipamentoExportRows();
+  if(!rows.length){toast('Sem equipamentos para exportar.','#f59e0b');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,M=14;
+  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
+  doc.setFontSize(15);doc.setTextColor(20,32,60);doc.text('Equipamentos',M+26,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,110,130);doc.text([`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} equipamento(s)`].join(' · '),M+26,18);
+  doc.setDrawColor(26,46,107);doc.setLineWidth(.6);doc.line(M,26,W-M,26);
+  const cols=[{header:'Nº Série',key:'serie'},{header:'Cliente',key:'cliente'},{header:'Localização',key:'localizacao'},{header:'Tipo',key:'tipo'},{header:'Modelo',key:'modelo'},{header:'Setor/Amb.',key:'setor'},{header:'Observações',key:'observacoes'}];
+  doc.autoTable({startY:30,margin:{left:M,right:M},head:[cols.map(c=>c.header)],body:rows.map(r=>cols.map(c=>String(r[c.key]??''))),styles:{fontSize:7.5,cellPadding:2,textColor:[20,32,60]},headStyles:{fillColor:[26,46,107],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[245,248,255]},didDrawPage:(d)=>{doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`JET Gestão de Obras · Pág ${d.pageNumber}`,W/2,205,{align:'center'});}});
+  doc.save(`Equipamentos_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('PDF exportado!');
 };
 window.propostaTXT=(id)=>{
   const p=getPropostaOrToast(id);if(!p)return;
