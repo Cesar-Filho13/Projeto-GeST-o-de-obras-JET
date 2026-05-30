@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="202605281900">
+<meta name="jet-build" content="20260529213323">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -12184,11 +12184,24 @@ function initDateInputs(){
   });
 }
 
+// Blindagem: um erro ao montar um modal (ex.: dado de orçamento/proposta fora do
+// formato esperado) não pode congelar a atribuição de innerHTML inteira do renderApp,
+// o que deixaria a tela travada ("clico e nada acontece"). Aqui o erro vira um toast
+// visível com a causa real e o app segue utilizável.
+function safeRenderModal(){
+  try{return renderModal();}
+  catch(e){
+    console.error('[JET] Falha ao renderizar modal',S.modal,e);
+    const _m=S.modal;S.modal=null;S.modalData={};
+    try{toast('Não foi possível abrir esta janela ('+(_m||'modal')+'): '+((e&&e.message)||e),'#ef4444');}catch(_){}
+    return'';
+  }
+}
 function renderApp(){
   if(!currentUser){renderAuth();return;}
   let content='';
   if(S.page==='home'){
-    document.getElementById('root').innerHTML=renderHome()+renderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
+    document.getElementById('root').innerHTML=renderHome()+safeRenderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
     updateOnlinePresenceUI();
     applyMobileTableCards();
     syncAppHistory({replace:!_historyBootstrapped});
@@ -12199,7 +12212,7 @@ function renderApp(){
   else if(S.page==='obra')content=renderObraInner();
   else if(S.page==='gerenciar-obras')content=renderGerenciarObras();
 
-  document.getElementById('root').innerHTML=topbarHtml()+content+renderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
+  document.getElementById('root').innerHTML=topbarHtml()+content+safeRenderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
   updateOnlinePresenceUI();
   applyMobileTableCards();
   syncAppHistory({replace:!_historyBootstrapped});
