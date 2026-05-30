@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260529224603">
+<meta name="jet-build" content="20260530012737">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -2077,6 +2077,20 @@ async function loadRemoteProdutos(){
     REMOTE_PRODUTOS=[];console.warn('[JET] Produtos não carregados:',err?.message||err);
   }
 }
+async function loadRemoteEquipamentos(){
+  try{
+    const {data,error}=await sb.from('equipamentos').select('*').order('nome_cliente',{ascending:true});
+    if(error){
+      if(/42P01|PGRST205|does not exist|Could not find the table/i.test(error.message||error.code||'')){
+        DB.equipamentos=[];console.warn('[JET] Tabela equipamentos ainda não criada.');return;
+      }
+      throw error;
+    }
+    DB.equipamentos=data||[];
+  }catch(err){
+    DB.equipamentos=[];console.warn('[JET] Equipamentos não carregados:',err?.message||err);
+  }
+}
 async function loadRemoteClientes(){
   try{
     const {data,error}=await sb.from('clientes').select('*').order('nome',{ascending:true});
@@ -2783,7 +2797,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],equipamentos:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
 
 async function _fetchCoreTables(){
   return Promise.all([
@@ -2848,6 +2862,7 @@ async function loadAll(){
   await loadRemotePropostas();
   await loadRemoteClientes();
   await loadRemoteProdutos();
+  await loadRemoteEquipamentos();
   await loadRemoteDespesaFiles();
   await loadRemoteMaterialReqFiles();
   await loadRemoteAlmoxMeta();
@@ -3583,16 +3598,63 @@ function renderComercialModule(){
   const tab=S.comercialTab||'propostas';
   const propostas=cleanPropostas(DB.propostas||[]);
   const cotacoes=DB.cotacoes||[];
+  const equipamentos=DB.equipamentos||[];
   const totalPropostas=propostas.reduce((sum,p)=>sum+(Number(p.total)||0),0);
   const abertas=propostas.filter(p=>['Rascunho','Enviada'].includes(p.status)).length;
   const cotAbertas=cotacoes.filter(c=>!['Fechada','Cancelada'].includes(normalizeCotacaoStatus(c.status))).length;
-  const tabCounts={propostas:propostas.length,cotacoes:cotacoes.length};
-  const subnav=['propostas','cotacoes'].map(id=>{
-    const defs={propostas:{icon:'📄',label:'Propostas'},cotacoes:{icon:'🧾',label:'Orçamentos'}}[id];
+  const tabCounts={propostas:propostas.length,cotacoes:cotacoes.length,equipamentos:equipamentos.length};
+  const subnav=['propostas','cotacoes','equipamentos'].map(id=>{
+    const defs={propostas:{icon:'📄',label:'Propostas'},cotacoes:{icon:'🧾',label:'Orçamentos'},equipamentos:{icon:'🧯',label:'Equipamentos'}}[id];
     return `<button class="obra-nav-btn${tab===id?' active':''}" onclick="S.comercialTab='${id}';renderApp()"><span class="nav-icon">${defs.icon}</span>${defs.label}<span class="nav-count">${tabCounts[id]||0}</span></button>`;
   }).join('');
+  if(tab==='equipamentos'){
+    return `<div class="compras-subnav commercial-subnav">${subnav}</div>${renderEquipamentosComerciais(equipamentos)}`;
+  }
   const section=tab==='cotacoes'?renderCotacoesComerciais(cotacoes):renderPropostasComerciais(propostas);
   return `<div class="compras-subnav commercial-subnav">${subnav}</div><div class="compras-kpi-grid"><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;border-radius:10px 0 0 10px"></div><div class="stat-label">Propostas</div><div class="stat-value" style="color:#60a5fa">${propostas.length}</div><div class="stat-sub">${fmtV(totalPropostas)} em propostas</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#10b981;border-radius:10px 0 0 10px"></div><div class="stat-label">Aprovadas</div><div class="stat-value" style="color:#34d399">${propostas.filter(p=>p.status==='Aprovada').length}</div><div class="stat-sub">${abertas} em rascunho/envio</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f59e0b;border-radius:10px 0 0 10px"></div><div class="stat-label">Orçamentos</div><div class="stat-value" style="color:#fbbf24">${cotacoes.length}</div><div class="stat-sub">${cotAbertas} processo(s) aberto(s)</div></div><div class="stat-card"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#a855f7;border-radius:10px 0 0 10px"></div><div class="stat-label">Modelo</div><div class="stat-value" style="color:#c084fc">JET</div><div class="stat-sub">PDF no padrão da proposta enviada</div></div></div>${section}`;
+}
+// ── EQUIPAMENTOS (estilo tabela Field) ────────────────────────────────────
+function equipCliente(e){return String(e&&(e.nome_cliente||e.cliente)||'').trim();}
+function getEquipTipos(list){return[...new Set((list||[]).map(e=>String(e.tipo_equipamento||'').trim()).filter(Boolean))].sort();}
+function renderEquipamentosComerciais(equipamentos=[]){
+  const q=(S.equipSearch||'').trim().toLowerCase();
+  const fTipo=S.equipTipoFilter||'Todos';
+  const tipos=getEquipTipos(equipamentos);
+  let list=equipamentos.filter(e=>!e.arquivado);
+  if(fTipo!=='Todos')list=list.filter(e=>String(e.tipo_equipamento||'').trim()===fTipo);
+  if(q)list=list.filter(e=>[e.numero_serie,e.modelo,equipCliente(e),e.localizacao,e.tipo_equipamento,e.setor,e.ambiente,e.observacoes,e.etiquetas].map(v=>String(v||'').toLowerCase()).join(' ').includes(q));
+  const tipoPills=['Todos',...tipos].map(t=>`<button class="propostas-filter-pill${fTipo===t?' active':''}" onclick="S.equipTipoFilter='${escJs(t)}';renderApp()">${esc(t)}${t!=='Todos'?' ('+equipamentos.filter(e=>!e.arquivado&&String(e.tipo_equipamento||'').trim()===t).length+')':' ('+equipamentos.filter(e=>!e.arquivado).length+')'}</button>`).join('');
+  const rows=list.length?list.map(e=>{
+    const id=escJs(e.id);
+    const tipoShort=String(e.tipo_equipamento||'').replace(/Central de Inc[eê]ndio\s*/i,'').trim()||'—';
+    const ambiente=[e.setor,e.ambiente].map(v=>String(v||'').trim()).filter(Boolean).join(' / ')||'—';
+    return `<tr class="proposta-row">
+      <td><span class="proposta-num">${esc(e.numero_serie||'—')}</span></td>
+      <td><span style="display:block;font-weight:700;color:var(--text);font-size:12px">${esc(equipCliente(e)||'—')}</span></td>
+      <td>${esc(e.localizacao||'—')}</td>
+      <td><span class="proposta-status-badge pst-enviada"><span class="proposta-status-dot"></span>${esc(tipoShort)}</span></td>
+      <td>${esc(e.modelo||'—')}</td>
+      <td style="color:var(--text3)">${esc(ambiente)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.observacoes||'')}">${esc(e.observacoes||'—')}</td>
+      <td style="color:var(--text3);white-space:nowrap">${esc(String(e.criado_em||'').slice(0,16)||fmtD(e.created_at))}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="window._openEquipamentoEdit('${id}')" title="Editar">✏</button>
+        <button class="btn btn-danger btn-sm" onclick="window._deleteEquipamento('${id}')" title="Excluir">🗑</button>
+      </td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--text3)">${equipamentos.length?'Nenhum equipamento para este filtro/busca.':'Nenhum equipamento cadastrado. Rode o db_equipamentos.sql no Supabase ou cadastre um novo.'}</td></tr>`;
+  return `<div>
+    <div class="propostas-toolbar">
+      <input class="ci" style="flex:1;min-width:200px;max-width:340px" type="search" placeholder="Buscar por série, modelo, cliente, local..." value="${esc(S.equipSearch||'')}" oninput="S.equipSearch=this.value;clearTimeout(window._equipSearchT);window._equipSearchT=setTimeout(renderApp,250)">
+      <div class="propostas-filter-pills" style="flex:1">${tipoPills}</div>
+      <button class="btn btn-primary btn-sm" onclick="window._openEquipamentoNew()">+ Novo Equipamento</button>
+    </div>
+    <div class="propostas-tbl-outer"><table class="propostas-tbl">
+      <thead><tr><th>Nº Série</th><th>Cliente</th><th>Localização</th><th>Tipo</th><th>Modelo</th><th>Setor/Ambiente</th><th>Observações</th><th>Criado em</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="padding:10px 4px;font-size:11px;color:var(--text3)">${list.length} de ${equipamentos.filter(e=>!e.arquivado).length} equipamento(s)</div>
+  </div>`;
 }
 function propostaStatusClass(status){
   return{Rascunho:'pst-rascunho',Enviada:'pst-enviada',Aprovada:'pst-aprovada',Recusada:'pst-recusada',Vencida:'pst-vencida'}[status]||'pst-rascunho';
@@ -4027,7 +4089,8 @@ function renderDashboard(){
     const tab=S.comercialTab||'propostas';
     const exportByTab={
       propostas:`<button class="btn btn-secondary btn-sm" onclick="window.propostasTXT()">TXT</button><button class="btn btn-secondary btn-sm" onclick="window.propostasXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.propostasPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-proposta';S.modalData={};renderApp()">+ Nova Proposta</button>`,
-      cotacoes:`<button class="btn btn-secondary btn-sm" onclick="window.cotacoesTXT()">TXT</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Novo Orçamento</button>`
+      cotacoes:`<button class="btn btn-secondary btn-sm" onclick="window.cotacoesTXT()">TXT</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesXLSX()">Excel</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesPDF()">PDF</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Novo Orçamento</button>`,
+      equipamentos:`<button class="btn btn-primary btn-sm" onclick="window._openEquipamentoNew()">+ Novo Equipamento</button>`
     };
     const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group">${exportByTab[tab]||exportByTab.propostas}</div>`;
     return `<div class="page">${renderPageHero('📄','Propostas e Orçamentos','COMERCIAL · Propostas, orçamentos e documentos comerciais',heroActions)}${renderComercialModule()}</div>`;
@@ -9137,6 +9200,29 @@ ${commercialItemsHeaderHtml()}
     footer=`<button class="btn btn-secondary" onclick="window.cotacaoPDF('${escJs(cot.id||'')}')">PDF</button>`;
   }
 
+  else if(m==='new-equipamento'||m==='edit-equipamento'){
+    const eq=m==='edit-equipamento'?(DB.equipamentos||[]).find(x=>x.id===d.id)||{}:{};
+    title=m==='new-equipamento'?'Novo Equipamento':'Editar Equipamento';
+    const gv=(k,def='')=>eq[k]!=null?eq[k]:def;
+    const clienteOpts=[...new Set((DB.equipamentos||[]).map(x=>String(x.nome_cliente||'').trim()).filter(Boolean)),...getClienteCatalog().map(c=>c.n)].filter((v,i,a)=>v&&a.indexOf(v)===i).sort();
+    const tipoOpts=[...new Set((DB.equipamentos||[]).map(x=>String(x.tipo_equipamento||'').trim()).filter(Boolean))];
+    const catOpts=[...new Set((DB.equipamentos||[]).map(x=>String(x.categoria||'').trim()).filter(Boolean))];
+    const localOpts=[...new Set((DB.equipamentos||[]).map(x=>String(x.localizacao||'').trim()).filter(Boolean))];
+    body=`<div class="form-grid-2">
+  <div class="form-group" style="grid-column:1/-1"><label>Cliente</label><input id="m-eq-cliente" list="m-eq-cliente-list" placeholder="Nome do cliente / loja" value="${esc(gv('nome_cliente'))}"><datalist id="m-eq-cliente-list">${clienteOpts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Localização</label><input id="m-eq-local" list="m-eq-local-list" placeholder="Ex: C&A - Loja CPL" value="${esc(gv('localizacao'))}"><datalist id="m-eq-local-list">${localOpts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+  <div class="form-group"><label>Tipo de equipamento</label><input id="m-eq-tipo" list="m-eq-tipo-list" placeholder="Ex: Central de Incêndio Endereçável" value="${esc(gv('tipo_equipamento'))}"><datalist id="m-eq-tipo-list">${tipoOpts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+  <div class="form-group"><label>Categoria</label><input id="m-eq-categoria" list="m-eq-cat-list" placeholder="Ex: central_de_incêndio_endereçável" value="${esc(gv('categoria'))}"><datalist id="m-eq-cat-list">${catOpts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+  <div class="form-group"><label>Modelo</label><input id="m-eq-modelo" placeholder="Ex: Skyfire JB-QB-5Ei" value="${esc(gv('modelo'))}"></div>
+  <div class="form-group"><label>Nº de Série</label><input id="m-eq-serie" placeholder="Ex: 1705109" value="${esc(gv('numero_serie'))}"></div>
+  <div class="form-group"><label>Setor</label><input id="m-eq-setor" placeholder="Setor" value="${esc(gv('setor'))}"></div>
+  <div class="form-group"><label>Ambiente</label><input id="m-eq-ambiente" placeholder="Ambiente" value="${esc(gv('ambiente'))}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Etiquetas</label><input id="m-eq-etiquetas" placeholder="Ex: 02 Laços" value="${esc(gv('etiquetas'))}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea id="m-eq-obs" rows="2" placeholder="Observações...">${esc(gv('observacoes'))}</textarea></div>
+</div>`;
+    onSave=m==='new-equipamento'?`_saveEquipamento()`:`_saveEquipamento('${escJs(eq.id||'')}')`;
+  }
+
   else if(m==='new-ferramenta'||m==='edit-ferramenta'){
     const ferr=m==='edit-ferramenta'?DB.ferramentas.find(x=>x.id===d.id):null;
     title=m==='new-ferramenta'?'Nova Ferramenta / Ativo':'Editar Ferramenta';
@@ -9198,7 +9284,7 @@ ${_opt('pdf-opt-anexos','📎','Anexos da solicitação',_reqFileCnt>0?`${_reqFi
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='edit-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='edit-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'||m==='new-equipamento'||m==='edit-equipamento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -10968,6 +11054,47 @@ window._addCatalogProduto=(idx)=>{
   },'prop'));
   window._recalcCommercialTotal('prop');
   document.getElementById('prod-cat-overlay-el')?.remove();
+};
+
+// ── EQUIPAMENTOS: CRUD ────────────────────────────────────────────────────
+window._openEquipamentoNew=()=>{S.modal='new-equipamento';S.modalData={};renderApp();};
+window._openEquipamentoEdit=(id)=>{
+  try{
+    if(!(DB.equipamentos||[]).find(e=>e.id===id)){toast('Equipamento não encontrado.','#ef4444');return;}
+    S.modal='edit-equipamento';S.modalData={id};renderApp();
+  }catch(e){console.error(e);toast('Erro ao abrir equipamento: '+(e&&e.message||e),'#ef4444');}
+};
+window._saveEquipamento=async(id=null)=>{
+  const g=k=>document.getElementById('m-eq-'+k)?.value?.trim()||'';
+  const numero_serie=g('serie'),modelo=g('modelo'),nome_cliente=g('cliente');
+  if(!nome_cliente&&!modelo&&!numero_serie){toast('Informe ao menos cliente, modelo ou nº de série.','#ef4444');return;}
+  const payload={nome_cliente,localizacao:g('local'),tipo_equipamento:g('tipo'),categoria:g('categoria'),
+    modelo,numero_serie,setor:g('setor'),ambiente:g('ambiente'),observacoes:g('obs'),etiquetas:g('etiquetas'),
+    updated_at:new Date().toISOString()};
+  try{
+    if(id){
+      const {error}=await sb.from('equipamentos').update(payload).eq('id',id);
+      if(error)throw error;
+      DB.equipamentos=(DB.equipamentos||[]).map(e=>e.id===id?{...e,...payload}:e);
+      toast('Equipamento atualizado.','#22c55e');
+    }else{
+      const {data,error}=await sb.from('equipamentos').insert(payload).select().single();
+      if(error)throw error;
+      DB.equipamentos=[data,...(DB.equipamentos||[])];
+      toast('Equipamento cadastrado.','#22c55e');
+    }
+    _closeModal();
+  }catch(err){toast('Erro ao salvar: '+(err?.message||err),'#ef4444');}
+};
+window._deleteEquipamento=async(id)=>{
+  const e=(DB.equipamentos||[]).find(x=>x.id===id);if(!e)return;
+  if(!confirm(`Excluir equipamento ${e.numero_serie||e.modelo||''} de ${equipCliente(e)||'cliente'}?`))return;
+  try{
+    const {error}=await sb.from('equipamentos').delete().eq('id',id);
+    if(error)throw error;
+    DB.equipamentos=(DB.equipamentos||[]).filter(x=>x.id!==id);
+    toast('Equipamento removido.','#f59e0b');renderApp();
+  }catch(err){toast('Erro ao excluir: '+(err?.message||err),'#ef4444');}
 };
 
 window._openPropostaPanel=(id)=>{
