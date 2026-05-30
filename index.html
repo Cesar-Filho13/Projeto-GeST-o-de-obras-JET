@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260529214910">
+<meta name="jet-build" content="20260529222142">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1154,6 +1154,11 @@ const BUCKET='aditivos-files';
 // t(telefone) a(endereço) ci(cidade) uf. Produto: n(nome) d(descrição) u(unid) v(valor).
 const FIELD_CLIENTES=[];
 const FIELD_PRODUTOS=[];
+// Catálogo mestre de clientes vindo da tabela public.clientes do Supabase (quando existir).
+// Preenchido por loadRemoteClientes(); usado por getClienteCatalog(). Cada item:
+// {n,c,e,t,a,ci,uf,_id}. Se a tabela não existir, fica vazio e o app usa o catálogo
+// derivado das propostas — degradação graciosa.
+let REMOTE_CLIENTES=[];
 const {createClient}=supabase;
 const sb=createClient(SURL,SKEY);
 const APP_BUILD=(document.querySelector('meta[name="jet-build"]')?.getAttribute('content')||'dev-build').trim();
@@ -2044,6 +2049,52 @@ async function saveRemotePropostas(list,{silent=false}={}){
     return false;
   }
 }
+// Catálogo dedicado de clientes (tabela public.clientes). Resiliente: se a tabela
+// ainda não foi criada no Supabase, apenas registra um aviso e segue (sem toast),
+// mantendo o autocomplete funcionando a partir das propostas.
+function mapClienteRow(row={}){
+  return{n:String(row.nome||'').trim(),c:String(row.cnpj||'').trim(),e:String(row.email||'').trim(),
+    t:String(row.telefone||'').trim(),a:String(row.endereco||'').trim(),
+    ci:String(row.cidade||'').trim(),uf:String(row.uf||'').trim(),_id:row.id};
+}
+async function loadRemoteClientes(){
+  try{
+    const {data,error}=await sb.from('clientes').select('*').order('nome',{ascending:true});
+    if(error){
+      // 42P01 = tabela inexistente; PGRST205 = não está no schema cache
+      if(/42P01|PGRST205|does not exist|Could not find the table/i.test(error.message||error.code||'')){
+        REMOTE_CLIENTES=[];console.warn('[JET] Tabela clientes ainda não criada — autocomplete usa as propostas.');return;
+      }
+      throw error;
+    }
+    REMOTE_CLIENTES=(data||[]).map(mapClienteRow).filter(c=>c.n);
+  }catch(err){
+    REMOTE_CLIENTES=[];console.warn('[JET] Clientes não carregados:',err?.message||err);
+  }
+}
+// Upsert best-effort do cliente na tabela ao salvar uma proposta. Silencioso em falha
+// (ex.: tabela ainda não criada). Dedup por nome (case-insensitive) via cache REMOTE_CLIENTES.
+async function upsertClienteFromProposta(p={}){
+  const nome=String(p.cliente||'').trim();
+  if(!nome)return;
+  const payload={nome,cnpj:String(p.cnpj||'').trim(),email:String(p.email||'').trim(),
+    telefone:String(p.telefone||'').trim(),endereco:String(p.endereco||'').trim(),
+    updated_at:new Date().toISOString()};
+  try{
+    const existing=REMOTE_CLIENTES.find(c=>c.n.toLowerCase()===nome.toLowerCase());
+    if(existing&&existing._id){
+      const {error}=await sb.from('clientes').update(payload).eq('id',existing._id);
+      if(error)throw error;
+      Object.assign(existing,{n:nome,c:payload.cnpj,e:payload.email,t:payload.telefone,a:payload.endereco});
+    }else{
+      const {data,error}=await sb.from('clientes').insert(payload).select().single();
+      if(error)throw error;
+      if(data)REMOTE_CLIENTES.push(mapClienteRow(data));
+    }
+  }catch(err){
+    console.warn('[JET] Cliente não sincronizado na tabela:',err?.message||err);
+  }
+}
 async function loadRemoteDespesaFiles(){
   const localMap=getLocalDespesaFiles();
   const pendingMap=getPendingDespesaFiles();
@@ -2775,6 +2826,7 @@ async function loadAll(){
   await loadRemoteHomeNotices();
   await loadRemoteCommercialCompanies();
   await loadRemotePropostas();
+  await loadRemoteClientes();
   await loadRemoteDespesaFiles();
   await loadRemoteMaterialReqFiles();
   await loadRemoteAlmoxMeta();
@@ -10766,6 +10818,7 @@ window._saveProposta=async(id=null)=>{
   });
   DB.propostas=id?DB.propostas.map(p=>p.id===id?obj:p):[obj,...(DB.propostas||[])];
   queuePropostasSync(true);
+  upsertClienteFromProposta(obj); // alimenta a tabela mestre de clientes (best-effort)
   toast(id?'Proposta atualizada.':'Proposta criada.','#22c55e');
   _closeModal();
 };
@@ -10776,6 +10829,12 @@ window._saveProposta=async(id=null)=>{
 // Supabase. Mescla também FIELD_CLIENTES (catálogo estático) caso seja populado.
 function getClienteCatalog(){
   const map=new Map();
+  // 1) Tabela mestre public.clientes (prioridade máxima quando existir)
+  (REMOTE_CLIENTES||[]).forEach(c=>{
+    const nome=String(c&&c.n||'').trim();if(!nome)return;
+    map.set(nome.toLowerCase(),{n:nome,c:c.c||'',e:c.e||'',t:c.t||'',a:c.a||'',ci:c.ci||'',uf:c.uf||'',_id:c._id});
+  });
+  // 2) Clientes das propostas: completam lacunas e adicionam quem ainda não está na tabela
   (DB.propostas||[]).forEach(p=>{
     const nome=String(p&&p.cliente||'').trim();
     if(!nome)return;
@@ -10788,6 +10847,7 @@ function getClienteCatalog(){
       map.set(key,{n:nome,c:p.cnpj||'',e:p.email||'',t:p.telefone||'',a:p.endereco||'',ci:'',uf:''});
     }
   });
+  // 3) Catálogo estático opcional
   (typeof FIELD_CLIENTES!=='undefined'?FIELD_CLIENTES:[]).forEach(c=>{
     const key=String(c&&c.n||'').trim().toLowerCase();
     if(key&&!map.has(key))map.set(key,c);
