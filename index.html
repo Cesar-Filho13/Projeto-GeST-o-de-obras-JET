@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260530021130">
+<meta name="jet-build" content="20260530023148">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -3651,6 +3651,7 @@ function renderEquipamentosComerciais(equipamentos=[]){
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.observacoes||'')}">${esc(e.observacoes||'—')}</td>
       <td style="color:var(--text3);white-space:nowrap">${esc(String(e.criado_em||'').slice(0,16)||fmtD(e.created_at))}</td>
       <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="window._openEquipamentoView('${id}')" title="Ver detalhes${e.url_imagem?' (com foto)':''}">${e.url_imagem?'📷':'👁'}</button>
         <button class="btn btn-secondary btn-sm" onclick="window._openEquipamentoEdit('${id}')" title="Editar">✏</button>
         <button class="btn btn-danger btn-sm" onclick="window._deleteEquipamento('${id}')" title="Excluir">🗑</button>
       </td>
@@ -9274,10 +9275,42 @@ ${commercialItemsHeaderHtml()}
   <div class="form-group"><label>Nº de Série</label><input id="m-eq-serie" placeholder="Ex: 1705109" value="${esc(gv('numero_serie'))}"></div>
   <div class="form-group"><label>Setor</label><input id="m-eq-setor" placeholder="Setor" value="${esc(gv('setor'))}"></div>
   <div class="form-group"><label>Ambiente</label><input id="m-eq-ambiente" placeholder="Ambiente" value="${esc(gv('ambiente'))}"></div>
-  <div class="form-group" style="grid-column:1/-1"><label>Etiquetas</label><input id="m-eq-etiquetas" placeholder="Ex: 02 Laços" value="${esc(gv('etiquetas'))}"></div>
+  <div class="form-group"><label>QR Code</label><input id="m-eq-qr" placeholder="Código/identificador QR" value="${esc(gv('qr_code'))}"></div>
+  <div class="form-group"><label>Etiquetas</label><input id="m-eq-etiquetas" placeholder="Ex: 02 Laços" value="${esc(gv('etiquetas'))}"></div>
+  <div class="form-group" style="grid-column:1/-1"><label>Foto (URL pública)</label><input id="m-eq-foto" placeholder="https://... (cole uma URL pública; o caminho do Field é privado)" value="${esc(gv('url_imagem'))}"></div>
   <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea id="m-eq-obs" rows="2" placeholder="Observações...">${esc(gv('observacoes'))}</textarea></div>
 </div>`;
     onSave=m==='new-equipamento'?`_saveEquipamento()`:`_saveEquipamento('${escJs(eq.id||'')}')`;
+  }
+
+  else if(m==='ver-equipamento'){
+    const e=(DB.equipamentos||[]).find(x=>x.id===d.id)||{};
+    title=e.modelo||e.tipo_equipamento||'Equipamento';
+    const isImg=/^https?:\/\//i.test(String(e.url_imagem||''));
+    const qr=String(e.qr_code||'').trim();
+    const fr=(lbl,val)=>val?`<div class="pdp-info-row"><span class="pdp-info-label">${lbl}</span><span class="pdp-info-value">${esc(val)}</span></div>`:'';
+    body=`<div style="display:flex;gap:18px;flex-wrap:wrap">
+  <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:12px;align-items:center">
+    ${isImg
+      ?`<img src="${esc(e.url_imagem)}" alt="foto" style="width:180px;height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--border)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div style="display:none;width:180px;height:180px;border-radius:12px;border:1px dashed var(--border);align-items:center;justify-content:center;color:var(--text3);font-size:12px;text-align:center;padding:8px">Foto indisponível</div>`
+      :`<div style="width:180px;height:180px;border-radius:12px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center;padding:12px">${e.url_imagem?'📷 Foto hospedada no Field (caminho privado).<br><br>Cole uma URL pública no botão Editar.':'Sem foto'}</div>`}
+    ${qr?`<div style="text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qr)}" alt="QR" style="width:120px;height:120px;border-radius:8px;background:#fff;padding:4px" loading="lazy"><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;max-width:132px;word-break:break-all">${esc(qr)}</div></div>`:''}
+  </div>
+  <div style="flex:1;min-width:240px">
+    <span class="proposta-status-badge pst-enviada" style="display:inline-flex;margin-bottom:12px"><span class="proposta-status-dot"></span>${esc(e.tipo_equipamento||'—')}</span>
+    ${fr('Cliente',e.nome_cliente)}
+    ${fr('Localização',e.localizacao)}
+    ${fr('Nº de Série',e.numero_serie)}
+    ${fr('Setor',e.setor)}
+    ${fr('Ambiente',e.ambiente)}
+    ${fr('Etiquetas',e.etiquetas)}
+    ${fr('Categoria',e.categoria)}
+    ${fr('Criado em',e.criado_em)}
+    ${e.observacoes?`<div class="pdp-info-row" style="grid-template-columns:1fr"><span class="pdp-info-label" style="margin-bottom:4px">Observações</span><span class="pdp-info-value" style="white-space:pre-wrap;color:var(--text2)">${esc(e.observacoes)}</span></div>`:''}
+  </div>
+</div>`;
+    footer=`<button class="btn btn-primary" onclick="window._openEquipamentoEdit('${escJs(e.id||'')}')">✏ Editar</button>`;
+    onSave='_closeModal()';saveLabel='Fechar';
   }
 
   else if(m==='new-ferramenta'||m==='edit-ferramenta'){
@@ -9341,7 +9374,7 @@ ${_opt('pdf-opt-anexos','📎','Anexos da solicitação',_reqFileCnt>0?`${_reqFi
   }
 
   return`<div class="modal-overlay">
-<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='edit-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'||m==='new-equipamento'||m==='edit-equipamento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
+<div class="modal${m==='import-funcionarios'||m==='import-despesas'||m==='import-rdo'||m==='new-rdo'||m==='edit-rdo'||m==='new-material'||m==='edit-material'||m==='edit-requisicao'||m==='new-todo'||m==='new-pedido'||m==='edit-pedido'||m==='new-proposta'||m==='edit-proposta'||m==='new-cotacao'||m==='edit-cotacao'||m==='new-estoque'||m==='edit-estoque'||m==='desp-files'||m==='desp-file-preview'||m==='almox-entrada'||m==='almox-saida'||m==='almox-recebimento'||m==='almox-import-retorno'||m==='new-ferramenta'||m==='edit-ferramenta'||m==='new-equipamento'||m==='edit-equipamento'||m==='ver-equipamento'?' modal-wide':''}${m==='desp-file-preview'?' modal-preview':''}">
 <div class="modal-title">${title}</div>
 ${body}
 <div class="modal-footer" style="flex-wrap:wrap">
@@ -11121,13 +11154,17 @@ window._openEquipamentoEdit=(id)=>{
     S.modal='edit-equipamento';S.modalData={id};renderApp();
   }catch(e){console.error(e);toast('Erro ao abrir equipamento: '+(e&&e.message||e),'#ef4444');}
 };
+window._openEquipamentoView=(id)=>{
+  if(!(DB.equipamentos||[]).find(e=>e.id===id)){toast('Equipamento não encontrado.','#ef4444');return;}
+  S.modal='ver-equipamento';S.modalData={id};renderApp();
+};
 window._saveEquipamento=async(id=null)=>{
   const g=k=>document.getElementById('m-eq-'+k)?.value?.trim()||'';
   const numero_serie=g('serie'),modelo=g('modelo'),nome_cliente=g('cliente');
   if(!nome_cliente&&!modelo&&!numero_serie){toast('Informe ao menos cliente, modelo ou nº de série.','#ef4444');return;}
   const payload={nome_cliente,localizacao:g('local'),tipo_equipamento:g('tipo'),categoria:g('categoria'),
     modelo,numero_serie,setor:g('setor'),ambiente:g('ambiente'),observacoes:g('obs'),etiquetas:g('etiquetas'),
-    updated_at:new Date().toISOString()};
+    qr_code:g('qr'),url_imagem:g('foto'),updated_at:new Date().toISOString()};
   try{
     if(id){
       const {error}=await sb.from('equipamentos').update(payload).eq('id',id);
