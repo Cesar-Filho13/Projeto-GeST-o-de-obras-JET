@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260529214118">
+<meta name="jet-build" content="20260529214910">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -8979,7 +8979,7 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
   <div class="form-group"><label>Emissão</label><input id="m-prop-emissao" type="date" value="${esc(base.data_emissao)}"></div>
   <div class="form-group"><label>Vencimento</label><input id="m-prop-venc" type="date" value="${esc(base.data_vencimento)}"></div>
   <div class="form-group" style="grid-column:1/-1"><label>Nome do orçamento *</label><input id="m-prop-nome" value="${esc(base.nome)}" placeholder="Ex: Proposta Projeto SPDA - NASP"></div>
-  <div class="form-group"><label>Cliente * <span style="font-size:10px;color:var(--text3);font-weight:400">(${FIELD_CLIENTES.length} do catálogo Field)</span></label><div class="cliente-ac-wrap"><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Digite para buscar no catálogo..." autocomplete="off" oninput="window._clienteAutoSearch(this.value)" onblur="setTimeout(()=>window._closeClienteAc(),200)"><div id="m-prop-cliente-ac" class="cliente-ac-list"></div></div></div>
+  <div class="form-group"><label>Cliente * <span style="font-size:10px;color:var(--text3);font-weight:400">(${getClienteCatalog().length} cliente(s) já usado(s))</span></label><div class="cliente-ac-wrap"><input id="m-prop-cliente" value="${esc(base.cliente)}" placeholder="Digite para buscar no catálogo..." autocomplete="off" oninput="window._clienteAutoSearch(this.value)" onblur="setTimeout(()=>window._closeClienteAc(),200)"><div id="m-prop-cliente-ac" class="cliente-ac-list"></div></div></div>
   <div class="form-group"><label>CNPJ</label><input id="m-prop-cnpj" inputmode="numeric" maxlength="18" value="${esc(formatCNPJ(base.cnpj))}" placeholder="00.000.000/0000-00" oninput="window._formatCNPJInput(this)" onblur="window._validateCNPJInput(this)"></div>
   <div class="form-group"><label>Inscrição Estadual</label><input id="m-prop-ie" value="${esc(base.inscricao_estadual)}" placeholder="ISENTA / nº inscrição"></div>
   <div class="form-group"><label>Contato</label><input id="m-prop-contato" value="${esc(base.contato)}" placeholder="Pessoa de contato"></div>
@@ -10770,12 +10770,36 @@ window._saveProposta=async(id=null)=>{
   _closeModal();
 };
 // ── AUTOCOMPLETE CLIENTE ──────────────────────────────────────────────────
+// Catálogo de clientes derivado das propostas já sincronizadas (Supabase Storage):
+// cada cliente distinto vira sugestão com os últimos dados usados (CNPJ/e-mail/
+// telefone/endereço). Sem tabela nova: a fonte é DB.propostas, que o app carrega do
+// Supabase. Mescla também FIELD_CLIENTES (catálogo estático) caso seja populado.
+function getClienteCatalog(){
+  const map=new Map();
+  (DB.propostas||[]).forEach(p=>{
+    const nome=String(p&&p.cliente||'').trim();
+    if(!nome)return;
+    const key=nome.toLowerCase();
+    const prev=map.get(key);
+    if(prev){
+      prev.c=prev.c||p.cnpj||'';prev.e=prev.e||p.email||'';
+      prev.t=prev.t||p.telefone||'';prev.a=prev.a||p.endereco||'';
+    }else{
+      map.set(key,{n:nome,c:p.cnpj||'',e:p.email||'',t:p.telefone||'',a:p.endereco||'',ci:'',uf:''});
+    }
+  });
+  (typeof FIELD_CLIENTES!=='undefined'?FIELD_CLIENTES:[]).forEach(c=>{
+    const key=String(c&&c.n||'').trim().toLowerCase();
+    if(key&&!map.has(key))map.set(key,c);
+  });
+  return Array.from(map.values()).sort((a,b)=>a.n.localeCompare(b.n,'pt-BR',{sensitivity:'base'}));
+}
 window._clienteAutoSearch=(val)=>{
   const ac=document.getElementById('m-prop-cliente-ac');
   if(!ac)return;
   const q=(val||'').trim().toLowerCase();
   if(q.length<2){ac.classList.remove('show');ac.innerHTML='';return;}
-  const matches=(typeof FIELD_CLIENTES!=='undefined'?FIELD_CLIENTES:[]).filter(c=>c.n.toLowerCase().includes(q)).slice(0,14);
+  const matches=getClienteCatalog().filter(c=>c.n.toLowerCase().includes(q)).slice(0,14);
   if(!matches.length){ac.classList.remove('show');return;}
   ac.innerHTML=matches.map((c,i)=>`<div class="cliente-ac-item" onmousedown="window._selectCatalogCliente(${i+'_'+Date.now()},'${escJs(c.n)}','${escJs(c.c)}','${escJs(c.e)}','${escJs(c.t)}','${escJs(c.a)}')">
     <div class="cliente-ac-name">${esc(c.n)}</div>
