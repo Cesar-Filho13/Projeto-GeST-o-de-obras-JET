@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260529222142">
+<meta name="jet-build" content="20260529224603">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1154,11 +1154,12 @@ const BUCKET='aditivos-files';
 // t(telefone) a(endereço) ci(cidade) uf. Produto: n(nome) d(descrição) u(unid) v(valor).
 const FIELD_CLIENTES=[];
 const FIELD_PRODUTOS=[];
-// Catálogo mestre de clientes vindo da tabela public.clientes do Supabase (quando existir).
-// Preenchido por loadRemoteClientes(); usado por getClienteCatalog(). Cada item:
-// {n,c,e,t,a,ci,uf,_id}. Se a tabela não existir, fica vazio e o app usa o catálogo
-// derivado das propostas — degradação graciosa.
+// Catálogos mestres vindos de tabelas do Supabase (public.clientes / public.produtos),
+// quando existirem. Preenchidos por loadRemoteClientes()/loadRemoteProdutos(). Se a
+// tabela não existir, ficam vazios e o app usa fallback (propostas / FIELD_*).
+// Item cliente: {n,c,e,t,a,ci,uf,_id}. Item produto: {n,d,u,t,c,v,_id}.
 let REMOTE_CLIENTES=[];
+let REMOTE_PRODUTOS=[];
 const {createClient}=supabase;
 const sb=createClient(SURL,SKEY);
 const APP_BUILD=(document.querySelector('meta[name="jet-build"]')?.getAttribute('content')||'dev-build').trim();
@@ -2055,7 +2056,26 @@ async function saveRemotePropostas(list,{silent=false}={}){
 function mapClienteRow(row={}){
   return{n:String(row.nome||'').trim(),c:String(row.cnpj||'').trim(),e:String(row.email||'').trim(),
     t:String(row.telefone||'').trim(),a:String(row.endereco||'').trim(),
-    ci:String(row.cidade||'').trim(),uf:String(row.uf||'').trim(),_id:row.id};
+    ci:String(row.cidade||'').trim(),uf:String(row.uf||row.estado||'').trim(),_id:row.id};
+}
+function mapProdutoRow(row={}){
+  return{n:String(row.nome||'').trim(),d:String(row.descricao||'').trim(),
+    u:String(row.medida||row.unidade||'').trim(),t:String(row.tipo_produto||'').trim(),
+    c:String(row.codigo||'').trim(),v:row.valor!=null&&row.valor!==''?Number(row.valor):'',_id:row.id};
+}
+async function loadRemoteProdutos(){
+  try{
+    const {data,error}=await sb.from('produtos').select('*').order('nome',{ascending:true});
+    if(error){
+      if(/42P01|PGRST205|does not exist|Could not find the table/i.test(error.message||error.code||'')){
+        REMOTE_PRODUTOS=[];console.warn('[JET] Tabela produtos ainda não criada — catálogo usa FIELD_PRODUTOS.');return;
+      }
+      throw error;
+    }
+    REMOTE_PRODUTOS=(data||[]).map(mapProdutoRow).filter(p=>p.n);
+  }catch(err){
+    REMOTE_PRODUTOS=[];console.warn('[JET] Produtos não carregados:',err?.message||err);
+  }
 }
 async function loadRemoteClientes(){
   try{
@@ -2827,6 +2847,7 @@ async function loadAll(){
   await loadRemoteCommercialCompanies();
   await loadRemotePropostas();
   await loadRemoteClientes();
+  await loadRemoteProdutos();
   await loadRemoteDespesaFiles();
   await loadRemoteMaterialReqFiles();
   await loadRemoteAlmoxMeta();
@@ -10882,6 +10903,14 @@ window._closeClienteAc=()=>{
 };
 
 // ── CATÁLOGO DE PRODUTOS ──────────────────────────────────────────────────
+// Fonte unificada e estável (ordem determinística p/ seleção por índice):
+// tabela public.produtos (REMOTE_PRODUTOS) + FIELD_PRODUTOS estático como fallback.
+function getProdutoCatalog(){
+  const map=new Map();
+  (REMOTE_PRODUTOS||[]).forEach(p=>{const k=(p.n||'').toLowerCase();if(p.n&&!map.has(k))map.set(k,p);});
+  (typeof FIELD_PRODUTOS!=='undefined'?FIELD_PRODUTOS:[]).forEach(p=>{const k=String(p&&p.n||'').toLowerCase();if(k&&!map.has(k))map.set(k,p);});
+  return Array.from(map.values());
+}
 window._openProdCatalog=()=>{
   const existing=document.getElementById('prod-cat-overlay-el');
   if(existing)existing.remove();
@@ -10905,7 +10934,7 @@ window._filterProdCatalog=(q)=>{
   if(body)body.innerHTML=window._renderProdCatalogRows(q);
 };
 window._renderProdCatalogRows=(q)=>{
-  const catalog=typeof FIELD_PRODUTOS!=='undefined'?FIELD_PRODUTOS:[];
+  const catalog=getProdutoCatalog();
   const lower=(q||'').toLowerCase();
   const rows=lower.length<1?catalog:catalog.filter(p=>
     p.n.toLowerCase().includes(lower)||(p.t||'').toLowerCase().includes(lower)||(p.c||'').toLowerCase().includes(lower)
@@ -10922,7 +10951,7 @@ window._renderProdCatalogRows=(q)=>{
   }).join('');
 };
 window._addCatalogProduto=(idx)=>{
-  const catalog=typeof FIELD_PRODUTOS!=='undefined'?FIELD_PRODUTOS:[];
+  const catalog=getProdutoCatalog();
   const p=catalog[idx];
   if(!p)return;
   const list=document.getElementById('prop-items-list');
