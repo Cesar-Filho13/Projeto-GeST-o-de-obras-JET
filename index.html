@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531181133">
+<meta name="jet-build" content="20260531192105">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -7411,12 +7411,13 @@ async function exportMateriaisPDF(obra,ids,opts={}){
   const isPdfAttachment=file=>attachmentExt(file)==='pdf';
 
   function drawLogo(){
+    const s=17,x=M,y=9,rr=4;            // quadrado de cantos arredondados, proporcional
     doc.setFillColor(26,46,107);
-    doc.circle(M+13,20,13,'F');
+    doc.roundedRect(x,y,s,s,rr,rr,'F');
     doc.setFont('helvetica','bold');
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.setTextColor(255,255,255);
-    doc.text('JET',M+13,22,{align:'center'});
+    doc.text('JET',x+s/2,y+s/2+1.5,{align:'center'});
   }
 
   function drawDateBox(){
@@ -7823,7 +7824,9 @@ async function exportMateriaisPDF(obra,ids,opts={}){
     doc.text('JET Gest\u00E3o de Obras \u00B7 P\u00E1gina '+i+'/'+totalPages,W/2,H-8,{align:'center'});
   }
 
-  const fileDate=/^\d{4}-\d{2}-\d{2}/.test(String(dateSource||''))?String(dateSource).slice(0,10):new Date().toISOString().slice(0,10);
+  const _iso=/^\d{4}-\d{2}-\d{2}/.test(String(dateSource||''))?String(dateSource).slice(0,10):new Date().toISOString().slice(0,10);
+  const [_yy,_mm,_dd]=_iso.split('-');
+  const fileDate=`${_dd}-${_mm}-${_yy}`;   // dd-mm-aaaa (barra é inválida em nome de arquivo)
   doc.save((filenamePrefix||'Requisicao_Materiais_')+obra.replace(/\s+/g,'_')+'_'+fileDate+'.pdf');
   toast('PDF exportado!');
 }
