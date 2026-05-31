@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531164752">
+<meta name="jet-build" content="20260531165358">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1554,9 +1554,12 @@ function getRetornoObras(){
 function getAlmoxDepositos(){
   // NÃO usa DB.obraRegistry aqui — evita dependência circular (registry pode ter nomes errados)
   // Fontes independentes: fichas criadas, customObras, tabelas de transação, retornos confirmados
-  // OVERRIDE DEFINITIVO: depósitos registrados (depositoMeta, via "+ Adicionar depósito" ou
-  // "📦 Marcar como depósito") são SEMPRE depósitos, mesmo que o nome apareça em outras fontes.
-  const forced=new Set(Object.keys(DB.almoxMeta?.depositoMeta||{}).map(n=>String(n).trim()).filter(Boolean));
+  // OVERRIDE DEFINITIVO: apenas nomes reclassificados explicitamente como depósito
+  // (forceDeposito:true via "📦 Marcar como depósito") são SEMPRE depósito, mesmo que o
+  // nome apareça em outras fontes de obra. NÃO força todo depositoMeta — uma obra real
+  // (ex.: APL) pode ter metadados de depósito por armazenar material, e não deve sumir.
+  const dm=DB.almoxMeta?.depositoMeta||{};
+  const forced=new Set(Object.keys(dm).filter(n=>dm[n]&&dm[n].forceDeposito===true).map(n=>String(n).trim()).filter(Boolean));
   const obraFichas=new Set(getObrasData().map(o=>o?.nome).filter(Boolean));
   const realObras=new Set([...obraFichas,...getCustomObras(),...getDbObras(),...getRetornoObras()].filter(n=>!forced.has(n)));
   const s=new Set(['ALMOX CENTRAL',...forced]);
@@ -1901,6 +1904,7 @@ function cleanAlmoxMeta(meta={}){
       responsavel:String(row?.responsavel||'').trim(),
       localizacao:String(row?.localizacao||'').trim(),
       observacao:String(row?.observacao||'').trim(),
+      forceDeposito:row?.forceDeposito===true,
       updated_at:row?.updated_at||new Date().toISOString()
     };
   });
@@ -7019,7 +7023,7 @@ window._restaurarObra=async(obra)=>{
 window._marcarComoDeposito=async(nome)=>{
   nome=String(nome||'').trim();if(!nome)return;
   if(!confirm(`Marcar "${nome}" como DEPÓSITO (não é obra)?\n\nEle sai do painel de Obras e passa a ser tratado como local de armazenamento do Almoxarifado. Vale para todos os dispositivos e é permanente (some das abas Ativas/Todas/Arquivadas).`))return;
-  setAlmoxDepositoMeta(nome,{});                                   // override remoto (depósito registrado)
+  setAlmoxDepositoMeta(nome,{forceDeposito:true});                 // override explícito e definitivo
   saveCustomObras(getCustomObras().filter(o=>o!==nome));
   saveHiddenObras(getHiddenObras().filter(o=>o!==nome));
   saveArchivedObras(getArchivedObras().filter(o=>o!==nome));
