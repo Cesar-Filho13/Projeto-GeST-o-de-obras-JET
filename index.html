@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531192105">
+<meta name="jet-build" content="20260531192741">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4047,7 +4047,7 @@ window.officeEquipePDF=(scope='funcionarios')=>{
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  jetLogo(doc,M+10,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
   doc.setFontSize(15);doc.setTextColor(20,32,60);doc.text(cfg.title,M+26,12);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,110,130);doc.text(cfg.meta.join(' · '),M+26,18);
@@ -5076,7 +5076,7 @@ window.todoExportPDF=(obra)=>{
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const todos=DB.todos.filter(t=>t.obra===obra);
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  doc.setFillColor(26,46,107);doc.circle(18,14,8,'F');
+  jetLogo(doc,18,14,8);
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text('JET',18,16,{align:'center'});
   doc.setFontSize(14);doc.setTextColor(20,20,60);doc.text('A Fazer — '+obra,32,12);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);doc.text(new Date().toLocaleDateString('pt-BR'),32,18);
@@ -5200,7 +5200,7 @@ window._printPedidoPDF=(pedidoId)=>{
   const total=(p.total!=null&&p.total!=='')?Number(p.total):calcPedidoTotal(itens);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,M=16;
-  doc.setFillColor(26,46,107);doc.circle(M+9,16,9,'F');
+  jetLogo(doc,M+9,16,9);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+9,18,{align:'center'});
   doc.setTextColor(20,20,60);doc.setFontSize(18);doc.text('Pedido de Compra',M+24,14);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(90,98,120);doc.text(`Nº ${p.numero||'—'} · JET Serviços de Engenharia`,M+24,20);
@@ -6520,7 +6520,7 @@ window._despExportPDF=(obra,dt)=>{
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
   // Logo circle (JET)
-  doc.setFillColor(26,46,107);doc.circle(M+10,18,10,'F');
+  jetLogo(doc,M+10,18,10);
   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
   doc.text('JET',M+10,21,{align:'center'});
   // Title
@@ -7366,7 +7366,7 @@ function exportAditivosPDF(obra){
   const ads=DB.aditivos.filter(a=>a.obra===obra);
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   // Logo
-  doc.setFillColor(26,46,107);doc.circle(22,14,10,'F');
+  jetLogo(doc,22,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',22,16,{align:'center'});
   doc.setFontSize(16);doc.setTextColor(20,20,60);doc.text('Aditivos de Obra',38,12);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);
@@ -7839,7 +7839,7 @@ function exportFuncionariosPDF(obra,hideDocs){
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
   // Logo circle
-  doc.setFillColor(26,46,107);doc.circle(M+10,12,10,'F');
+  jetLogo(doc,M+10,12,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,14,{align:'center'});
   // Title
   doc.setFontSize(15);doc.setTextColor(20,20,60);
@@ -7875,7 +7875,7 @@ function exportRDOPDF(obra,rdoId){
   rdos.forEach((r,idx)=>{
     if(idx>0)doc.addPage();
     // LOGO + TITLE
-    doc.setFillColor(26,46,107);doc.circle(M+12,18,12,'F');
+    jetLogo(doc,M+12,18,12);
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);doc.text('JET',M+12,21,{align:'center'});
     doc.setFontSize(16);doc.setTextColor(20,20,20);doc.text('RDO — Relatório Diário de Obra',M+28,16);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
@@ -8055,7 +8055,7 @@ function exportObraConsolidadoPDF(obra){
   const func=DB.funcionarios.filter(f=>f.obra===obra);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+12,18,12,'F');
+  jetLogo(doc,M+12,18,12);
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);doc.text('JET',M+12,21,{align:'center'});
   doc.setFontSize(18);doc.setTextColor(20,20,20);doc.text('Relatório de Obra',M+28,17);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);doc.text(obra,M+28,23);
@@ -8177,7 +8177,7 @@ window.baixadasPDF=(obra)=>{
   const rows=getActiveBaixadaRows(obra);
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,12,10,'F');
+  jetLogo(doc,M+10,12,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,14,{align:'center'});
   doc.setFontSize(15);doc.setTextColor(20,20,60);doc.text('Planejamento de Baixadas',M+26,10);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);doc.text(`${obra} · ${new Date().toLocaleDateString('pt-BR')} · ${rows.length} ativos`,M+26,16);
@@ -8204,7 +8204,7 @@ window.faltasPDF=(obra)=>{
   const rows=getFaltasByObra(obra).sort((a,b)=>b.data.localeCompare(a.data));
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,12,10,'F');
+  jetLogo(doc,M+10,12,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,14,{align:'center'});
   doc.setFontSize(15);doc.setTextColor(20,20,60);doc.text('Faltas Injustificadas',M+26,10);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);doc.text(`${obra} · ${new Date().toLocaleDateString('pt-BR')} · ${rows.length} falta(s)`,M+26,16);
@@ -8265,7 +8265,7 @@ window.pedidosPDF=()=>{
   const pedidos=DB.pedidos||[];
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  jetLogo(doc,M+10,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
   doc.setFontSize(16);doc.setTextColor(20,20,60);doc.text('Pedidos de Compra',M+26,11);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(80,80,100);doc.text('JET Serviços de Engenharia',M+26,17);
@@ -8378,9 +8378,14 @@ function drawCommercialCompanyPDFBlock(doc,company,x,y,w){
   cy+=addressLines.length*5;
   return Math.max(28,cy-y+2);
 }
-function drawJetPDFLogo(doc,x,y,r=15){
+// Logo JET padrão em PDF: quadrado de cantos arredondados (substitui o antigo círculo),
+// centrado em (cx,cy) com o mesmo "raio" visual r. Usado por todos os PDFs do site.
+function jetLogo(doc,cx,cy,r){
   doc.setFillColor(26,46,107);
-  doc.circle(x,y,r,'F');
+  doc.roundedRect(cx-r,cy-r,r*2,r*2,r*0.42,r*0.42,'F');
+}
+function drawJetPDFLogo(doc,x,y,r=15){
+  jetLogo(doc,x,y,r);
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold');
   doc.setFontSize(Math.max(9,r*.72));
@@ -8448,7 +8453,7 @@ window.equipamentosPDF=()=>{
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  jetLogo(doc,M+10,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
   doc.setFontSize(15);doc.setTextColor(20,32,60);doc.text('Equipamentos',M+26,12);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,110,130);doc.text([`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${rows.length} equipamento(s)`].join(' · '),M+26,18);
@@ -10565,7 +10570,7 @@ window._invExportPDF=(obra)=>{
   if(!items.length)return;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
-  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  jetLogo(doc,M+10,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
   doc.setFontSize(16);doc.setTextColor(20,20,60);doc.text('Inventário de Estoque',M+26,11);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(80,80,100);doc.text(obra,M+26,17);
@@ -10613,7 +10618,7 @@ window._expExportPDF=(num)=>{
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,M=14;
   // Logo
-  doc.setFillColor(26,46,107);doc.circle(M+10,14,10,'F');
+  jetLogo(doc,M+10,14,10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('JET',M+10,16,{align:'center'});
   // Title
   doc.setFontSize(16);doc.setTextColor(20,20,60);doc.text('Expedição — Saída para Obra',M+26,11);
