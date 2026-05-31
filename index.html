@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260530024722">
+<meta name="jet-build" content="20260531135735">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -12609,6 +12609,16 @@ function initDateInputs(){
     const isoVal=el.value;
     el.type='text';
     flatpickr(el,{locale:'pt',dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',disableMobile:true,defaultDate:isoVal||null,allowInput:true});
+  });
+  // Datas inline da tabela de aditivos (.fp-adit). O <script> inline gerado em
+  // renderAditivos NÃO executa quando inserido via innerHTML, então o campo ficava
+  // readonly sem date picker ("botão data não funciona"). Inicializamos aqui, que
+  // roda de forma confiável após cada render.
+  document.querySelectorAll('input.fp-adit').forEach(el=>{
+    if(el._flatpickr)return;
+    const aid=el.dataset.aid;
+    flatpickr(el,{locale:'pt',dateFormat:'Y-m-d',altInput:true,altFormat:'d/m/Y',disableMobile:true,defaultDate:el.value||null,
+      onChange:(d,s)=>{if(aid)updateField('aditivos',aid,'data',s||null);}});
   });
 }
 
