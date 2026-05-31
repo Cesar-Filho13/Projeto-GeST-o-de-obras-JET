@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531135735">
+<meta name="jet-build" content="20260531162233">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -354,6 +354,10 @@ th{padding:13px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--
 .th-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
 .col-resize{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:2;border-right:2px solid transparent;transition:border-color .1s}
 .col-resize:hover,.col-resize.resizing{border-color:var(--blue)}
+/* Handle genérico de redimensionar coluna (todas as tabelas de dados) */
+.col-rz{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;z-index:4;user-select:none;touch-action:none}
+.col-rz::after{content:'';position:absolute;right:0;top:0;bottom:0;width:2px;background:transparent;transition:background .12s}
+.col-rz:hover::after,.col-rz.resizing::after{background:var(--blue)}
 .ci-num{text-align:right}
 th:hover{background:linear-gradient(180deg,rgba(15,24,38,.98) 0%,rgba(15,22,34,.98) 100%);color:var(--text2)}
 tbody tr{border-bottom:1px solid rgba(115,132,158,.22);transition:all .15s}
@@ -5101,6 +5105,45 @@ window._startResize=(e,field)=>{
   const up=()=>{e.target.classList.remove('resizing');document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);};
   document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
 };
+// ── REDIMENSIONAR COLUNAS — genérico para todas as tabelas de dados ──────────
+// Chave estável por tabela (rótulos do cabeçalho + nº de colunas), para persistir
+// as larguras por tabela sem precisar anotar cada <table> no HTML.
+function _tableColKey(table){
+  const heads=[...table.querySelectorAll('thead th')].map(th=>(th.textContent||'').replace(/\s+/g,' ').trim()).join('§');
+  let h=5381;for(let i=0;i<heads.length;i++)h=((h<<5)+h+heads.charCodeAt(i))>>>0;
+  return 't'+h.toString(36)+'_'+table.querySelectorAll('thead th').length;
+}
+function _enhanceTableResize(table){
+  if(!table||table.dataset.colrz)return;
+  // pula tabelas que já usam o sistema legado (_thCol/.col-resize), ex.: aditivos
+  if(table.querySelector('thead th .col-resize')){table.dataset.colrz='1';return;}
+  const ths=[...table.querySelectorAll('thead th')];
+  if(ths.length<2)return;
+  table.dataset.colrz='1';
+  const key=_tableColKey(table);
+  const store=window._tableColW[key]||(window._tableColW[key]={});
+  ths.forEach((th,i)=>{
+    if(store[i]){th.style.width=store[i]+'px';th.style.minWidth=store[i]+'px';}
+    if(getComputedStyle(th).position==='static')th.style.position='relative';
+    if(th.querySelector('.col-rz'))return;
+    const handle=document.createElement('div');handle.className='col-rz';handle.title='Arraste para redimensionar';
+    handle.addEventListener('mousedown',ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      const sx=ev.clientX,sw=th.getBoundingClientRect().width;
+      handle.classList.add('resizing');
+      const mv=e2=>{const w=Math.max(48,Math.round(sw+e2.clientX-sx));th.style.width=w+'px';th.style.minWidth=w+'px';store[i]=w;};
+      const up=()=>{handle.classList.remove('resizing');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);try{localStorage.setItem('jet-colw',JSON.stringify(window._tableColW));}catch(_){}};
+      document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    });
+    // duplo-clique no handle reseta a largura desta coluna
+    handle.addEventListener('dblclick',ev=>{ev.preventDefault();ev.stopPropagation();delete store[i];th.style.width='';th.style.minWidth='';try{localStorage.setItem('jet-colw',JSON.stringify(window._tableColW));}catch(_){}});
+    th.appendChild(handle);
+  });
+}
+function initTableResizers(){
+  if(!window._tableColW){try{window._tableColW=JSON.parse(localStorage.getItem('jet-colw')||'{}')||{};}catch(_){window._tableColW={};}}
+  document.querySelectorAll('.tbl-wrap table, table.propostas-tbl, .quote-vendor-table table, table.pdp-items-tbl').forEach(_enhanceTableResize);
+}
 
 window._toggleTodo=async(id)=>{
   const t=DB.todos.find(x=>x.id===id);if(!t)return;
@@ -12643,7 +12686,7 @@ function renderApp(){
     updateOnlinePresenceUI();
     applyMobileTableCards();
     syncAppHistory({replace:!_historyBootstrapped});
-    setTimeout(initDateInputs,80);
+    setTimeout(()=>{initDateInputs();initTableResizers();},80);
     return;
   }
   else if(S.page==='dashboard')content=renderDashboard();
@@ -12654,7 +12697,7 @@ function renderApp(){
   updateOnlinePresenceUI();
   applyMobileTableCards();
   syncAppHistory({replace:!_historyBootstrapped});
-  setTimeout(initDateInputs,80);
+  setTimeout(()=>{initDateInputs();initTableResizers();},80);
 }
 
 window.addEventListener('resize',()=>{
