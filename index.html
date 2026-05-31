@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531162233">
+<meta name="jet-build" content="20260531162906">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -4170,9 +4170,12 @@ function renderDashboard(){
 
   // PAINEL OBRAS  // PAINEL OBRAS (PADRÃO)
   const allObras=getAllObras();
+  const _depositos=getAlmoxDepositos();
+  const arquivadasObras=uniqObras([...getHiddenObras(),...getArchivedObras()]).filter(o=>o&&o!=='Sem obra'&&!_depositos.has(o)).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const obraFilter=S.obraStatusFilter||'Ativas';
+  const isArq=obraFilter==='Arquivadas';
   const OBRA_STATUS_COLORS={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'};
-  const obras=(obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');})).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  const obras=(isArq?arquivadasObras:obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');})).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const obraCards=obras.map(obra=>{
     const col=obraColor(obra);
     const ad=sortAditivosDisplay(DB.aditivos.filter(a=>a.obra===obra));
@@ -4186,7 +4189,7 @@ function renderDashboard(){
     const pct=ad.length?Math.round(concl/ad.length*100):0;
     const venc=data.data_vencimento?Math.ceil((new Date(data.data_vencimento)-new Date())/(864e5)):null;
     const vencCol=venc!==null?(venc<=0?'#ef4444':venc<=30?'#f97316':'#ca8a04'):null;
-    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="obra-card-code">${esc(obra)}</div>${obraSt!=='Ativa'?`<span style="font-size:9px;font-weight:700;background:${stCol}33;color:${stCol};padding:2px 7px;border-radius:100px;border:1px solid ${stCol}55;flex-shrink:0">${obraSt}</span>`:''}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}${vencCol?`<span style="font-size:9px;font-weight:700;background:${vencCol}22;color:${vencCol};padding:2px 7px;border-radius:100px;border:1px solid ${vencCol}55;flex-shrink:0">📋 ${venc<=0?'Vencido':'Vence '+venc+'d'}</span>`:''}</div></div>`;
+    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="obra-card-code">${esc(obra)}</div>${isArq?`<span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span style="font-size:9px;font-weight:700;background:#64748b33;color:#94a3b8;padding:2px 7px;border-radius:100px;border:1px solid #64748b55">Arquivada</span><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button></span>`:(obraSt!=='Ativa'?`<span style="font-size:9px;font-weight:700;background:${stCol}33;color:${stCol};padding:2px 7px;border-radius:100px;border:1px solid ${stCol}55;flex-shrink:0">${obraSt}</span>`:'')}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}${vencCol?`<span style="font-size:9px;font-weight:700;background:${vencCol}22;color:${vencCol};padding:2px 7px;border-radius:100px;border:1px solid ${vencCol}55;flex-shrink:0">📋 ${venc<=0?'Vencido':'Vence '+venc+'d'}</span>`:''}</div></div>`;
   }).join('');
 
   const totalAd=DB.aditivos.length;
@@ -4195,7 +4198,7 @@ function renderDashboard(){
   const totalMat=DB.materiais.filter(m=>m.status==='Pendente').length;
 
   const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group"><button class="btn btn-secondary btn-sm" onclick="S.page='gerenciar-obras';renderApp()">⚙ Gerenciar</button></div>`;
-  const obraFilterCounts={Ativas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Ativa').length,Concluídas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Concluída').length,Paralisadas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Paralisada').length,Todas:allObras.length};
+  const obraFilterCounts={Ativas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Ativa').length,Concluídas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Concluída').length,Paralisadas:allObras.filter(o=>(getObraData(o).status||'Ativa')==='Paralisada').length,Todas:allObras.length,Arquivadas:arquivadasObras.length};
   return `<div class="page">
     ${renderPageHero('🏗️','Gestão de Obras','PAINEL DE OBRAS · Selecione uma obra para acessar seus módulos',heroActions)}
     <div class="stats-row">
@@ -4211,9 +4214,9 @@ function renderDashboard(){
       </button>
     </div>
     ${S.dashExpanded?renderDashboardCharts()+''+renderAlertas():''}
-    <nav class="obra-nav" style="margin:16px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
+    <nav class="obra-nav" style="margin:16px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas','Arquivadas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
     <div class="obra-grid">${obraCards}</div>
-    ${obras.length===0?`<div class="empty-state"><p>${allObras.length===0?'Nenhuma obra cadastrada.':'Nenhuma obra '+obraFilter.toLowerCase()+' no momento.'}</p>${allObras.length===0?'<button class="btn btn-primary" onclick="S.page=\'gerenciar-obras\';renderApp()">+ Cadastrar primeira obra</button>':''}</div>`:''}
+    ${obras.length===0?`<div class="empty-state"><p>${isArq?'Nenhuma obra arquivada.':allObras.length===0?'Nenhuma obra cadastrada.':'Nenhuma obra '+obraFilter.toLowerCase()+' no momento.'}</p>${(!isArq&&allObras.length===0)?'<button class="btn btn-primary" onclick="S.page=\'gerenciar-obras\';renderApp()">+ Cadastrar primeira obra</button>':''}</div>`:''}
   </div>`;
 }
 
@@ -7000,6 +7003,13 @@ window._archiveObra=async obra=>{
   renderApp();
 };
 window._addObra=async()=>{const i=document.getElementById('new-obra-input');if(!i)return;const v=i.value.trim();if(!v)return;const cur=getCustomObras();if(getAllObras().includes(v)){toast('Obra já existe.','#f59e0b');return;}saveCustomObras([...cur,v]);saveHiddenObras(getHiddenObras().filter(o=>o!==v));saveArchivedObras(getArchivedObras().filter(o=>o!==v));await saveRemoteObras([...(DB.obraRegistry||[]),v]);i.value='';renderApp();toast(`Obra "${v}" adicionada!`);};
+window._restaurarObra=async(obra)=>{
+  saveHiddenObras(getHiddenObras().filter(o=>o!==obra));
+  saveArchivedObras(getArchivedObras().filter(o=>o!==obra));
+  if(!getAllObras().includes(obra)){await saveRemoteObras([...(DB.obraRegistry||[]),obra]);}
+  toast(`Obra "${obra}" restaurada.`,'#22c55e');
+  renderApp();
+};
 window._saveObraField=el=>{setObraField(el.dataset.obra,el.dataset.field,el.value);};
 window._renameObra=async el=>{
   const orig=el.dataset.orig,novo=el.value.trim();
