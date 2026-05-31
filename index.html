@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531170227">
+<meta name="jet-build" content="20260531171010">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -7000,7 +7000,7 @@ function renderGerenciarObras(){
 
   const _depGer=getAlmoxDepositos();
   const arquivadasGer=uniqObras([...getHiddenObras(),...getArchivedObras()]).filter(o=>o&&o!=='Sem obra'&&!_depGer.has(o)).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
-  const arqSection=arquivadasGer.length?`<div class="card" style="margin-top:8px;border-left:3px solid #64748b"><div class="card-title" style="color:#94a3b8">📦 OBRAS ARQUIVADAS (${arquivadasGer.length})</div><div class="section-sub" style="margin:2px 0 10px">Restaure para que voltem a aparecer no painel de Obras.</div><div style="display:flex;flex-direction:column;gap:8px">${arquivadasGer.map(obra=>{const ta=DB.aditivos.filter(a=>a.obra===obra).length;return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);flex-wrap:wrap"><div style="min-width:0"><span style="font-weight:700;color:var(--text)">${esc(obra)}</span><span style="font-size:10px;font-weight:700;background:#64748b33;color:#94a3b8;padding:1px 7px;border-radius:100px;margin-left:8px;border:1px solid #64748b55">Arquivada</span><span style="font-size:11px;color:var(--text3);margin-left:8px">${ta} aditivo${ta!==1?'s':''}</span></div><button class="btn btn-secondary btn-sm" onclick="window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button></div>`;}).join('')}</div></div>`:'';
+  const arqSection=arquivadasGer.length?`<div class="card" style="margin-top:8px;border-left:3px solid #64748b"><div class="card-title" style="color:#94a3b8">📦 OBRAS ARQUIVADAS (${arquivadasGer.length})</div><div class="section-sub" style="margin:2px 0 10px">Restaure para que voltem a aparecer no painel de Obras.</div><div style="display:flex;flex-direction:column;gap:8px">${arquivadasGer.map(obra=>{const ta=DB.aditivos.filter(a=>a.obra===obra).length;return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);flex-wrap:wrap"><div style="min-width:0"><span style="font-weight:700;color:var(--text)">${esc(obra)}</span><span style="font-size:10px;font-weight:700;background:#64748b33;color:#94a3b8;padding:1px 7px;border-radius:100px;margin-left:8px;border:1px solid #64748b55">Arquivada</span><span style="font-size:11px;color:var(--text3);margin-left:8px">${ta} aditivo${ta!==1?'s':''}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-secondary btn-sm" onclick="window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button><button class="btn btn-danger btn-sm" onclick="window._delObra('${escJs(obra)}',true)" title="Excluir obra permanentemente">🗑 Excluir</button></div></div>`;}).join('')}</div></div>`:'';
 
   return`<div class="page"><button class="btn btn-secondary btn-sm" onclick="S.page='dashboard';renderApp()" style="margin-bottom:20px">← Voltar ao Painel</button><div class="section-header"><div><div class="section-title">Gerenciar Obras</div><div class="section-sub">Clique no nome para renomear. Salvo automaticamente.</div></div></div>${cards}${arqSection}<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(39,87,217,.16) 0%,rgba(23,60,141,.14) 100%);border:1px solid rgba(79,140,255,.28)"><div class="card-title" style="color:#60a5fa">➕ NOVA OBRA</div><div style="display:flex;gap:8px"><input id="new-obra-input" placeholder="Nome da nova obra..." style="flex:1" onkeydown="if(event.key==='Enter')window._addObra()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addObra()">+ Adicionar</button></div></div></div>`;
 }
@@ -7057,10 +7057,10 @@ window._renameObra=async el=>{
   toast('Obra renomeada!');
   renderApp();
 };
-window._delObra=obra=>{_showDelDialog(obra);};
+window._delObra=(obra,hard=false)=>{_showDelDialog(obra,hard);};
 
 let _delPendObra=null,_delPendMeta=null,_delTimer=null,_delUndo=null;
-function _showDelDialog(obra){
+function _showDelDialog(obra,hard=false){
   document.getElementById('del-dlg')?.remove();
   clearInterval(_delTimer);
   const linkedMap=buildObraDeleteMap(obra);
@@ -7106,10 +7106,10 @@ function _showDelDialog(obra){
     num.style.color='#22c55e';
     if(ring){ring.style.strokeDashoffset=188.5;ring.style.stroke='#22c55e';}
     if(label)label.textContent='Pronto para confirmar. Você ainda poderá desfazer.';
-    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmar exclusão';btn.onclick=()=>_execDel(obra,{linkedMap,total});}
+    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmar exclusão';btn.onclick=()=>_execDel(obra,{linkedMap,total},hard);}
   },1000);
 }
-async function _execDel(obraArg=null,metaArg=null){
+async function _execDel(obraArg=null,metaArg=null,hard=false){
   clearInterval(_delTimer);
   document.getElementById('del-dlg')?.remove();
   const obra=obraArg||_delPendObra;
@@ -7124,7 +7124,13 @@ async function _execDel(obraArg=null,metaArg=null){
   OBRA_LINKED_TABLES.forEach(table=>{const ids=linkedMap[table]||[];if(ids.length)DB[table]=DB[table].map(row=>ids.includes(row.id)?{...row,obra:'Sem obra'}:row);});
   saveCustomObras(getCustomObras().filter(o=>o!==obra));
   saveObrasData(getObrasData().filter(o=>o?.nome!==obra));
-  saveHiddenObras(uniqObras([...getHiddenObras(),obra]));
+  if(hard){
+    // exclusão de obra já arquivada: remove de vez (não fica nas arquivadas)
+    saveHiddenObras(getHiddenObras().filter(o=>o!==obra));
+    saveArchivedObras(getArchivedObras().filter(o=>o!==obra));
+  }else{
+    saveHiddenObras(uniqObras([...getHiddenObras(),obra]));
+  }
   await saveRemoteObras((DB.obraRegistry||[]).filter(o=>o!==obra));
   renderApp();
   _showUndo(obra,linkedObraCount(linkedMap));
