@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531162906">
+<meta name="jet-build" content="20260531164752">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -1554,9 +1554,12 @@ function getRetornoObras(){
 function getAlmoxDepositos(){
   // NÃO usa DB.obraRegistry aqui — evita dependência circular (registry pode ter nomes errados)
   // Fontes independentes: fichas criadas, customObras, tabelas de transação, retornos confirmados
+  // OVERRIDE DEFINITIVO: depósitos registrados (depositoMeta, via "+ Adicionar depósito" ou
+  // "📦 Marcar como depósito") são SEMPRE depósitos, mesmo que o nome apareça em outras fontes.
+  const forced=new Set(Object.keys(DB.almoxMeta?.depositoMeta||{}).map(n=>String(n).trim()).filter(Boolean));
   const obraFichas=new Set(getObrasData().map(o=>o?.nome).filter(Boolean));
-  const realObras=new Set([...obraFichas,...getCustomObras(),...getDbObras(),...getRetornoObras()]);
-  const s=new Set(['ALMOX CENTRAL']);
+  const realObras=new Set([...obraFichas,...getCustomObras(),...getDbObras(),...getRetornoObras()].filter(n=>!forced.has(n)));
+  const s=new Set(['ALMOX CENTRAL',...forced]);
   // Só analisa itens regulares (não RET-*): são esses que indicam local de armazenamento
   getAlmoxInventario().filter(e=>!String(e.numero_controle||'').startsWith('RET-')).forEach(e=>{
     const n=String(e?.obra||'').trim();
@@ -4189,7 +4192,7 @@ function renderDashboard(){
     const pct=ad.length?Math.round(concl/ad.length*100):0;
     const venc=data.data_vencimento?Math.ceil((new Date(data.data_vencimento)-new Date())/(864e5)):null;
     const vencCol=venc!==null?(venc<=0?'#ef4444':venc<=30?'#f97316':'#ca8a04'):null;
-    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="obra-card-code">${esc(obra)}</div>${isArq?`<span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span style="font-size:9px;font-weight:700;background:#64748b33;color:#94a3b8;padding:2px 7px;border-radius:100px;border:1px solid #64748b55">Arquivada</span><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button></span>`:(obraSt!=='Ativa'?`<span style="font-size:9px;font-weight:700;background:${stCol}33;color:${stCol};padding:2px 7px;border-radius:100px;border:1px solid ${stCol}55;flex-shrink:0">${obraSt}</span>`:'')}</div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}${vencCol?`<span style="font-size:9px;font-weight:700;background:${vencCol}22;color:${vencCol};padding:2px 7px;border-radius:100px;border:1px solid ${vencCol}55;flex-shrink:0">📋 ${venc<=0?'Vencido':'Vence '+venc+'d'}</span>`:''}</div></div>`;
+    return`<div class="obra-card" onclick="S.obra='${escJs(obra)}';S.page='obra';S.obraTab='aditivos';S.selectedAditivo=null;S.matSearch='';S.tabOrder=['aditivos','materiais','rdo','todo','funcionarios','despesas'];renderApp()"  style="--col:${col.bar}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col.bar};border-radius:14px 14px 0 0"></div><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="obra-card-code">${esc(obra)}</div><div style="display:flex;gap:6px;align-items:center;flex-shrink:0">${isArq?`<span style="font-size:9px;font-weight:700;background:#64748b33;color:#94a3b8;padding:2px 7px;border-radius:100px;border:1px solid #64748b55">Arquivada</span><button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button>`:(obraSt!=='Ativa'?`<span style="font-size:9px;font-weight:700;background:${stCol}33;color:${stCol};padding:2px 7px;border-radius:100px;border:1px solid ${stCol}55">${obraSt}</span>`:'')}<button class="btn btn-secondary btn-sm" style="padding:2px 6px;font-size:11px;opacity:.5" onclick="event.stopPropagation();window._marcarComoDeposito('${escJs(obra)}')" title="Marcar como depósito (não é obra)">📦</button></div></div><div class="obra-card-name">${esc(obra)}</div><div class="obra-card-stats"><div class="obra-stat"><strong>${ad.length}</strong> aditivos</div><div class="obra-stat"><strong style="color:#34d399">${concl}</strong> concluídos</div><div class="obra-stat"><strong>${func.length}</strong> funcionários</div></div>${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--text3)">Progresso</span><span style="font-size:10px;font-weight:700;color:${col.c}">${pct}%</span></div><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col.bar};border-radius:2px"></div></div></div>`:''}<div class="obra-card-footer"><div>${val>0?`<span style="font-size:12px;font-weight:700;color:${col.c}">${fmtV(val)}</span>`:'<span style="font-size:11px;color:var(--text3)">Sem valor</span>'}</div>${data.gerente?`<span class="tag">${esc(data.gerente)}</span>`:''}${vencCol?`<span style="font-size:9px;font-weight:700;background:${vencCol}22;color:${vencCol};padding:2px 7px;border-radius:100px;border:1px solid ${vencCol}55;flex-shrink:0">📋 ${venc<=0?'Vencido':'Vence '+venc+'d'}</span>`:''}</div></div>`;
   }).join('');
 
   const totalAd=DB.aditivos.length;
@@ -7008,6 +7011,22 @@ window._restaurarObra=async(obra)=>{
   saveArchivedObras(getArchivedObras().filter(o=>o!==obra));
   if(!getAllObras().includes(obra)){await saveRemoteObras([...(DB.obraRegistry||[]),obra]);}
   toast(`Obra "${obra}" restaurada.`,'#22c55e');
+  renderApp();
+};
+// Reclassifica um nome como DEPÓSITO de forma definitiva e sincronizada: registra em
+// depositoMeta (override absoluto em getAlmoxDepositos) e remove de TODAS as fontes de
+// obra (custom, oculta, arquivada, registry). Resolve de vez nomes que voltam como obra.
+window._marcarComoDeposito=async(nome)=>{
+  nome=String(nome||'').trim();if(!nome)return;
+  if(!confirm(`Marcar "${nome}" como DEPÓSITO (não é obra)?\n\nEle sai do painel de Obras e passa a ser tratado como local de armazenamento do Almoxarifado. Vale para todos os dispositivos e é permanente (some das abas Ativas/Todas/Arquivadas).`))return;
+  setAlmoxDepositoMeta(nome,{});                                   // override remoto (depósito registrado)
+  saveCustomObras(getCustomObras().filter(o=>o!==nome));
+  saveHiddenObras(getHiddenObras().filter(o=>o!==nome));
+  saveArchivedObras(getArchivedObras().filter(o=>o!==nome));
+  DB.obraRegistry=(DB.obraRegistry||[]).filter(o=>o!==nome);
+  await saveRemoteObras(DB.obraRegistry);                          // registro sem o depósito
+  queueAlmoxMetaSync(true);
+  toast(`"${nome}" agora é depósito (removido das obras).`,'#22c55e');
   renderApp();
 };
 window._saveObraField=el=>{setObraField(el.dataset.obra,el.dataset.field,el.value);};
