@@ -15,7 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jet-build" content="20260531171010">
+<meta name="jet-build" content="20260531181133">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/jet-icon-180.png">
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/jet-icon-192.png">
@@ -7395,6 +7395,8 @@ async function exportMateriaisPDF(obra,ids,opts={}){
   const headerDate=/^\d{4}-\d{2}-\d{2}$/.test(String(dateSource||''))?fmtD(dateSource):String(dateSource||new Date().toLocaleDateString('pt-BR'));
   const pend=mats.filter(m=>m.status==='Pendente').length;
   const aprov=mats.filter(m=>m.status==='Aprovado'||m.status==='Comprado').length;
+  const entregue=mats.filter(m=>m.status==='Entregue').length;
+  const obsGeral=String(mats.find(m=>String(m?.observacao||'').trim())?.observacao||'').trim();
   const upperFirst=v=>{
     const text=String(v||'').trim();
     return text?text.charAt(0).toUpperCase()+text.slice(1):'-';
@@ -7768,7 +7770,16 @@ async function exportMateriaisPDF(obra,ids,opts={}){
 
   function startReqPage(){
     drawHeader((titleOverride||'Requisi\u00E7\u00E3o de Materiais')+' - '+obraLabel);
-    return drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Aprovados/Comprados: ${aprov}`,`Data: ${headerDate}`,`Solicitante: ${solicitanteLabel}`]);
+    let y=drawSummary([`Total: ${mats.length} itens`,`Pendentes: ${pend}`,`Entregue: ${entregue}`,`Data: ${headerDate}`,`Solicitante: ${solicitanteLabel}`]);
+    if(obsGeral){
+      const lines=doc.splitTextToSize('Observa\u00E7\u00E3o geral: '+obsGeral,W-M*2-8);
+      const boxH=lines.length*4+7;
+      doc.setFillColor(248,250,252);doc.roundedRect(M,y-2,W-M*2,boxH,2,2,'F');
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(60,70,95);
+      doc.text(lines,M+4,y+3.5);
+      y=y+boxH+3;
+    }
+    return y;
   }
 
   function startConferencePage(titleText){
@@ -7812,7 +7823,8 @@ async function exportMateriaisPDF(obra,ids,opts={}){
     doc.text('JET Gest\u00E3o de Obras \u00B7 P\u00E1gina '+i+'/'+totalPages,W/2,H-8,{align:'center'});
   }
 
-  doc.save((filenamePrefix||'Requisicao_Materiais_')+obra.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  const fileDate=/^\d{4}-\d{2}-\d{2}/.test(String(dateSource||''))?String(dateSource).slice(0,10):new Date().toISOString().slice(0,10);
+  doc.save((filenamePrefix||'Requisicao_Materiais_')+obra.replace(/\s+/g,'_')+'_'+fileDate+'.pdf');
   toast('PDF exportado!');
 }
 
