@@ -4676,7 +4676,7 @@ search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontr
     const concl=items.filter(m=>m.status==='Entregue'||m.status==='Cancelado').length;
     const cid=collapKey+dt;
     const collapsed=window._matCollapsed[cid]===false?false:true;
-    const totalItens=items.reduce((s,m)=>s+(parseInt(m.quantidade||0)),0);
+    const totalItens=items.reduce((s,m)=>s+(Number(m.quantidade)||0),0);
     const reqFileKey=getMaterialReqKeyFromItems(items,obra);
     const reqFileCount=getMaterialReqFiles(reqFileKey).length;
     return`<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
@@ -9883,16 +9883,16 @@ td{padding:8px 12px;border:1px solid #ccc}td:first-child{font-weight:700;width:4
 <p class="sub">JET Servi&ccedil;os de Engenharia &middot; ${esc(f.obra||'')}</p>
 <table>
 <tr><td>Ferramenta / Ativo</td><td><strong>${esc(f.item||'')}</strong></td></tr>
-<tr><td>N&ordm; de S&eacute;rie</td><td>${esc(f.numero_serie||'&mdash;')}</td></tr>
-<tr><td>N&ordm; Patrim&ocirc;nio</td><td>${esc(f.patrimonio||'&mdash;')}</td></tr>
+<tr><td>N&ordm; de S&eacute;rie</td><td>${esc(f.numero_serie)||'&mdash;'}</td></tr>
+<tr><td>N&ordm; Patrim&ocirc;nio</td><td>${esc(f.patrimonio)||'&mdash;'}</td></tr>
 <tr><td>Status</td><td>${esc(f.status||'')}</td></tr>
-<tr><td>Respons&aacute;vel</td><td><strong>${esc(f.funcionario_nome||'&mdash;')}</strong></td></tr>
+<tr><td>Respons&aacute;vel</td><td><strong>${esc(f.funcionario_nome)||'&mdash;'}</strong></td></tr>
 <tr><td>Data de Aloca&ccedil;&atilde;o</td><td>${f.data_alocacao?new Date(f.data_alocacao+'T12:00:00').toLocaleDateString('pt-BR'):'&mdash;'}</td></tr>
-<tr><td>Observa&ccedil;&otilde;es</td><td>${esc(f.observacao||'&mdash;')}</td></tr>
+<tr><td>Observa&ccedil;&otilde;es</td><td>${esc(f.observacao)||'&mdash;'}</td></tr>
 </table>
 <p style="font-size:13px">Declaro ter recebido em perfeito estado o equipamento descrito acima, responsabilizando-me pela sua guarda, conserva&ccedil;&atilde;o e devolu&ccedil;&atilde;o nas mesmas condi&ccedil;&otilde;es, ou ressarcimento em caso de perda, furto ou dano.</p>
 <div class="ass">
-  <div>${esc(f.funcionario_nome||'Funcion&aacute;rio')}<br>CPF: _______________________</div>
+  <div>${esc(f.funcionario_nome)||'Funcion&aacute;rio'}<br>CPF: _______________________</div>
   <div>Respons&aacute;vel JET<br>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
 </div>
 <br><button onclick="window.print()" style="padding:8px 20px;cursor:pointer;margin-top:16px">Imprimir</button>
