@@ -5203,10 +5203,11 @@ function jcalTaskRow(t){
 function jcalDayTaskRow(t){
   const done=t.status==='Concluído';
   const pr=TODO_PRIOR[t.prioridade]||TODO_PRIOR['Normal'];
+  const hora=getTodoHora(t.id);
   return `<div class="jcal-task${done?' done':''}" style="gap:8px;padding:6px 4px;flex-wrap:wrap">
     <button class="jcal-check" onclick="window._toggleTodo('${t.id}')">${done?'✓':''}</button>
-    <input type="time" class="ci" style="width:84px;font-size:11px;padding:2px 4px;flex-shrink:0" value="${esc(getTodoHora(t.id))}" title="Horário (ex.: reunião)" onchange="window._setTodoHora('${t.id}',this.value)">
-    <span class="jcal-tx" style="border-left:3px solid ${pr.d};padding-left:8px;white-space:normal;flex:1 1 180px">${esc(t.descricao)}</span>
+    <input type="time" class="ci" style="width:84px;font-size:11px;padding:2px 4px;flex-shrink:0" value="${esc(hora)}" title="Horário (ex.: reunião)" onchange="window._setTodoHora('${t.id}',this.value)">
+    <span class="jcal-tx" style="border-left:3px solid ${pr.d};padding-left:8px;white-space:normal;flex:1 1 180px">${hora?`<span style="color:var(--blue);font-weight:800">🕒 ${esc(hora)}</span> `:''}${esc(t.descricao)}</span>
     ${makeCd(['Crítico','Urgente','Normal','Baixa'],TODO_PRIOR,t.prioridade||'Normal',`window._setPrioridade('${t.id}',VAL)`)}
     ${makeCd(['Pendente','Em andamento','Concluído'],TODO_STATUS_MAP,t.status||'Pendente',`window._setTodoStatus('${t.id}',VAL)`)}
     <input class="ci" style="width:96px;font-size:11px;padding:2px 6px" value="${esc(t.responsavel||'')}" placeholder="👤 resp" list="todo-resp-list" onblur="updateField('todos','${t.id}','responsavel',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
