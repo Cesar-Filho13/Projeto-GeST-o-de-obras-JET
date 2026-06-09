@@ -1133,6 +1133,61 @@ html[data-theme="light"] .online-more{background:#eef4ff;color:#1e3a8a}
 /* ── Status Badges Special ── */
 .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:1px solid;transition:all .2s}
 .status-badge:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+
+/* ── Calendário "A Fazer" ── */
+.jcal-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 14px}
+.jcal-viewseg{display:inline-flex;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px}
+.jcal-viewseg button{border:none;background:transparent;color:var(--text3);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.jcal-viewseg button:hover{color:var(--text2)}
+.jcal-viewseg button.active{background:var(--blue);color:#fff}
+.jcal-nav{display:inline-flex;align-items:center;gap:4px}
+.jcal-nav button{height:32px;min-width:32px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:'Inter',sans-serif}
+.jcal-nav button:hover{border-color:var(--border2);color:var(--text)}
+.jcal-nav .jcal-today{padding:0 14px;font-size:12px;font-weight:700}
+.jcal-range{font-size:15px;font-weight:800;color:var(--text);text-transform:capitalize;letter-spacing:-.2px}
+.jcal-month{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg2)}
+.jcal-wd{display:grid;grid-template-columns:repeat(7,1fr);background:var(--bg3);border-bottom:1px solid var(--border)}
+.jcal-wd span{padding:8px 6px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)}
+.jcal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.jcal-cell{min-height:98px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:5px 6px;cursor:pointer;position:relative;transition:background .12s;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.jcal-cell:nth-child(7n){border-right:none}
+.jcal-cell:hover{background:var(--bg3)}
+.jcal-cell.out{opacity:.38}
+.jcal-cell.weekend{background:rgba(127,140,170,.05)}
+.jcal-cell.sel{box-shadow:inset 0 0 0 2px var(--blue)}
+.jcal-daynum{font-size:12px;font-weight:700;color:var(--text2);align-self:flex-start;width:23px;height:23px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.jcal-cell.today .jcal-daynum{background:var(--blue);color:#fff}
+.jcal-chip{font-size:10.5px;line-height:1.3;padding:2px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid;font-weight:600}
+.jcal-chip.done{opacity:.5;text-decoration:line-through}
+.jcal-more{font-size:10px;color:var(--text3);font-weight:600;padding-left:2px}
+.jcal-addbtn{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:6px;border:none;background:var(--blue);color:#fff;font-size:15px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s;align-items:center;justify-content:center;display:flex}
+.jcal-cell:hover .jcal-addbtn{opacity:.92}
+.jcal-week{display:grid;gap:6px}
+.jcal-col{border:1px solid var(--border);border-radius:10px;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:150px}
+.jcal-col-head{padding:8px 6px;text-align:center;border-bottom:1px solid var(--border);cursor:pointer;background:var(--bg3)}
+.jcal-col-head.today{background:rgba(39,87,217,.2)}
+.jcal-col-head.sel{box-shadow:inset 0 0 0 2px var(--blue)}
+.jcal-col-wd{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);letter-spacing:.5px}
+.jcal-col-dn{font-size:18px;font-weight:800;color:var(--text);line-height:1.1}
+.jcal-col-head.today .jcal-col-dn{color:var(--blue)}
+.jcal-col-body{flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.jcal-col-add{margin:0 6px 8px;border:1px dashed var(--border2);background:transparent;color:var(--text3);border-radius:7px;padding:5px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.jcal-col-add:hover{border-color:var(--blue);color:var(--text)}
+.jcal-task{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 4px;border-radius:6px}
+.jcal-task:hover{background:var(--bg3)}
+.jcal-check{width:16px;height:16px;flex-shrink:0;border-radius:5px;border:2px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;background:transparent;padding:0}
+.jcal-task.done .jcal-check{background:var(--green);border-color:var(--green)}
+.jcal-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.jcal-task.done .jcal-tx{text-decoration:line-through;color:var(--text3)}
+.jcal-del{border:none;background:none;color:var(--text3);cursor:pointer;font-size:14px;opacity:0;line-height:1;flex-shrink:0}
+.jcal-task:hover .jcal-del{opacity:1}
+.jcal-del:hover{color:var(--red)}
+.jcal-day-panel{margin-top:14px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);padding:14px}
+.jcal-day-title{font-size:15px;font-weight:800;color:var(--text);text-transform:capitalize;margin-bottom:2px}
+.jcal-day-sub{font-size:12px;color:var(--text3);margin-bottom:12px}
+.jcal-add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.jcal-empty{font-size:12px;color:var(--text3);font-style:italic;padding:10px 2px}
+@media(max-width:680px){.jcal-cell{min-height:62px}.jcal-chip{display:none}.jcal-daynum{font-size:11px}.jcal-cell::after{content:attr(data-cnt);font-size:9px;color:var(--text3);font-weight:700}}
 </style>
 </head>
 <body>
@@ -1345,6 +1400,7 @@ const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
 const ALMOX_DEPOSITOS_KEY='jet-almox-depositos';
 const FALTAS_PATH='meta/funcionarios-faltas.json';
 const MAT_CONCL_PATH='meta/mat-concl.json';
+const TODO_HORAS_PATH='meta/todos-horas.json';
 const FERR_CONCL_PATH='meta/ferr-concl.json';
 const DESPESA_FILES_PATH='meta/despesas-arquivos.json';
 const DESPESA_PENDING_FILES_KEY='jet-despesa-files-pending-sync';
@@ -2362,6 +2418,34 @@ function queueMatConclSync(notify=false){
     if(ok&&notify)toast('Requisições sincronizadas.','#22c55e');
   },notify?0:420);
 }
+// ── Horários das tarefas (A Fazer) — guardados em meta JSON, sem coluna no banco ──
+let _todoHorasSyncTimer=null;
+function getLocalTodoHoras(){try{return JSON.parse(localStorage.getItem('jet-todo-horas')||'{}')||{};}catch{return{};}}
+function saveLocalTodoHoras(obj){localStorage.setItem('jet-todo-horas',JSON.stringify(obj||{}));}
+async function loadRemoteTodoHoras(){
+  try{
+    const{data,error}=await sb.storage.from(BUCKET).download(TODO_HORAS_PATH);
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.todoHoras=getLocalTodoHoras();return;}throw error;}
+    DB.todoHoras=JSON.parse(await data.text())||{};
+    saveLocalTodoHoras(DB.todoHoras);
+  }catch(err){DB.todoHoras=getLocalTodoHoras();console.warn('[JET] Horários das tarefas não carregados:',err?.message||err);}
+}
+async function saveRemoteTodoHoras({silent=false}={}){
+  saveLocalTodoHoras(DB.todoHoras||{});
+  try{
+    const blob=new Blob([JSON.stringify(DB.todoHoras||{},null,2)],{type:'application/json'});
+    const{error}=await sb.storage.from(BUCKET).upload(TODO_HORAS_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+    return true;
+  }catch(err){console.warn('[JET] Horários das tarefas não salvos:',err?.message||err);if(!silent)toast('Horário salvo neste aparelho. Sincronização falhou.','#f59e0b');return false;}
+}
+function queueTodoHorasSync(notify=false){
+  saveLocalTodoHoras(DB.todoHoras||{});
+  clearTimeout(_todoHorasSyncTimer);
+  _todoHorasSyncTimer=setTimeout(async()=>{const ok=await saveRemoteTodoHoras({silent:!notify});if(ok&&notify)toast('Horários sincronizados.','#22c55e');},notify?0:420);
+}
+function getTodoHora(id){return (DB.todoHoras||{})[id]||'';}
+function setTodoHora(id,hora){if(!id)return;if(!DB.todoHoras)DB.todoHoras={};const h=/^\d{2}:\d{2}$/.test(String(hora||''))?String(hora):'';if(h)DB.todoHoras[id]=h;else delete DB.todoHoras[id];queueTodoHorasSync();}
 function getLocalFerrConcl(){try{return JSON.parse(localStorage.getItem('jet-ferr-concl-all')||'{}')||{};}catch{return{};}}
 function saveLocalFerrConcl(obj){localStorage.setItem('jet-ferr-concl-all',JSON.stringify(obj));}
 async function loadRemoteFerrConcl(){
@@ -2867,6 +2951,7 @@ async function loadAll(){
   await loadRemoteBaixadas();
   await loadRemoteFaltas();
   await loadRemoteMatConcl();
+  await loadRemoteTodoHoras();
   await loadRemoteFerrConcl();
   await loadRemoteHomeNotices();
   await loadRemoteCommercialCompanies();
@@ -4976,6 +5061,7 @@ const TODO_PRIOR={'Crítico':{bg:'#200c0c',c:'#f87171',d:'#ef4444'},'Urgente':{b
 const TODO_STATUS_MAP={'Pendente':{bg:'#2a1d06',c:'#fbbf24'},'Em andamento':{bg:'#0e1f3d',c:'#60a5fa'},'Concluído':{bg:'#062018',c:'#34d399'}};
 
 function renderTodo(todos,obra){
+  if((S.todoView||'calendario')==='calendario')return renderTodoCalendar(todos,obra);
   const todoSubTab=S.todoSubTab||'todos';
   const cntTodos=todos.length;
   const cntAnd=todos.filter(t=>t.status!=='Concluído').length;
@@ -5043,7 +5129,8 @@ ${collapsed?'':
 <div class="section-header">
   <div><div class="section-title">✅ A Fazer — Frente de Serviço</div>
   <div class="section-sub">${totalPend} pendente${totalPend!==1?'s':''} · ${totalConc} concluído${totalConc!==1?'s':''}</div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    ${todoViewToggle()}
     <button class="btn btn-secondary btn-sm" onclick="window._shareWhatsapp('${escJs(obra)}')">📱 WhatsApp</button>
     <button class="btn btn-primary" onclick="_openModal('new-todo')">+ Nova Tarefa</button>
   </div>
@@ -5069,6 +5156,196 @@ ${todoSubNav}
 ${todos.length===0?'<div class="empty-state"><p>Nenhuma tarefa cadastrada.</p></div>':groups}
 </div>`;
 }
+
+// ─── CALENDÁRIO "A FAZER" ───────────────────────────────────────────────────
+const JCAL_WD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const JCAL_PRORD={'Crítico':0,'Urgente':1,'Normal':2,'Baixa':3};
+const jcalParse=iso=>{const d=new Date(String(iso||'').slice(0,10)+'T12:00:00');return isNaN(d)?new Date():d;};
+const jcalISO=d=>{const dt=(d instanceof Date)?d:jcalParse(d);return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;};
+const jcalAddDays=(iso,n)=>{const d=jcalParse(iso);d.setDate(d.getDate()+Number(n||0));return jcalISO(d);};
+const jcalAddMonths=(iso,n)=>{const d=jcalParse(iso);d.setMonth(d.getMonth()+Number(n||0));return jcalISO(d);};
+const jcalStartOfWeek=(iso,mondayStart)=>{const d=jcalParse(iso);const dow=d.getDay();const diff=mondayStart?((dow+6)%7):dow;d.setDate(d.getDate()-diff);return jcalISO(d);};
+const jcalMonthMatrix=iso=>{const d=jcalParse(iso);const first=jcalISO(new Date(d.getFullYear(),d.getMonth(),1));const start=jcalStartOfWeek(first,false);return Array.from({length:42},(_,i)=>jcalAddDays(start,i));};
+const jcalSortTasks=arr=>(arr||[]).slice().sort((a,b)=>{
+  const da=a.status==='Concluído'?1:0,db=b.status==='Concluído'?1:0;
+  if(da!==db)return da-db;
+  const ha=getTodoHora(a.id),hb=getTodoHora(b.id);
+  if(ha&&hb&&ha!==hb)return ha<hb?-1:1;
+  if(ha&&!hb)return -1;
+  if(!ha&&hb)return 1;
+  return (JCAL_PRORD[a.prioridade]??2)-(JCAL_PRORD[b.prioridade]??2);
+});
+
+function todoViewToggle(){
+  const v=S.todoView||'calendario';
+  return `<div class="jcal-viewseg">
+    <button class="${v==='calendario'?'active':''}" onclick="window._setTodoView('calendario')">📅 Calendário</button>
+    <button class="${v==='lista'?'active':''}" onclick="window._setTodoView('lista')">📋 Lista</button>
+  </div>`;
+}
+
+function jcalTaskChip(t){
+  const pr=TODO_PRIOR[t.prioridade]||TODO_PRIOR['Normal'];
+  const done=t.status==='Concluído';
+  const hora=getTodoHora(t.id);
+  return `<div class="jcal-chip${done?' done':''}" style="background:${pr.bg};color:${pr.c};border-left-color:${pr.d}" title="${hora?esc(hora)+' · ':''}${esc(t.descricao)} — ${esc(t.status||'Pendente')}">${hora?`<span style="font-weight:800">${esc(hora)}</span> `:''}${esc(t.descricao)}</div>`;
+}
+function jcalTaskRow(t){
+  const done=t.status==='Concluído';
+  const pr=TODO_PRIOR[t.prioridade]||TODO_PRIOR['Normal'];
+  const hora=getTodoHora(t.id);
+  return `<div class="jcal-task${done?' done':''}">
+    <button class="jcal-check" onclick="window._toggleTodo('${t.id}')">${done?'✓':''}</button>
+    <span class="jcal-tx" style="border-left:3px solid ${pr.d};padding-left:6px" title="${hora?esc(hora)+' · ':''}${esc(t.descricao)}">${hora?`<span style="color:var(--text2);font-weight:700">${esc(hora)}</span> `:''}${esc(t.descricao)}</span>
+    <button class="jcal-del" onclick="window._deleteTodo('${t.id}')">×</button>
+  </div>`;
+}
+function jcalDayTaskRow(t){
+  const done=t.status==='Concluído';
+  const pr=TODO_PRIOR[t.prioridade]||TODO_PRIOR['Normal'];
+  return `<div class="jcal-task${done?' done':''}" style="gap:8px;padding:6px 4px;flex-wrap:wrap">
+    <button class="jcal-check" onclick="window._toggleTodo('${t.id}')">${done?'✓':''}</button>
+    <input type="time" class="ci" style="width:84px;font-size:11px;padding:2px 4px;flex-shrink:0" value="${esc(getTodoHora(t.id))}" title="Horário (ex.: reunião)" onchange="window._setTodoHora('${t.id}',this.value)">
+    <span class="jcal-tx" style="border-left:3px solid ${pr.d};padding-left:8px;white-space:normal;flex:1 1 180px">${esc(t.descricao)}</span>
+    ${makeCd(['Crítico','Urgente','Normal','Baixa'],TODO_PRIOR,t.prioridade||'Normal',`window._setPrioridade('${t.id}',VAL)`)}
+    ${makeCd(['Pendente','Em andamento','Concluído'],TODO_STATUS_MAP,t.status||'Pendente',`window._setTodoStatus('${t.id}',VAL)`)}
+    <input class="ci" style="width:96px;font-size:11px;padding:2px 6px" value="${esc(t.responsavel||'')}" placeholder="👤 resp" list="todo-resp-list" onblur="updateField('todos','${t.id}','responsavel',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+    <button class="jcal-del" style="opacity:1" onclick="window._deleteTodo('${t.id}')">×</button>
+  </div>`;
+}
+function jcalDayPanel(obra,iso){
+  const items=jcalSortTasks((window._jcalByDate||{})[iso]||[]);
+  const d=jcalParse(iso);
+  const isToday=iso===todayISO();
+  const longLabel=d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const respDefault=esc(currentUser?.email?.split('@')[0]||'');
+  const pend=items.filter(t=>t.status!=='Concluído').length;
+  return `<div class="jcal-day-panel">
+    <div class="jcal-day-title">${esc(longLabel)}${isToday?' · Hoje':''}</div>
+    <div class="jcal-day-sub">${items.length} tarefa${items.length!==1?'s':''}${items.length?` · ${pend} pendente${pend!==1?'s':''}`:''}</div>
+    <div class="jcal-add-row">
+      <input id="jcal-quick" placeholder="✏ O que fazer neste dia? (Enter)" style="flex:1;min-width:200px;height:38px" onkeydown="if(event.key==='Enter')window._calQuickAdd(this)">
+      <input id="jcal-quick-hora" type="time" title="Horário (opcional — ex.: reunião)" style="width:120px;height:38px">
+      <div id="jcal-quick-prior" data-val="Normal" style="flex-shrink:0">${makeCd(['Normal','Urgente','Crítico','Baixa'],TODO_PRIOR,'Normal',`document.getElementById('jcal-quick-prior').dataset.val=VAL;document.getElementById('jcal-quick')?.focus()`)}</div>
+      <input id="jcal-quick-resp" placeholder="Responsável..." list="todo-resp-list" value="${respDefault}" style="width:150px;height:38px">
+    </div>
+    ${items.length?items.map(jcalDayTaskRow).join(''):'<div class="jcal-empty">Nenhuma tarefa para este dia. Use o campo acima para adicionar. ✍️</div>'}
+  </div>`;
+}
+function jcalMonthView(ref,sel,today,byDate){
+  const matrix=jcalMonthMatrix(ref);
+  const refMonth=jcalParse(ref).getMonth();
+  const wd=JCAL_WD.map(w=>`<span>${w}</span>`).join('');
+  const cells=matrix.map(iso=>{
+    const d=jcalParse(iso);
+    const out=d.getMonth()!==refMonth;
+    const weekend=d.getDay()===0||d.getDay()===6;
+    const items=jcalSortTasks(byDate[iso]||[]);
+    const shown=items.slice(0,3).map(jcalTaskChip).join('');
+    const more=items.length>3?`<div class="jcal-more">+${items.length-3} mais</div>`:'';
+    const cls=['jcal-cell',out?'out':'',iso===today?'today':'',iso===sel?'sel':'',weekend?'weekend':''].filter(Boolean).join(' ');
+    return `<div class="${cls}" data-cnt="${items.length?items.length+'•':''}" onclick="window._calSelectDay('${iso}')">
+      <span class="jcal-daynum">${d.getDate()}</span>${shown}${more}
+      <button class="jcal-addbtn" onclick="event.stopPropagation();window._calAddDay('${iso}')" title="Adicionar tarefa">+</button>
+    </div>`;
+  }).join('');
+  return `<div class="jcal-month"><div class="jcal-wd">${wd}</div><div class="jcal-grid">${cells}</div></div>`;
+}
+function jcalWeekView(start,cols,sel,today,byDate){
+  const days=Array.from({length:cols},(_,i)=>jcalAddDays(start,i));
+  const colHtml=days.map(iso=>{
+    const d=jcalParse(iso);
+    const items=jcalSortTasks(byDate[iso]||[]);
+    const headCls=['jcal-col-head',iso===today?'today':'',iso===sel?'sel':''].filter(Boolean).join(' ');
+    const tasks=items.length?items.map(jcalTaskRow).join(''):'<div class="jcal-empty" style="text-align:center;padding:8px 0">—</div>';
+    return `<div class="jcal-col">
+      <div class="${headCls}" onclick="window._calSelectDay('${iso}')">
+        <div class="jcal-col-wd">${JCAL_WD[d.getDay()]}</div>
+        <div class="jcal-col-dn">${d.getDate()}</div>
+      </div>
+      <div class="jcal-col-body">${tasks}</div>
+      <button class="jcal-col-add" onclick="window._calAddDay('${iso}')">+ tarefa</button>
+    </div>`;
+  }).join('');
+  return `<div class="jcal-week" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${colHtml}</div>`;
+}
+function renderTodoCalendar(todos,obra){
+  const view=S.calView||'mes';
+  if(!S.calRef)S.calRef=todayISO();
+  if(!S.calSel)S.calSel=todayISO();
+  if(view==='dia')S.calSel=S.calRef;
+  const ref=S.calRef,sel=S.calSel,today=todayISO();
+  const byDate={};let semData=0;
+  (todos||[]).forEach(t=>{const dd=t.data?jcalISO(t.data):'';if(!dd){semData++;return;}(byDate[dd]=byDate[dd]||[]).push(t);});
+  window._jcalByDate=byDate;
+  const totalPend=(todos||[]).filter(t=>t.status!=='Concluído').length;
+  const totalConc=(todos||[]).filter(t=>t.status==='Concluído').length;
+  const respList=`<datalist id="todo-resp-list">${[...new Set([...(currentUser?[currentUser.email.split('@')[0]]:[]),...DB.rdo.map(r=>r.autor),...DB.todos.map(t=>t.responsavel),...DB.materiais.map(m=>m.solicitante),...DB.aditivos.map(a=>a.responsavel)].filter(Boolean))].sort().map(r=>`<option value="${esc(r)}">`).join('')}</datalist>`;
+  let rangeLabel='',bodyHtml='';
+  if(view==='mes'){
+    rangeLabel=jcalParse(ref).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    bodyHtml=jcalMonthView(ref,sel,today,byDate);
+  }else if(view==='dia'){
+    rangeLabel=jcalParse(ref).toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  }else{
+    const monday=view==='util';
+    const start=jcalStartOfWeek(ref,monday);
+    const cols=monday?5:7;
+    const s=jcalParse(start),e=jcalParse(jcalAddDays(start,cols-1));
+    rangeLabel=`${s.getDate()} – ${e.getDate()} de ${e.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')}`;
+    bodyHtml=jcalWeekView(start,cols,sel,today,byDate);
+  }
+  const seg=(v,label)=>`<button class="${view===v?'active':''}" onclick="window._calSetView('${v}')">${label}</button>`;
+  return `<div class="jcal">
+<div class="section-header">
+  <div><div class="section-title">📅 A Fazer — Frente de Serviço</div>
+  <div class="section-sub">${totalPend} pendente${totalPend!==1?'s':''} · ${totalConc} concluído${totalConc!==1?'s':''}</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    ${todoViewToggle()}
+    <button class="btn btn-secondary btn-sm" onclick="window._shareWhatsapp('${escJs(obra)}')">📱 WhatsApp</button>
+    <button class="btn btn-primary" onclick="_openModal('new-todo',{data:S.calSel})">+ Nova Tarefa</button>
+  </div>
+</div>
+<div class="jcal-toolbar">
+  <div class="jcal-viewseg">${seg('dia','Dia')}${seg('semana','Semana')}${seg('util','Semana útil')}${seg('mes','Mês')}</div>
+  <div class="jcal-nav">
+    <button onclick="window._calNav(-1)" title="Anterior">‹</button>
+    <button class="jcal-today" onclick="window._calToday()">Hoje</button>
+    <button onclick="window._calNav(1)" title="Próximo">›</button>
+  </div>
+  <div class="jcal-range">${esc(rangeLabel)}</div>
+  ${semData?`<button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="window._setTodoView('lista')" title="Tarefas sem data definida">⚠ ${semData} sem data</button>`:''}
+</div>
+${bodyHtml}
+${jcalDayPanel(obra,sel)}
+${respList}
+</div>`;
+}
+window._setTodoView=(v)=>{S.todoView=v;renderApp();};
+window._setTodoHora=(id,hora)=>{setTodoHora(id,hora);renderApp();};
+window._calSetView=(v)=>{S.calView=v;if(v==='dia')S.calRef=S.calSel||S.calRef||todayISO();renderApp();};
+window._calNav=(dir)=>{const v=S.calView||'mes';const ref=S.calRef||todayISO();S.calRef=v==='mes'?jcalAddMonths(ref,dir):(v==='dia'?jcalAddDays(ref,dir):jcalAddDays(ref,dir*7));if(v==='dia')S.calSel=S.calRef;renderApp();};
+window._calToday=()=>{S.calRef=todayISO();S.calSel=todayISO();renderApp();};
+window._calSelectDay=(iso)=>{S.calSel=iso;if(S.calView==='dia')S.calRef=iso;renderApp();};
+window._calAddDay=(iso)=>{S.calSel=iso;if(S.calView==='dia')S.calRef=iso;renderApp();setTimeout(()=>{const i=document.getElementById('jcal-quick');if(i){i.focus();i.scrollIntoView({block:'center',behavior:'smooth'});}},90);};
+window._calQuickAdd=async(el)=>{
+  const obra=S.obra;const desc=(el?.value||'').trim();const iso=S.calSel||todayISO();
+  if(!desc){return;}
+  if(!obra){toast('Abra uma obra para adicionar tarefas.','#ef4444');return;}
+  const prior=document.getElementById('jcal-quick-prior')?.dataset?.val||'Normal';
+  const resp=document.getElementById('jcal-quick-resp')?.value||currentUser?.email?.split('@')[0]||'';
+  const hora=document.getElementById('jcal-quick-hora')?.value||'';
+  el.value='';el.disabled=true;
+  const obj={id:uid(),obra,descricao:desc,responsavel:resp,status:'Pendente',prioridade:prior,data:iso};
+  const{error}=await sb.from('todos').insert(obj);
+  if(error){toast('Erro: '+error.message,'#ef4444');el.disabled=false;el.value=desc;return;}
+  if(!DB.todos.find(t=>t.id===obj.id))DB.todos.unshift(obj);
+  if(hora)setTodoHora(obj.id,hora);
+  toast('✓ Tarefa adicionada!');
+  S.obraTab='todo';
+  renderApp();
+  setTimeout(()=>{const i=document.getElementById('jcal-quick');if(i){i.disabled=false;i.focus();}},80);
+};
 
 window._todoCollapsed={};
 window._toggleTodoGroup=(cid)=>{window._todoCollapsed[cid]=window._todoCollapsed[cid]===false?true:false;renderApp();};
@@ -5173,6 +5450,7 @@ window._deleteTodo=async(id)=>{
   const t=DB.todos.find(x=>x.id===id);
   if(!confirm(`Excluir tarefa: "${String(t?.descricao||'').slice(0,60)}"?`))return;
   await sb.from('todos').delete().eq('id',id);
+  if(getTodoHora(id))setTodoHora(id,'');
   DB.todos=DB.todos.filter(t=>t.id!==id);renderApp();
 };
 window._quickTodo=async(el)=>{
@@ -9078,7 +9356,8 @@ ${efAdm.map((e,i)=>`<div style="display:grid;grid-template-columns:1fr 60px 1fr;
     body=`<div>
 <div class="form-grid-2" style="margin-bottom:14px">
   <div class="form-group" style="margin-bottom:0"><label>Responsável</label><input id="m-tresp" value="${esc(currentUser?.email?.split('@')[0]||'')}" list="m-tresp-list" placeholder="Responsável..."><datalist id="m-tresp-list">${respOpts.map(r=>'<option value="'+esc(r)+'">').join('')}</datalist></div>
-  <div class="form-group" style="margin-bottom:0"><label>Data</label><input id="m-tdata" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+  <div class="form-group" style="margin-bottom:0"><label>Data</label><input id="m-tdata" type="date" value="${esc(d?.data||new Date().toISOString().slice(0,10))}"></div>
+  <div class="form-group" style="margin-bottom:0"><label>Horário (opcional · aplicar a todos)</label><input id="m-thora" type="time"></div>
   <div class="form-group" style="margin-bottom:0"><label>Prioridade (aplicar a todos)</label><select id="m-tprior"><option>Normal</option><option>Urgente</option><option>Crítico</option><option>Baixa</option></select></div>
   <div class="form-group" style="margin-bottom:0"><label>Observação Geral</label><input id="m-tobs" placeholder="Observações..."></div>
 </div>
@@ -10177,6 +10456,7 @@ window._saveTodo=async()=>{
   const rows=Array.from(document.querySelectorAll('.todo-item-row'));
   const prior=document.getElementById('m-tprior')?.value||'Normal';
   const data=document.getElementById('m-tdata')?.value||new Date().toISOString().slice(0,10);
+  const hora=document.getElementById('m-thora')?.value||'';
   const defaultResp=document.getElementById('m-tresp')?.value||currentUser?.email?.split('@')[0]||'';
   const items=rows.map(r=>({
     desc:r.querySelector('.todo-item-desc')?.value?.trim()||'',
@@ -10190,6 +10470,7 @@ window._saveTodo=async()=>{
     const{error}=await sb.from('todos').insert(obj);
     if(error){toast('Erro: '+error.message,'#ef4444');if(btn){btn.disabled=false;btn.textContent='Salvar';}return;}
     if(!DB.todos.find(t=>t.id===obj.id))DB.todos.unshift(obj);
+    if(hora)setTodoHora(obj.id,hora);
     count++;
   }
   toast('✓ '+count+' tarefa'+(count!==1?'s':'')+' adicionada'+(count!==1?'s':'')+'!');
