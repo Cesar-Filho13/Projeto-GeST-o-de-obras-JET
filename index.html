@@ -4764,8 +4764,9 @@ search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontr
     const totalItens=items.reduce((s,m)=>s+(Number(m.quantidade)||0),0);
     const reqFileKey=getMaterialReqKeyFromItems(items,obra);
     const reqFileCount=getMaterialReqFiles(reqFileKey).length;
-    return`<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer" onclick="window._toggleMatGroup('${escJs(cid)}')">
+    return`<div class="mat-grp" data-mat-dt="${esc(dt)}" ondragover="window._matDragOver(event,'${escJs(dt)}')" ondragleave="window._matDragLeave(event)" ondrop="window._matDrop(event,'${escJs(dt)}','${escJs(obra)}')" style="margin-bottom:6px;border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative">
+<div class="mat-grp-head" draggable="true" ondragstart="window._matDragStart(event,'${escJs(dt)}','${escJs(obra)}')" ondragend="window._matDragEnd(event)" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer" onclick="window._toggleMatGroup('${escJs(cid)}')">
+  <span class="mat-grp-grip" title="Arraste esta lista sobre outra para mesclá-las" style="flex-shrink:0;cursor:grab;color:var(--text3);font-size:15px;line-height:.5;letter-spacing:-2px;user-select:none" onpointerdown="event.stopPropagation()">⠿</span>
   <svg style="flex-shrink:0;transition:transform .2s;transform:rotate(${collapsed?'0':'90'}deg)" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,2 7,5 2,8"/></svg>
   <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--text)">${dt==='9999'?'Sem data':fmtD(dt.slice(0,10))}</span>
   <span class="tag">${items.length} item${items.length!==1?'s':''}</span>
@@ -10182,6 +10183,95 @@ td{padding:8px 12px;border:1px solid #ccc}td:first-child{font-weight:700;width:4
 
 window._matCollapsed={};
 window._toggleMatGroup=(cid)=>{window._matCollapsed[cid]=window._matCollapsed[cid]===false?true:false;renderApp();};
+
+// ─── MESCLAR LISTAS DE SOLICITAÇÃO (drag & drop + desfazer 5s) ─────────────
+let _matDrag=null;
+function _matClearDropFx(grp){if(!grp)return;grp.dataset.mergeHot='';grp.style.boxShadow='';grp.style.borderColor='';const h=grp.querySelector('.mat-merge-hint');if(h)h.remove();}
+window._matDragStart=(e,dt,obra)=>{
+  _matDrag={dt,obra};
+  const grp=e.currentTarget.closest('.mat-grp');
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dt);if(grp)e.dataTransfer.setDragImage(grp,16,16);}catch(_){}
+  if(grp){grp.style.transition='opacity .15s';grp.style.opacity='.4';}
+};
+window._matDragEnd=()=>{
+  _matDrag=null;
+  document.querySelectorAll('.mat-grp').forEach(g=>{g.style.opacity='';_matClearDropFx(g);});
+};
+window._matDragOver=(e,dt)=>{
+  if(!_matDrag||_matDrag.dt===dt)return; // alvo inválido (mesma lista ou sem arraste)
+  e.preventDefault();
+  try{e.dataTransfer.dropEffect='move';}catch(_){}
+  const grp=e.currentTarget;
+  if(grp.dataset.mergeHot==='1')return;
+  grp.dataset.mergeHot='1';
+  grp.style.boxShadow='0 0 0 2px var(--blue),0 10px 28px rgba(59,130,246,.35)';
+  grp.style.borderColor='var(--blue)';
+  if(!grp.querySelector('.mat-merge-hint')){
+    const hint=document.createElement('div');
+    hint.className='mat-merge-hint';
+    hint.textContent='⤵  Soltar para mesclar as listas';
+    hint.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,.18);color:#fff;font-weight:700;font-size:13px;letter-spacing:.2px;border-radius:10px;pointer-events:none;z-index:5';
+    grp.appendChild(hint);
+  }
+};
+window._matDragLeave=(e)=>{
+  const grp=e.currentTarget;
+  if(grp.contains(e.relatedTarget))return; // ainda dentro do grupo (filho)
+  _matClearDropFx(grp);
+};
+window._matDrop=async(e,dt,obra)=>{
+  e.preventDefault();
+  const drag=_matDrag;
+  _matClearDropFx(e.currentTarget);
+  _matDrag=null;
+  if(!drag||drag.dt===dt)return;
+  await window._matMergeGroups(obra||drag.obra,drag.dt,dt);
+};
+window._matMergeGroups=async(obra,sourceDt,targetDt)=>{
+  if(!obra||sourceDt===targetDt)return;
+  const realDt=v=>v==='9999'?null:v;
+  const srcItems=(DB.materiais||[]).filter(m=>m.obra===obra&&(m.data_solicitacao||'9999')===sourceDt);
+  if(!srcItems.length){renderApp();return;}
+  const newVal=realDt(targetDt);
+  const snapshot=srcItems.map(m=>({id:m.id,old:m.data_solicitacao??null}));
+  const ids=srcItems.map(m=>m.id);
+  const{error}=await sb.from('materiais').update({data_solicitacao:newVal}).in('id',ids);
+  if(error){toast('Erro ao mesclar: '+error.message,'#ef4444');return;}
+  DB.materiais.forEach(m=>{if(ids.includes(m.id))m.data_solicitacao=newVal;});
+  renderApp();
+  _showMatMergeUndo(obra,snapshot,srcItems.length);
+};
+let _matMergeUndo=null;
+function _showMatMergeUndo(obra,snapshot,count){
+  if(_matMergeUndo&&_matMergeUndo.timer)clearInterval(_matMergeUndo.timer);
+  document.getElementById('mat-merge-undo')?.remove();
+  _matMergeUndo={obra,snapshot,timer:null};
+  const el=document.createElement('div');
+  el.id='mat-merge-undo';el.className='toast';
+  el.style.cssText='bottom:90px;left:50%;transform:translateX(-50%);min-width:320px;gap:14px';
+  let remaining=5;
+  const draw=()=>{el.innerHTML=`<span>🔗 ${count} item${count!==1?'s':''} mesclado${count!==1?'s':''} em uma lista</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${remaining}s</span><button onclick="window._undoMatMerge()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap">↩ Desfazer</button></div>`;};
+  draw();document.body.appendChild(el);
+  const timer=setInterval(()=>{remaining--;if(remaining<=0){clearInterval(timer);el.remove();_matMergeUndo=null;}else draw();},1000);
+  _matMergeUndo.timer=timer;
+}
+window._undoMatMerge=async()=>{
+  const u=_matMergeUndo;
+  if(u&&u.timer)clearInterval(u.timer);
+  document.getElementById('mat-merge-undo')?.remove();
+  _matMergeUndo=null;
+  if(!u)return;
+  const byOld=new Map();
+  u.snapshot.forEach(s=>{const k=s.old===null?'__null__':s.old;if(!byOld.has(k))byOld.set(k,{val:s.old,ids:[]});byOld.get(k).ids.push(s.id);});
+  const groups=[...byOld.values()];
+  const results=await Promise.all(groups.map(g=>sb.from('materiais').update({data_solicitacao:g.val}).in('id',g.ids)));
+  const failed=results.find(r=>r.error);
+  if(failed){toast('Não foi possível desfazer a mesclagem.','#ef4444');return;}
+  const idToOld=new Map(u.snapshot.map(s=>[s.id,s.old]));
+  DB.materiais.forEach(m=>{if(idToOld.has(m.id))m.data_solicitacao=idToOld.get(m.id);});
+  toast('✓ Mesclagem desfeita.','#22c55e');
+  renderApp();
+};
 window._deleteMaterial=async(id)=>{const mat=DB.materiais.find(x=>x.id===id);if(!confirm(`Excluir solicitação: "${mat?.item||'item'}"?`))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
 
 window._editMaterial=async(id)=>{
