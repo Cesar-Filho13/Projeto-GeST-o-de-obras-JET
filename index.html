@@ -5305,6 +5305,19 @@ function renderTodoCalendar(todos,obra){
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${todoViewToggle()}
     <button class="btn btn-secondary btn-sm" onclick="window._shareWhatsapp('${escJs(obra)}')">📱 WhatsApp</button>
+    <div style="position:relative">
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();S.todoReportOpen=!S.todoReportOpen;renderApp()" title="Gerar relatório por período">📄 Relatório ▾</button>
+      ${S.todoReportOpen?`<div onclick="S.todoReportOpen=false;renderApp()" style="position:fixed;inset:0;z-index:40"></div>
+      <div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.5);padding:6px;min-width:214px">
+        <div style="font-size:10px;color:var(--text3);padding:2px 8px 6px;border-bottom:1px solid var(--border);margin-bottom:4px">Período a partir de <b style="color:var(--text2)">${esc((S.calRef||todayISO()).split('-').reverse().join('/'))}</b></div>
+        ${[['semana','📅 Semana'],['util','💼 Semana útil'],['mes','🗓️ Mês']].map(([p,lbl])=>`<div style="padding:5px 8px">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:4px">${lbl}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" style="flex:1;padding:5px 8px;font-size:11px" onclick="event.stopPropagation();window.todoReportPDF('${escJs(obra)}','${p}')">📑 PDF</button>
+            <button class="btn btn-secondary btn-sm" style="flex:1;padding:5px 8px;font-size:11px" onclick="event.stopPropagation();window.todoReportXLSX('${escJs(obra)}','${p}')">📊 Excel</button>
+          </div></div>`).join('')}
+      </div>`:''}
+    </div>
     <button class="btn btn-primary" onclick="_openModal('new-todo',{data:S.calSel})">+ Nova Tarefa</button>
   </div>
 </div>
@@ -5366,6 +5379,69 @@ window.todoExportPDF=(obra)=>{
   doc.save('AFazer_'+obra+'.pdf');toast('PDF exportado!');
 };
 window.todoExportTXT=(obra)=>{const t=DB.todos.filter(t=>t.obra===obra);exportTXT(t.map(x=>[x.descricao,x.responsavel,x.prioridade,x.status,x.data]),['Tarefa','Responsável','Prioridade','Status','Data'],'AFazer_'+obra);};
+// ── RELATÓRIO "A FAZER" POR PERÍODO (semana / semana útil / mês) ──────────────
+function _todoReportRange(period){
+  const ref=S.calRef||todayISO();
+  if(period==='mes'){
+    const d=jcalParse(ref);
+    const start=jcalISO(new Date(d.getFullYear(),d.getMonth(),1));
+    const end=jcalISO(new Date(d.getFullYear(),d.getMonth()+1,0));
+    let label=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    label=label.charAt(0).toUpperCase()+label.slice(1);
+    return{start,end,label,title:'Mês'};
+  }
+  const monday=period==='util';
+  const start=jcalStartOfWeek(ref,monday);
+  const cols=monday?5:7;
+  const end=jcalAddDays(start,cols-1);
+  const f=iso=>{const d=jcalParse(iso);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
+  const label=`${f(start)} a ${f(end)}/${jcalParse(end).getFullYear()}`;
+  return{start,end,label,title:monday?'Semana útil':'Semana'};
+}
+function _todoReportData(obra,period){
+  const r=_todoReportRange(period);
+  const items=(DB.todos||[]).filter(t=>t.obra===obra&&t.data&&jcalISO(t.data)>=r.start&&jcalISO(t.data)<=r.end)
+    .sort((a,b)=>{const da=jcalISO(a.data),db=jcalISO(b.data);if(da!==db)return da<db?-1:1;return (getTodoHora(a.id)||'99:99').localeCompare(getTodoHora(b.id)||'99:99');});
+  return{r,items};
+}
+window.todoReportPDF=(obra,period)=>{
+  S.todoReportOpen=false;
+  if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');renderApp();return;}
+  const{jsPDF}=window.jspdf;const{r,items}=_todoReportData(obra,period);
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  jetLogo(doc,18,14,8);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text('JET',18,16,{align:'center'});
+  doc.setFontSize(14);doc.setTextColor(20,20,60);doc.text('A Fazer — '+r.title,32,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);
+  doc.text(`${obra}  ·  ${r.label}  ·  ${items.length} tarefa(s)`,32,18);
+  doc.autoTable({startY:24,head:[['Data','Hora','Tarefa','Responsável','Prioridade','Status']],
+    body:items.map(t=>[fmtD(t.data),getTodoHora(t.id)||'—',t.descricao||'',t.responsavel||'',t.prioridade||'Normal',t.status||'Pendente']),
+    styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[26,46,107],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[245,247,250]},columnStyles:{0:{cellWidth:22},1:{cellWidth:14,halign:'center'},4:{cellWidth:22},5:{cellWidth:24}}});
+  if(!items.length){doc.setFontSize(10);doc.setTextColor(150,150,150);doc.text('Nenhuma tarefa neste período.',32,34);}
+  doc.save(`AFazer_${r.title.replace(/\s+/g,'_')}_${obra.replace(/\s+/g,'_')}.pdf`);
+  toast('PDF do relatório exportado!');renderApp();
+};
+window.todoReportXLSX=(obra,period)=>{
+  S.todoReportOpen=false;
+  const{r,items}=_todoReportData(obra,period);renderApp();
+  return exportStyledXLSX({
+    sheetName:'A Fazer',
+    filename:`AFazer_${r.title.replace(/\s+/g,'_')}_${obra.replace(/\s+/g,'_')}`,
+    title:'A Fazer — '+r.title,
+    meta:[obra,r.label,`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${items.length} tarefa(s)`],
+    columns:[
+      {header:'#',key:'idx',width:6,align:'center'},
+      {header:'Data',key:'data',width:14,align:'center'},
+      {header:'Hora',key:'hora',width:10,align:'center'},
+      {header:'Tarefa',key:'descricao',width:46},
+      {header:'Responsável',key:'responsavel',width:20},
+      {header:'Prioridade',key:'prioridade',width:14,align:'center'},
+      {header:'Status',key:'status',width:16,align:'center'}
+    ],
+    rows:items.map((t,i)=>({idx:i+1,data:fmtD(t.data),hora:getTodoHora(t.id)||'',descricao:t.descricao||'',responsavel:t.responsavel||'',prioridade:t.prioridade||'Normal',status:t.status||'Pendente'}))
+  });
+};
 window._sortBy=(field)=>{
   if(!window._sortState)window._sortState={field:null,dir:1};
   if(window._sortState.field===field)window._sortState.dir*=-1;
