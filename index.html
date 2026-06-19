@@ -4773,11 +4773,12 @@ search&&filtered.length===0?`<div class="empty-state"><p>Nenhum material encontr
   ${pend>0?`<span style="font-size:11px;color:#fbbf24;background:#2a1d06;padding:1px 8px;border-radius:100px;font-weight:600">⏳ ${pend} pendente${pend!==1?'s':''}</span>`:''}
   ${concl===items.length?`<span style="font-size:11px;color:#34d399;background:#062018;padding:1px 8px;border-radius:100px;font-weight:600">✓ Concluído</span>`:''}
   ${items[0]?.solicitante?`<span style="font-size:11px;color:var(--text3);margin-left:4px">por ${esc(items[0].solicitante)}</span>`:''}
-  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._duplicateMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Duplicar requisição (nova data — hoje)">⧉ Duplicar</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button>${subTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px;color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._matConclReqPrompt('${escJs(obra)}','${escJs(dt)}','${escJs(items.map(i=>i.id).join(','))}')" title="Encerrar esta requisição">✓ Encerrar</button>`:`<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReopenReq('${escJs(obra)}','${escJs(dt)}')" title="Reabrir esta requisição">↩ Reabrir</button>`}</span>
+  <span style="margin-left:auto;display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text3);margin-right:6px">${totalItens>0?totalItens+' un':''}</span>${reqFileCount?`<span class="tag" title="Anexos da requisição">📎 ${reqFileCount}</span>`:''}<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._duplicateMaterialGroup('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Duplicar requisição (nova data — hoje)">⧉ Duplicar</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._openEditReq('${escJs(items.map(i=>i.id).join(','))}')" title="Editar requisição e anexos">Editar</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReqXLSX('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excel desta requisição">Excel</button><button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReqPDF('${escJs(obra)}','${escJs(items.map(i=>i.id).join(','))}')" title="PDF desta requisição">PDF</button>${subTab==='andamento'?`<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px;color:#34d399;border-color:#10b981" onclick="event.stopPropagation();window._matConclReqPrompt('${escJs(obra)}','${escJs(dt)}','${escJs(items.map(i=>i.id).join(','))}')" title="Encerrar esta requisição">✓ Encerrar</button>`:`<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px" onclick="event.stopPropagation();window._matReopenReq('${escJs(obra)}','${escJs(dt)}')" title="Reabrir esta requisição">↩ Reabrir</button>`}<button class="btn btn-secondary btn-sm" style="padding:4px 11px;font-size:11px;color:#f87171;border-color:rgba(239,68,68,.5)" onclick="event.stopPropagation();window._matDeleteGroupPrompt('${escJs(obra)}','${escJs(dt)}','${escJs(items.map(i=>i.id).join(','))}')" title="Excluir esta lista inteira">🗑️ Excluir</button></span>
 </div>
 ${collapsed?'':
 `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">
 <thead><tr style="background:#0d0d0d;border-bottom:1px solid var(--border)">
+  <th style="width:24px"></th>
   <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;min-width:180px">Item</th>
   <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:65px;text-align:center">Qtd.</th>
   <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:65px;text-align:center">Unid.</th>
@@ -4788,6 +4789,7 @@ ${collapsed?'':
   <th style="width:36px"></th>
 </tr></thead>
 <tbody>${items.map(m=>`<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+<td style="text-align:center;padding:0;width:24px"><span draggable="true" ondragstart="window._matItemDragStart(event,'${m.id}','${escJs(obra)}','${escJs(dt)}')" ondragend="window._matDragEnd(event)" title="Arraste para mover este item para outra lista" style="cursor:grab;color:var(--text3);font-size:13px;line-height:.6;letter-spacing:-2px;user-select:none;display:inline-block;padding:6px 5px">⠿</span></td>
 <td style="padding:5px 8px"><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(m.item)}" onblur="if(this.value.trim())updateField('materiais','${m.id}','item',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:5px 8px;text-align:center"><input class="ci ci-num" type="number" style="width:100%;text-align:center" value="${m.quantidade||''}" onblur="updateField('materiais','${m.id}','quantidade',this.value?parseFloat(this.value):null)" onkeydown="if(event.key==='Enter')this.blur()"></td>
 <td style="padding:5px 8px">${materialUnitSelect('ci',m.unidade||'un','width:100%;text-align:center',`onchange="updateField('materiais','${m.id}','unidade',this.value)"`)}</td>
@@ -10264,17 +10266,28 @@ window._toggleMatGroup=(cid)=>{window._matCollapsed[cid]=window._matCollapsed[ci
 let _matDrag=null;
 function _matClearDropFx(grp){if(!grp)return;grp.dataset.mergeHot='';grp.style.boxShadow='';grp.style.borderColor='';const h=grp.querySelector('.mat-merge-hint');if(h)h.remove();}
 window._matDragStart=(e,dt,obra)=>{
-  _matDrag={dt,obra};
   const grp=e.currentTarget.closest('.mat-grp');
+  _matDrag={kind:'group',dt,obra,el:grp};
   try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dt);if(grp)e.dataTransfer.setDragImage(grp,16,16);}catch(_){}
   if(grp){grp.style.transition='opacity .15s';grp.style.opacity='.4';}
 };
+window._matItemDragStart=(e,id,obra,fromDt)=>{
+  e.stopPropagation();
+  const row=e.currentTarget.closest('tr');
+  const m=(DB.materiais||[]).find(x=>String(x.id)===String(id));
+  _matDrag={kind:'item',id:String(id),obra,fromDt,el:row,name:m?.item||''};
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));if(row)e.dataTransfer.setDragImage(row,16,12);}catch(_){}
+  if(row){row.style.transition='opacity .15s';row.style.opacity='.4';}
+};
 window._matDragEnd=()=>{
+  if(_matDrag&&_matDrag.el)_matDrag.el.style.opacity='';
   _matDrag=null;
   document.querySelectorAll('.mat-grp').forEach(g=>{g.style.opacity='';_matClearDropFx(g);});
 };
 window._matDragOver=(e,dt)=>{
-  if(!_matDrag||_matDrag.dt===dt)return; // alvo inválido (mesma lista ou sem arraste)
+  if(!_matDrag)return;
+  const isGroup=_matDrag.kind==='group';
+  if((isGroup&&_matDrag.dt===dt)||(!isGroup&&_matDrag.fromDt===dt))return; // alvo inválido (mesma lista de origem)
   e.preventDefault();
   try{e.dataTransfer.dropEffect='move';}catch(_){}
   const grp=e.currentTarget;
@@ -10285,8 +10298,8 @@ window._matDragOver=(e,dt)=>{
   if(!grp.querySelector('.mat-merge-hint')){
     const hint=document.createElement('div');
     hint.className='mat-merge-hint';
-    hint.textContent='⤵  Soltar para mesclar as listas';
-    hint.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,.18);color:#fff;font-weight:700;font-size:13px;letter-spacing:.2px;border-radius:10px;pointer-events:none;z-index:5';
+    hint.textContent=isGroup?'⤵  Soltar para mesclar as listas':'⤵  Soltar para mover o item para esta lista';
+    hint.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,.18);color:#fff;font-weight:700;font-size:13px;letter-spacing:.2px;border-radius:10px;pointer-events:none;z-index:5;text-align:center;padding:0 10px';
     grp.appendChild(hint);
   }
 };
@@ -10300,8 +10313,14 @@ window._matDrop=async(e,dt,obra)=>{
   const drag=_matDrag;
   _matClearDropFx(e.currentTarget);
   _matDrag=null;
-  if(!drag||drag.dt===dt)return;
-  await window._matMergeGroups(obra||drag.obra,drag.dt,dt);
+  if(!drag)return;
+  if(drag.kind==='item'){
+    if(drag.fromDt===dt)return;
+    await window._matMoveItem(obra||drag.obra,drag.id,dt);
+  }else{
+    if(drag.dt===dt)return;
+    await window._matMergeGroups(obra||drag.obra,drag.dt,dt);
+  }
 };
 window._matMergeGroups=async(obra,sourceDt,targetDt)=>{
   if(!obra||sourceDt===targetDt)return;
@@ -10347,6 +10366,84 @@ window._undoMatMerge=async()=>{
   DB.materiais.forEach(m=>{if(idToOld.has(m.id))m.data_solicitacao=idToOld.get(m.id);});
   toast('✓ Mesclagem desfeita.','#22c55e');
   renderApp();
+};
+// ── Toast genérico de desfazer (5s) para mover/excluir item/lista ──────────
+let _matUndoState=null;
+function _matShowUndo(labelHtml,onUndo){
+  if(_matUndoState&&_matUndoState.timer)clearInterval(_matUndoState.timer);
+  document.getElementById('mat-undo')?.remove();
+  _matUndoState={onUndo,timer:null};
+  const el=document.createElement('div');el.id='mat-undo';el.className='toast';
+  el.style.cssText='bottom:90px;left:50%;transform:translateX(-50%);min-width:320px;gap:14px';
+  let remaining=5;
+  const draw=()=>{el.innerHTML=`<span>${labelHtml}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${remaining}s</span><button onclick="window._matRunUndo()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap">↩ Desfazer</button></div>`;};
+  draw();document.body.appendChild(el);
+  const timer=setInterval(()=>{remaining--;if(remaining<=0){clearInterval(timer);el.remove();_matUndoState=null;}else draw();},1000);
+  _matUndoState.timer=timer;
+}
+window._matRunUndo=async()=>{
+  const u=_matUndoState;if(u&&u.timer)clearInterval(u.timer);
+  document.getElementById('mat-undo')?.remove();_matUndoState=null;
+  if(u&&u.onUndo)await u.onUndo();
+};
+// ── Mover um material de uma lista para outra (drag do item) ───────────────
+window._matMoveItem=async(obra,id,targetDt)=>{
+  if(!obra)return;
+  const realDt=v=>v==='9999'?null:v;
+  const item=(DB.materiais||[]).find(m=>String(m.id)===String(id));
+  if(!item)return;
+  const oldVal=item.data_solicitacao??null;
+  const newVal=realDt(targetDt);
+  if((oldVal||null)===(newVal||null)){renderApp();return;}
+  const{error}=await sb.from('materiais').update({data_solicitacao:newVal}).eq('id',id);
+  if(error){toast('Erro ao mover: '+error.message,'#ef4444');return;}
+  item.data_solicitacao=newVal;
+  renderApp();
+  _matShowUndo(`📦 "${esc(item.item||'Item')}" movido para outra lista`,async()=>{
+    const{error}=await sb.from('materiais').update({data_solicitacao:oldVal}).eq('id',id);
+    if(error){toast('Não foi possível desfazer.','#ef4444');return;}
+    const it=(DB.materiais||[]).find(m=>String(m.id)===String(id));if(it)it.data_solicitacao=oldVal;
+    toast('✓ Movimentação desfeita.','#22c55e');renderApp();
+  });
+};
+// ── Excluir lista inteira (trava de segurança: confirmação + desfazer 5s) ──
+window._matDeleteGroupPrompt=(obra,dt,idsCsv)=>{
+  const ids=String(idsCsv||'').split(',').filter(Boolean);
+  const items=(DB.materiais||[]).filter(m=>ids.includes(String(m.id)));
+  if(!items.length){toast('Lista vazia.','#f59e0b');return;}
+  const label=dt==='9999'?'Sem data':fmtD(String(dt).slice(0,10));
+  const n=items.length,plural=n!==1?'s':'';
+  document.getElementById('_mat-del-dlg')?.remove();
+  const dlg=document.createElement('div');
+  dlg.id='_mat-del-dlg';
+  dlg.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
+  dlg.onclick=e=>{if(e.target===dlg)dlg.remove();};
+  dlg.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;max-width:420px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:22px">🗑️</span><div style="font-size:16px;font-weight:800;color:var(--text)">Excluir lista inteira</div></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:8px">Você vai excluir a lista de <b style="color:var(--text)">${esc(label)}</b>, com <b style="color:#f87171">${n} item${plural}</b>. Isso remove todos os itens dessa solicitação.</div>
+    <div style="font-size:12px;color:var(--text3);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:9px 11px;margin-bottom:18px">🔒 <b>Trava de segurança:</b> confirme abaixo. Você ainda terá <b>5 segundos para desfazer</b> depois de excluir.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="document.getElementById('_mat-del-dlg')?.remove()">Cancelar</button>
+      <button class="btn btn-danger" onclick="document.getElementById('_mat-del-dlg')?.remove();window._matDeleteGroupExec('${escJs(obra)}','${escJs(idsCsv)}','${escJs(label)}')">🗑️ Excluir ${n} item${plural}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(dlg);
+};
+window._matDeleteGroupExec=async(obra,idsCsv,label)=>{
+  const ids=String(idsCsv||'').split(',').filter(Boolean);
+  const snapshot=(DB.materiais||[]).filter(m=>ids.includes(String(m.id))).map(m=>({...m}));
+  if(!snapshot.length)return;
+  const{error}=await sb.from('materiais').delete().in('id',ids);
+  if(error){toast('Erro ao excluir: '+error.message,'#ef4444');return;}
+  DB.materiais=DB.materiais.filter(m=>!ids.includes(String(m.id)));
+  renderApp();
+  const n=snapshot.length,plural=n!==1?'s':'';
+  _matShowUndo(`🗑️ Lista de ${esc(label||'')} excluída (${n} item${plural})`,async()=>{
+    const{error}=await sb.from('materiais').insert(snapshot);
+    if(error){toast('Não foi possível restaurar a lista.','#ef4444');return;}
+    snapshot.forEach(m=>{if(!DB.materiais.find(x=>String(x.id)===String(m.id)))DB.materiais.unshift(m);});
+    toast('✓ Lista restaurada.','#22c55e');renderApp();
+  });
 };
 window._deleteMaterial=async(id)=>{const mat=DB.materiais.find(x=>x.id===id);if(!confirm(`Excluir solicitação: "${mat?.item||'item'}"?`))return;await sb.from('materiais').delete().eq('id',id);DB.materiais=DB.materiais.filter(m=>m.id!==id);toast('Excluída.','#f59e0b');renderApp();};
 
