@@ -1272,6 +1272,11 @@ const OBRA_LINKED_TABLES=['aditivos','materiais','funcionarios','rdo','todos','d
 
 const OBRA_COLORS=[{bg:'#0e1f3d',c:'#60a5fa',bar:'#3b82f6'},{bg:'#1a0f2e',c:'#c084fc',bar:'#a855f7'},{bg:'#062018',c:'#34d399',bar:'#10b981'},{bg:'#2a1d06',c:'#fbbf24',bar:'#f59e0b'},{bg:'#200c18',c:'#f472b6',bar:'#ec4899'},{bg:'#0f1e20',c:'#2dd4bf',bar:'#14b8a6'},{bg:'#1f1200',c:'#fb923c',bar:'#f97316'}];
 function obraColor(nome){let h=0;for(let i=0;i<nome.length;i++)h=(h*31+nome.charCodeAt(i))>>>0;return OBRA_COLORS[h%OBRA_COLORS.length];}
+// Reformas têm cor própria (âmbar) para diferenciar visualmente das obras
+const REFORMA_COL={bar:'#f59e0b',c:'#fbbf24'};
+function isReforma(nome){return (DB.reformas||[]).includes(nome);}
+function getObraTipo(nome){return isReforma(nome)?'reforma':'obra';}
+function obraDisplayColor(nome){return isReforma(nome)?REFORMA_COL:obraColor(nome);}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -1396,6 +1401,7 @@ function actionIconSvg(name,size=14){
 // Custom obra storage
 const LEGACY_OBRA_RE=/^UFV\s*Manga\s*(I|II)$/i;
 const OBRA_REGISTRY_PATH='meta/obras-registry.json';
+const REFORMA_REGISTRY_PATH='meta/reformas-registry.json';
 const BAIXADAS_PATH='meta/funcionarios-baixadas.json';
 const ALMOX_DEPOSITOS_KEY='jet-almox-depositos';
 const FALTAS_PATH='meta/funcionarios-faltas.json';
@@ -1584,6 +1590,33 @@ async function saveRemoteObras(list){
   }catch(err){
     console.warn('[JET] Registro de obras não salvo:',err?.message||err);
   }
+}
+// ── Registro de REFORMAS (mesma mecânica do registro de obras: JSON no Storage + cache local) ──
+const REFORMAS_LS='jet-reformas';
+function getLocalReformas(){try{return uniqObras(JSON.parse(localStorage.getItem(REFORMAS_LS)||'[]'));}catch{return[];}}
+function setLocalReformas(list){try{localStorage.setItem(REFORMAS_LS,JSON.stringify(uniqObras(list)));}catch{}}
+async function loadRemoteReformas(){
+  try{
+    const {data,error}=await sb.storage.from(BUCKET).download(REFORMA_REGISTRY_PATH);
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.reformas=getLocalReformas();return;}throw error;}
+    DB.reformas=uniqObras(JSON.parse(await data.text()));
+    setLocalReformas(DB.reformas);
+  }catch(err){DB.reformas=getLocalReformas();console.warn('[JET] Registro de reformas não carregado:',err?.message||err);}
+}
+async function saveRemoteReformas(list){
+  const cleaned=uniqObras(list);
+  DB.reformas=[...cleaned];
+  setLocalReformas(cleaned);
+  try{
+    const blob=new Blob([JSON.stringify(cleaned,null,2)],{type:'application/json'});
+    const {error}=await sb.storage.from(BUCKET).upload(REFORMA_REGISTRY_PATH,blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+  }catch(err){console.warn('[JET] Registro de reformas não salvo:',err?.message||err);}
+}
+async function setObraTipo(nome,tipo){
+  const cur=new Set(DB.reformas||[]);
+  if(tipo==='reforma')cur.add(nome);else cur.delete(nome);
+  await saveRemoteReformas([...cur]);
 }
 async function syncObraRegistry(){
   const localNames=getObrasData().map(o=>o?.nome).filter(Boolean);
@@ -2892,7 +2925,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],equipamentos:[],obraRegistry:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],equipamentos:[],obraRegistry:[],reformas:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
 
 async function _fetchCoreTables(){
   return Promise.all([
@@ -2947,6 +2980,7 @@ async function loadAll(){
   DB.cotacoes=c.data||[];
   DB.ferramentas=ferr.data||[];
   await loadRemoteObras();
+  await loadRemoteReformas();
   await syncObraRegistry();
   await loadRemoteBaixadas();
   await loadRemoteFaltas();
@@ -4261,15 +4295,19 @@ function renderDashboard(){
   }
 
   // PAINEL OBRAS  // PAINEL OBRAS (PADRÃO)
-  const allObras=getAllObras();
+  const allObrasAll=getAllObras();
+  const obraTipo=S.obraTipo==='reforma'?'reforma':'obra';
+  const tipoCounts={obra:allObrasAll.filter(o=>!isReforma(o)).length,reforma:allObrasAll.filter(o=>isReforma(o)).length};
+  const tipoLabel=obraTipo==='reforma'?'reforma':'obra';
+  const allObras=allObrasAll.filter(o=>getObraTipo(o)===obraTipo);
   const _depositos=getAlmoxDepositos();
-  const arquivadasObras=uniqObras([...getHiddenObras(),...getArchivedObras()]).filter(o=>o&&o!=='Sem obra'&&!_depositos.has(o)).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  const arquivadasObras=uniqObras([...getHiddenObras(),...getArchivedObras()]).filter(o=>o&&o!=='Sem obra'&&!_depositos.has(o)&&getObraTipo(o)===obraTipo).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const obraFilter=S.obraStatusFilter||'Ativas';
   const isArq=obraFilter==='Arquivadas';
   const OBRA_STATUS_COLORS={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'};
   const obras=(isArq?arquivadasObras:obraFilter==='Todas'?allObras:allObras.filter(o=>{const st=getObraData(o).status||'Ativa';return st===(obraFilter==='Ativas'?'Ativa':obraFilter==='Concluídas'?'Concluída':'Paralisada');})).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const obraCards=obras.map(obra=>{
-    const col=obraColor(obra);
+    const col=obraDisplayColor(obra);
     const ad=sortAditivosDisplay(DB.aditivos.filter(a=>a.obra===obra));
     const mat=DB.materiais.filter(m=>m.obra===obra);
     const func=DB.funcionarios.filter(f=>f.obra===obra&&f.status==='Ativo');
@@ -4306,9 +4344,17 @@ function renderDashboard(){
       </button>
     </div>
     ${S.dashExpanded?renderDashboardCharts()+''+renderAlertas():''}
-    <nav class="obra-nav" style="margin:16px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas','Arquivadas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
+    <div style="display:flex;gap:10px;margin:16px 0 6px;flex-wrap:wrap">
+      <button onclick="S.obraTipo='obra';S.obraStatusFilter='Ativas';renderApp()" style="flex:1;min-width:160px;display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:14px;cursor:pointer;font-family:inherit;text-align:left;transition:all .2s;border:1px solid ${obraTipo==='obra'?'rgba(59,130,246,.5)':'var(--border)'};background:${obraTipo==='obra'?'rgba(59,130,246,.12)':'var(--bg2)'}">
+        <span style="font-size:22px">🏗️</span><span><span style="display:block;font-size:14px;font-weight:800;color:var(--text)">Obras</span><span style="font-size:11px;color:var(--text3)">${tipoCounts.obra} cadastrada${tipoCounts.obra!==1?'s':''}</span></span>
+      </button>
+      <button onclick="S.obraTipo='reforma';S.obraStatusFilter='Ativas';renderApp()" style="flex:1;min-width:160px;display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:14px;cursor:pointer;font-family:inherit;text-align:left;transition:all .2s;border:1px solid ${obraTipo==='reforma'?'rgba(245,158,11,.55)':'var(--border)'};background:${obraTipo==='reforma'?'rgba(245,158,11,.14)':'var(--bg2)'}">
+        <span style="font-size:22px">🔨</span><span><span style="display:block;font-size:14px;font-weight:800;color:var(--text)">Reformas</span><span style="font-size:11px;color:var(--text3)">${tipoCounts.reforma} cadastrada${tipoCounts.reforma!==1?'s':''}</span></span>
+      </button>
+    </div>
+    <nav class="obra-nav" style="margin:8px 0 8px">${['Ativas','Concluídas','Paralisadas','Todas','Arquivadas'].map(f=>`<button class="obra-nav-btn${obraFilter===f?' active':''}" onclick="S.obraStatusFilter='${f}';renderApp()">${f}<span class="nav-count">${obraFilterCounts[f]||0}</span></button>`).join('')}</nav>
     <div class="obra-grid">${obraCards}</div>
-    ${obras.length===0?`<div class="empty-state"><p>${isArq?'Nenhuma obra arquivada.':allObras.length===0?'Nenhuma obra cadastrada.':'Nenhuma obra '+obraFilter.toLowerCase()+' no momento.'}</p>${(!isArq&&allObras.length===0)?'<button class="btn btn-primary" onclick="S.page=\'gerenciar-obras\';renderApp()">+ Cadastrar primeira obra</button>':''}</div>`:''}
+    ${obras.length===0?`<div class="empty-state"><p>${isArq?`Nenhuma ${tipoLabel} arquivada.`:allObras.length===0?`Nenhuma ${tipoLabel} cadastrada.`:`Nenhuma ${tipoLabel} ${obraFilter.toLowerCase()} no momento.`}</p>${(!isArq&&allObras.length===0)?`<button class="btn btn-primary" onclick="S.page='gerenciar-obras';renderApp()">+ Cadastrar ${obraTipo==='reforma'?'primeira reforma':'primeira obra'}</button>`:''}</div>`:''}
   </div>`;
 }
 
@@ -4392,7 +4438,8 @@ function renderObraInner(){
   else if(S.obraTab==='despesas')content=renderDespesas(desp,obra);
   else if(S.obraTab==='ferramentas')content=renderFerramentas(ferramentas,obra);
 
-  const col=obraColor(obra);
+  const col=obraDisplayColor(obra);
+  const obraIsReforma=isReforma(obra);
   const obraData2=getObraData(obra);
   const obraSt=obraData2.status||'Ativa';
   const obraStCol={'Ativa':'#22c55e','Concluída':'#60a5fa','Paralisada':'#f59e0b'}[obraSt]||'#555';
@@ -4410,6 +4457,7 @@ function renderObraInner(){
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px">${esc(obra)}</div>
+      ${obraIsReforma?`<span style="font-size:11px;font-weight:800;background:${REFORMA_COL.bar}22;color:${REFORMA_COL.c};padding:3px 11px;border-radius:100px;border:1px solid ${REFORMA_COL.bar}66">🔨 Reforma</span>`:''}
       ${obraSt!=='Ativa'?`<span style="font-size:11px;font-weight:700;background:${obraStCol}22;color:${obraStCol};padding:3px 11px;border-radius:100px;border:1px solid ${obraStCol}55">${obraSt}</span>`:''}
       ${obraVencCol?`<span style="font-size:11px;font-weight:700;background:${obraVencCol}22;color:${obraVencCol};padding:3px 11px;border-radius:100px;border:1px solid ${obraVencCol}55">${obraVencDays<=0?'Contrato vencido':'Vence em '+obraVencDays+'d'}</span>`:''}
     </div>
@@ -7351,16 +7399,16 @@ function renderGerenciarObras(){
     const linkedMap=buildObraDeleteMap(obra);
     const linkedTotal=linkedObraCount(linkedMap);
     const val=DB.aditivos.filter(a=>a.obra===obra).reduce((s,a)=>s+(Number(a.valor)||0),0);
-    const col=obraColor(obra);
+    const col=obraDisplayColor(obra);
     const totalAditivos=DB.aditivos.filter(a=>a.obra===obra).length;
-    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Status da Obra</label><select data-obra="${esc(obra)}" data-field="status" onchange="window._saveObraField(this);renderApp()" style="width:100%"><option value="Ativa"${(d.status||'Ativa')==='Ativa'?' selected':''}>✅ Ativa</option><option value="Concluída"${d.status==='Concluída'?' selected':''}>🏁 Concluída</option><option value="Paralisada"${d.status==='Paralisada'?' selected':''}>⏸ Paralisada</option></select></div><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Vencimento do Contrato</label><input type="date" value="${esc(d.data_vencimento||'')}" data-obra="${esc(obra)}" data-field="data_vencimento" onchange="window._saveObraField(this)"></div></div></div>`;
+    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Tipo</label><select data-obra="${esc(obra)}" onchange="window._changeObraTipo('${escJs(obra)}',this.value)" style="width:100%"><option value="obra"${!isReforma(obra)?' selected':''}>🏗️ Obra</option><option value="reforma"${isReforma(obra)?' selected':''}>🔨 Reforma</option></select></div><div class="form-group" style="margin:0"><label>Status da Obra</label><select data-obra="${esc(obra)}" data-field="status" onchange="window._saveObraField(this);renderApp()" style="width:100%"><option value="Ativa"${(d.status||'Ativa')==='Ativa'?' selected':''}>✅ Ativa</option><option value="Concluída"${d.status==='Concluída'?' selected':''}>🏁 Concluída</option><option value="Paralisada"${d.status==='Paralisada'?' selected':''}>⏸ Paralisada</option></select></div><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Vencimento do Contrato</label><input type="date" value="${esc(d.data_vencimento||'')}" data-obra="${esc(obra)}" data-field="data_vencimento" onchange="window._saveObraField(this)"></div></div></div>`;
   }).join('');
 
   const _depGer=getAlmoxDepositos();
   const arquivadasGer=uniqObras([...getHiddenObras(),...getArchivedObras()]).filter(o=>o&&o!=='Sem obra'&&!_depGer.has(o)).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const arqSection=arquivadasGer.length?`<div class="card" style="margin-top:8px;border-left:3px solid #64748b"><div class="card-title" style="color:#94a3b8">📦 OBRAS ARQUIVADAS (${arquivadasGer.length})</div><div class="section-sub" style="margin:2px 0 10px">Restaure para que voltem a aparecer no painel de Obras.</div><div style="display:flex;flex-direction:column;gap:8px">${arquivadasGer.map(obra=>{const ta=DB.aditivos.filter(a=>a.obra===obra).length;return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);flex-wrap:wrap"><div style="min-width:0"><span style="font-weight:700;color:var(--text)">${esc(obra)}</span><span style="font-size:10px;font-weight:700;background:#64748b33;color:#94a3b8;padding:1px 7px;border-radius:100px;margin-left:8px;border:1px solid #64748b55">Arquivada</span><span style="font-size:11px;color:var(--text3);margin-left:8px">${ta} aditivo${ta!==1?'s':''}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-secondary btn-sm" onclick="window._restaurarObra('${escJs(obra)}')" title="Restaurar obra">♻ Restaurar</button><button class="btn btn-danger btn-sm" onclick="window._delObra('${escJs(obra)}',true)" title="Excluir obra permanentemente">🗑 Excluir</button></div></div>`;}).join('')}</div></div>`:'';
 
-  return`<div class="page"><button class="btn btn-secondary btn-sm" onclick="S.page='dashboard';renderApp()" style="margin-bottom:20px">← Voltar ao Painel</button><div class="section-header"><div><div class="section-title">Gerenciar Obras</div><div class="section-sub">Clique no nome para renomear. Salvo automaticamente.</div></div></div>${cards}${arqSection}<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(39,87,217,.16) 0%,rgba(23,60,141,.14) 100%);border:1px solid rgba(79,140,255,.28)"><div class="card-title" style="color:#60a5fa">➕ NOVA OBRA</div><div style="display:flex;gap:8px"><input id="new-obra-input" placeholder="Nome da nova obra..." style="flex:1" onkeydown="if(event.key==='Enter')window._addObra()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addObra()">+ Adicionar</button></div></div></div>`;
+  return`<div class="page"><button class="btn btn-secondary btn-sm" onclick="S.page='dashboard';renderApp()" style="margin-bottom:20px">← Voltar ao Painel</button><div class="section-header"><div><div class="section-title">Gerenciar Obras</div><div class="section-sub">Clique no nome para renomear. Salvo automaticamente.</div></div></div>${cards}${arqSection}<div class="card" style="margin-top:8px;background:linear-gradient(135deg,rgba(39,87,217,.16) 0%,rgba(23,60,141,.14) 100%);border:1px solid rgba(79,140,255,.28)"><div class="card-title" style="color:#60a5fa">➕ NOVA OBRA / REFORMA</div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="new-obra-tipo" style="min-width:130px"><option value="obra">🏗️ Obra</option><option value="reforma">🔨 Reforma</option></select><input id="new-obra-input" placeholder="Nome..." style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')window._addObra()"><button class="btn btn-primary" style="min-width:120px;font-weight:700" onclick="window._addObra()">+ Adicionar</button></div></div></div>`;
 }
 
 window._archiveObra=async obra=>{
@@ -7371,7 +7419,8 @@ window._archiveObra=async obra=>{
   toast('Obra arquivada. Para restaurar, adicione a obra novamente pelo gerenciamento.','#f59e0b');
   renderApp();
 };
-window._addObra=async()=>{const i=document.getElementById('new-obra-input');if(!i)return;const v=i.value.trim();if(!v)return;const cur=getCustomObras();if(getAllObras().includes(v)){toast('Obra já existe.','#f59e0b');return;}saveCustomObras([...cur,v]);saveHiddenObras(getHiddenObras().filter(o=>o!==v));saveArchivedObras(getArchivedObras().filter(o=>o!==v));await saveRemoteObras([...(DB.obraRegistry||[]),v]);i.value='';renderApp();toast(`Obra "${v}" adicionada!`);};
+window._addObra=async()=>{const i=document.getElementById('new-obra-input');if(!i)return;const v=i.value.trim();if(!v)return;const tipo=document.getElementById('new-obra-tipo')?.value==='reforma'?'reforma':'obra';const cur=getCustomObras();if(getAllObras().includes(v)){toast('Já existe uma obra/reforma com esse nome.','#f59e0b');return;}saveCustomObras([...cur,v]);saveHiddenObras(getHiddenObras().filter(o=>o!==v));saveArchivedObras(getArchivedObras().filter(o=>o!==v));await saveRemoteObras([...(DB.obraRegistry||[]),v]);if(tipo==='reforma')await setObraTipo(v,'reforma');i.value='';renderApp();toast(`${tipo==='reforma'?'Reforma':'Obra'} "${v}" adicionada!`);};
+window._changeObraTipo=async(obra,tipo)=>{await setObraTipo(obra,tipo==='reforma'?'reforma':'obra');S.obraTipo=tipo==='reforma'?'reforma':'obra';toast(tipo==='reforma'?`"${obra}" marcada como Reforma.`:`"${obra}" marcada como Obra.`,'#22c55e');renderApp();};
 window._restaurarObra=async(obra)=>{
   saveHiddenObras(getHiddenObras().filter(o=>o!==obra));
   saveArchivedObras(getArchivedObras().filter(o=>o!==obra));
@@ -7411,8 +7460,9 @@ window._renameObra=async el=>{
   saveArchivedObras(archived);
   saveObrasData(obraData);
   await saveRemoteObras((DB.obraRegistry||[]).map(o=>o===orig?novo:o));
+  if(isReforma(orig))await saveRemoteReformas((DB.reformas||[]).map(o=>o===orig?novo:o));
   el.dataset.orig=novo;
-  toast('Obra renomeada!');
+  toast('Renomeado!');
   renderApp();
 };
 window._delObra=(obra,hard=false)=>{_showDelDialog(obra,hard);};
