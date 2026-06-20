@@ -4560,35 +4560,51 @@ function renderCronograma(obra){
   const loadingHtml=`<div class="empty-state"><p>Carregando cronograma…</p></div>`;
   if(!ls){window._cronoLoadState[obra]='loading';loadCronograma(obra).then(()=>{window._cronoLoadState[obra]='done';renderApp();}).catch(()=>{window._cronoLoadState[obra]='done';renderApp();});return loadingHtml;}
   if(ls==='loading')return loadingHtml;
-  const crono=DB.cronogramas[obra];const fases=crono?.fases||[];
+  const crono=DB.cronogramas[obra]||null;
+  const fases=crono?.fases||[];const tarefas=crono?.fisico?.tarefas||[];
+  const hasF=fases.length>0,hasX=tarefas.length>0;
+  let view=S.cronoView;if(view!=='fisico'&&view!=='faseamento')view=hasF?'faseamento':(hasX?'fisico':'faseamento');
+  if(view==='faseamento'&&!hasF&&hasX)view='fisico';if(view==='fisico'&&!hasX&&hasF)view='faseamento';
   const obraSafe=escJs(obra);
-  const header=`<div class="section-header"><div><div class="section-title">📅 Cronograma${crono?.nome?' — '+esc(crono.nome):''}</div><div class="section-sub">${fases.length?`${fases.length} fase(s)${crono?.fonte?' · '+esc(crono.fonte):''}`:'Importe o faseamento (PDF) e monte o Gantt automaticamente'}</div></div>
+  const header=`<div class="section-header"><div><div class="section-title">📅 Cronograma${crono?.nome?' — '+esc(crono.nome):''}</div><div class="section-sub">${hasF?fases.length+' fase(s)':''}${hasF&&hasX?' · ':''}${hasX?tarefas.length+' tarefa(s) (físico)':''}${(!hasF&&!hasX)?'Importe o faseamento (PDF) ou o cronograma físico (Excel)':''}</div></div>
    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
      <input type="file" id="crono-pdf-input" accept="application/pdf" style="display:none" onchange="window._cronoImportPDF(event,'${obraSafe}')">
+     <input type="file" id="crono-xls-input" accept=".xlsx,.xls" style="display:none" onchange="window._cronoImportExcel(event,'${obraSafe}')">
      <button class="btn btn-primary" onclick="document.getElementById('crono-pdf-input').click()">📄 Importar PDF (Faseamento)</button>
-     <button class="btn btn-secondary" onclick="toast('Importação de Excel (Cronograma Físico) chega na próxima etapa.','#3b82f6')">📊 Importar Excel (em breve)</button>
-     ${fases.length?`<button class="btn btn-secondary btn-sm" onclick="window._cronoAddFase('${obraSafe}')">+ Fase</button><button class="btn btn-secondary btn-sm" onclick="window._cronoExportPDF('${obraSafe}')">⬇ Gantt PDF</button><button class="btn btn-secondary btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.4)" onclick="window._cronoClear('${obraSafe}')">Limpar</button>`:''}
+     <button class="btn btn-primary" style="background:#0e7490;border-color:#0e7490" onclick="document.getElementById('crono-xls-input').click()">📊 Importar Excel (Físico)</button>
    </div></div>`;
-  if(!fases.length)return `<div>${header}<div class="empty-state" style="margin-top:14px"><p>Nenhum cronograma ainda.</p><p style="font-size:12px;color:var(--text3)">Clique em <b>Importar PDF (Faseamento)</b> — o sistema lê as fases e datas e monta o gráfico de Gantt. Depois dá pra ajustar manualmente.</p></div></div>`;
-  const gantt=`<div class="card" style="margin-bottom:14px;padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Gráfico de Gantt</div>${_ganttHTML(fases)}</div>`;
-  const rows=fases.map(f=>`<tr style="border-bottom:1px solid var(--border)">
-    <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:var(--text)" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${f.id}','inicio',this.value)"></td>
-    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.fim||'')}" onchange="window._cronoEdit('${obraSafe}','${f.id}','fim',this.value)"></td>
+  if(!hasF&&!hasX)return `<div>${header}<div class="empty-state" style="margin-top:14px"><p>Nenhum cronograma ainda.</p><p style="font-size:12px;color:var(--text3)"><b>📄 PDF (Faseamento)</b> monta um Gantt por fases automaticamente. <b>📊 Excel (Físico)</b> importa o cronograma físico detalhado (tarefas + datas).</p></div></div>`;
+  const seg=(v,lbl,n)=>`<button class="obra-nav-btn${view===v?' active':''}" onclick="S.cronoView='${v}';renderApp()" ${view===v?'style="background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc"':''}>${lbl}<span class="nav-count">${n}</span></button>`;
+  const toggle=(hasF&&hasX)?`<nav class="obra-nav" style="margin:6px 0 14px">${seg('faseamento','Faseamento',fases.length)}${seg('fisico','Cronograma Físico',tarefas.length)}</nav>`:'';
+  const items=view==='fisico'?tarefas:fases;
+  return `<div>${header}${toggle}${_cronoBody(obra,view,items)}</div>`;
+}
+function _cronoBody(obra,which,items){
+  const obraSafe=escJs(obra);const isFis=which==='fisico';
+  const actions=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-secondary btn-sm" onclick="window._cronoAdd('${obraSafe}','${which}')">+ ${isFis?'Tarefa':'Fase'}</button>
+    <button class="btn btn-secondary btn-sm" onclick="window._cronoExportPDF('${obraSafe}','${which}')">⬇ Gantt PDF</button>
+    <button class="btn btn-secondary btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.4)" onclick="window._cronoClear('${obraSafe}','${which}')">Limpar ${isFis?'físico':'faseamento'}</button>
+  </div>`;
+  const gantt=`<div class="card" style="margin-bottom:14px;padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Gráfico de Gantt${isFis&&items.length>40?' · '+items.length+' tarefas':''}</div>${_ganttHTML(items)}</div>`;
+  const rows=items.map(f=>`<tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:var(--text)" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','inicio',this.value)"></td>
+    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.fim||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','fim',this.value)"></td>
     <td style="padding:5px 8px;text-align:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.inicio&&f.fim?(Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1)+'d':'—'}</td>
-    <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(f.desc||'')}" placeholder="—" onblur="window._cronoEdit('${obraSafe}','${f.id}','desc',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-    <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-danger" onclick="window._cronoDelFase('${obraSafe}','${f.id}')">×</button></td>
+    <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(f.desc||'')}" placeholder="—" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','desc',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+    <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-danger" onclick="window._cronoDel('${obraSafe}','${which}','${f.id}')">×</button></td>
   </tr>`).join('');
   const table=`<div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:720px">
     <thead><tr style="background:#0d0d0d;border-bottom:1px solid var(--border)">
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Fase</th>
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Tarefa':'Fase'}</th>
       <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Início</th>
       <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Fim</th>
       <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:60px;text-align:center">Dias</th>
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th>
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Responsável':'Descrição'}</th>
       <th style="width:40px"></th>
     </tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  return `<div>${header}${gantt}${table}</div>`;
+  return actions+gantt+table;
 }
 window._cronoImportPDF=async(ev,obra)=>{
   const file=ev.target.files&&ev.target.files[0];if(ev.target)ev.target.value='';
@@ -4598,22 +4614,71 @@ window._cronoImportPDF=async(ev,obra)=>{
     const buf=await file.arrayBuffer();
     const text=await extractPdfText(buf);
     const fases=parseFaseamento(text);
-    if(!fases.length){toast('Não encontrei fases neste PDF. Você pode montar manualmente em "+ Fase".','#f59e0b');const c0=DB.cronogramas[obra]||{obra,fases:[]};c0.fases=c0.fases||[];await saveCronograma(obra,c0);renderApp();return;}
+    if(!fases.length){toast('Não encontrei fases neste PDF. Você pode montar manualmente em "+ Fase".','#f59e0b');const c0=DB.cronogramas[obra]||{obra};c0.fases=c0.fases||[];await saveCronograma(obra,c0);renderApp();return;}
     const nm=(/(SB[OB]\s*[-–]?\s*\d+[^.\n]{0,40})/i.exec(text)||[])[1]||'';
-    const data={obra,nome:(nm||'').replace(/\s+/g,' ').trim().slice(0,60),fonte:'PDF faseamento',importadoEm:new Date().toISOString(),fases};
+    const cur=DB.cronogramas[obra]||{obra};
+    const data={...cur,obra,nome:(nm||cur.nome||'').replace(/\s+/g,' ').trim().slice(0,60),fonte:'PDF faseamento',importadoEm:new Date().toISOString(),fases};
     await saveCronograma(obra,data);
+    S.cronoView='faseamento';
     toast(`✓ ${fases.length} item(ns) importado(s) do faseamento!`,'#22c55e');
     renderApp();
   }catch(e){toast('Erro ao ler PDF: '+(e&&e.message||e),'#ef4444');console.warn('[JET] import faseamento:',e);}
 };
-window._cronoEdit=async(obra,id,field,val)=>{const c=DB.cronogramas[obra];if(!c)return;const f=(c.fases||[]).find(x=>x.id===id);if(!f||(f[field]||'')===val)return;f[field]=val;if((field==='inicio'||field==='fim')&&f.inicio&&f.fim)f.dias=Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1;await saveCronograma(obra,c);renderApp();};
-window._cronoAddFase=async(obra)=>{const c=DB.cronogramas[obra]||{obra,fases:[]};c.fases=c.fases||[];c.fases.push({id:uid(),nome:'Nova fase',inicio:todayISO(),fim:todayISO(),dias:1,tipo:'fase',desc:''});await saveCronograma(obra,c);renderApp();};
-window._cronoDelFase=async(obra,id)=>{const c=DB.cronogramas[obra];if(!c)return;c.fases=(c.fases||[]).filter(f=>f.id!==id);await saveCronograma(obra,c);renderApp();};
-window._cronoClear=async(obra)=>{if(!confirm('Limpar todo o cronograma desta obra?'))return;await saveCronograma(obra,{obra,fases:[]});renderApp();};
-window._cronoExportPDF=(obra)=>{
+function _cronoArr(c,which){return which==='fisico'?((c.fisico&&c.fisico.tarefas)||[]):(c.fases||[]);}
+window._cronoEdit=async(obra,which,id,field,val)=>{const c=DB.cronogramas[obra];if(!c)return;const f=_cronoArr(c,which).find(x=>x.id===id);if(!f||(f[field]||'')===val)return;f[field]=val;if((field==='inicio'||field==='fim')&&f.inicio&&f.fim)f.dias=Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1;await saveCronograma(obra,c);renderApp();};
+window._cronoAdd=async(obra,which)=>{const c=DB.cronogramas[obra]||{obra};const item={id:uid(),nome:which==='fisico'?'Nova tarefa':'Nova fase',inicio:todayISO(),fim:todayISO(),dias:1,tipo:'fase',desc:''};if(which==='fisico'){c.fisico=c.fisico||{nome:'Cronograma físico',fonte:'Manual',tarefas:[]};c.fisico.tarefas=c.fisico.tarefas||[];c.fisico.tarefas.push(item);}else{c.fases=c.fases||[];c.fases.push(item);}await saveCronograma(obra,c);renderApp();};
+window._cronoDel=async(obra,which,id)=>{const c=DB.cronogramas[obra];if(!c)return;if(which==='fisico'){if(c.fisico)c.fisico.tarefas=(c.fisico.tarefas||[]).filter(f=>f.id!==id);}else{c.fases=(c.fases||[]).filter(f=>f.id!==id);}await saveCronograma(obra,c);renderApp();};
+window._cronoClear=async(obra,which)=>{if(!confirm(`Limpar o ${which==='fisico'?'cronograma físico':'faseamento'} desta obra?`))return;const c=DB.cronogramas[obra]||{obra};if(which==='fisico')c.fisico=null;else c.fases=[];await saveCronograma(obra,c);renderApp();};
+function _xlDate(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;const m=String(v).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(m){let y=m[3];if(y.length===2)y='20'+y;return `${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;}return null;}
+function parseCronogramaFisico(arrayBuffer){
+  if(!window.XLSX)throw new Error('Biblioteca de planilha (XLSX) não carregou. Atualize a página.');
+  const wb=XLSX.read(arrayBuffer,{type:'array',cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,cellDates:true,defval:null});
+  let cTask=-1,cIni=-1,cFim=-1,cDur=-1,cAcao=-1;
+  rows.slice(0,16).forEach(row=>{(row||[]).forEach((c,ci)=>{if(c==null)return;const s=String(c).toLowerCase().trim();
+    if(s==='tarefa')cTask=ci;
+    else if(/^in[ií]cio\s*real/.test(s)){}
+    else if(/^t[eé]rmino\s*real/.test(s)){}
+    else if(/^in[ií]cio/.test(s)&&cIni<0)cIni=ci;
+    else if(/^t[eé]rmino/.test(s)&&cFim<0)cFim=ci;
+    else if(/^dura[çc]/.test(s)&&cDur<0)cDur=ci;
+    else if(/^a[çc][ãa]o$/.test(s))cAcao=ci;
+  });});
+  if(cTask<0)cTask=4;if(cIni<0)cIni=5;if(cFim<0)cFim=6;if(cDur<0)cDur=7;if(cAcao<0)cAcao=11;
+  const noise=/CRONOGRAMA F[IÍ]|C&A MODAS|VERS[ÃA]O|PER[IÍ]ODO DE TRABALHO|STATUS NA DATA|PREVIS[ÃA]O INAUGURA|PERIODO TOTAL|REVIS[ÃA]O\s*\d/i;
+  const tarefas=[];
+  rows.forEach(row=>{if(!row)return;const nameRaw=row[cTask];if(nameRaw==null||String(nameRaw).trim()==='')return;
+    const ini=_xlDate(row[cIni]),fim=_xlDate(row[cFim]);if(!ini||!fim)return;
+    let nome=String(nameRaw).replace(/\s+/g,' ').replace(/^[\s:]+/,'').trim();
+    if(!nome||noise.test(nome))return;
+    const dur=typeof row[cDur]==='number'?row[cDur]:null;
+    const resp=row[cAcao]!=null?String(row[cAcao]).replace(/\s+/g,' ').trim():'';
+    tarefas.push({id:uid(),nome:nome.slice(0,120),inicio:ini,fim,dias:dur||(Math.round((new Date(fim)-new Date(ini))/864e5)+1),tipo:'fase',desc:resp});
+  });
+  return tarefas;
+}
+window._cronoImportExcel=async(ev,obra)=>{
+  const file=ev.target.files&&ev.target.files[0];if(ev.target)ev.target.value='';
+  if(!file)return;
+  toast('Lendo cronograma físico…','#0e7490');
+  try{
+    const buf=await file.arrayBuffer();
+    const tarefas=parseCronogramaFisico(buf);
+    if(!tarefas.length){toast('Não encontrei tarefas com datas. Verifique as colunas Tarefa/Início/Término.','#f59e0b');return;}
+    const c=DB.cronogramas[obra]||{obra};c.obra=obra;
+    c.fisico={nome:String(file.name||'').replace(/\.(xlsx|xls)$/i,'').slice(0,60),fonte:'Excel cronograma físico',importadoEm:new Date().toISOString(),tarefas};
+    await saveCronograma(obra,c);
+    S.cronoView='fisico';
+    toast(`✓ ${tarefas.length} tarefa(s) importada(s) do cronograma físico!`,'#22c55e');
+    renderApp();
+  }catch(e){toast('Erro ao ler Excel: '+(e&&e.message||e),'#ef4444');console.warn('[JET] import físico:',e);}
+};
+window._cronoExportPDF=(obra,which)=>{
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
-  const c=DB.cronogramas[obra];const fases=(c?.fases||[]).filter(f=>f.inicio&&f.fim);
-  if(!fases.length){toast('Sem fases com datas para exportar.','#f59e0b');return;}
+  const c=DB.cronogramas[obra];const src=which==='fisico'?((c&&c.fisico&&c.fisico.tarefas)||[]):((c&&c.fases)||[]);
+  const fases=src.filter(f=>f.inicio&&f.fim);
+  if(!fases.length){toast('Sem itens com datas para exportar.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
   const PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),M=12,NAVY=[26,46,107];
   doc.setFillColor(...NAVY);doc.rect(0,0,PW,20,'F');
