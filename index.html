@@ -1264,7 +1264,7 @@ const US={'Normal':{bg:'#161616',c:'#888',d:'#555'},'Urgente':{bg:'#2a1d06',c:'#
 const BS={'Solicitado':{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Programado':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},'Aceito':{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},'Em baixada':{bg:'#1a0f3d',c:'#c084fc',d:'#8b5cf6'}};
 const COTACAO_STATUS_LIST=['Solicitada','Em análise','Negociando','Fechada','Cancelada'];
 const COTACAO_STATUS_MAP={Solicitada:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},'Em análise':{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Negociando:{bg:'#1a0f3d',c:'#c084fc',d:'#8b5cf6'},Fechada:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Cancelada:{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
-const DEFAULT_OBRA_TAB_ORDER=['aditivos','rdo','materiais','todo','funcionarios','despesas','ferramentas'];
+const DEFAULT_OBRA_TAB_ORDER=['aditivos','rdo','materiais','todo','funcionarios','despesas','ferramentas','cronograma'];
 const PEDIDO_STATUS_LIST=['Pendente','Aprovado','Enviado','Recebido','Cancelado'];
 const PEDIDO_STATUS_MAP={Pendente:{bg:'#2a1d06',c:'#fbbf24',d:'#f59e0b'},Aprovado:{bg:'#0a2214',c:'#4ade80',d:'#22c55e'},Enviado:{bg:'#0e1f3d',c:'#60a5fa',d:'#3b82f6'},Recebido:{bg:'#062018',c:'#34d399',d:'#10b981'},Cancelado:{bg:'#200c0c',c:'#f87171',d:'#ef4444'}};
 
@@ -2925,7 +2925,7 @@ function _cdPick(triggerId,optEl){
 }
 
 // ─── DB STATE ─────────────────────────────────────────────────────────────
-const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],equipamentos:[],obraRegistry:[],reformas:[],baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
+const DB={aditivos:[],materiais:[],funcionarios:[],rdo:[],todos:[],despesas:[],estoque:[],pedidos:[],fornecedores:[],cotacoes:[],ferramentas:[],propostas:[],equipamentos:[],obraRegistry:[],reformas:[],cronogramas:{},baixadas:[],faltas:[],avisos:[],despesaFiles:{},materialReqFiles:{},almoxMovimentos:[],almoxMeta:{itemMeta:{},transferMeta:{}},matConcl:{},ferrConcl:{}};
 
 async function _fetchCoreTables(){
   return Promise.all([
@@ -4417,6 +4417,7 @@ function renderObraInner(){
     todo:{icon:'✅',label:'A Fazer',count:todos.filter(t=>t.status==='Pendente').length},
     despesas:{icon:'💰',label:'Adiantamento',count:desp.length||0},
     ferramentas:{icon:'🔧',label:'Ferramentas',count:ferramentas.length},
+    cronograma:{icon:'📅',label:'Cronograma',count:(DB.cronogramas?.[obra]?.fases?.length)||0},
   };
   S.tabOrder=[...DEFAULT_OBRA_TAB_ORDER];
   const allTabIds=[...DEFAULT_OBRA_TAB_ORDER];
@@ -4424,8 +4425,8 @@ function renderObraInner(){
   // Persist updated order
   try{if(S.obra)localStorage.setItem('jet-tab-order-'+S.obra,JSON.stringify(S.tabOrder));}catch{}
   const tabs=S.tabOrder.filter(id=>TAB_DEFS[id]).map(id=>({id,...TAB_DEFS[id]}));
-  const TAB_COLORS={aditivos:'59,130,246',materiais:'249,115,22',funcionarios:'45,212,191',rdo:'192,132,252',todo:'74,222,128',despesas:'245,158,11',ferramentas:'148,163,184'};
-  const TAB_TEXT={aditivos:'#93c5fd',materiais:'#fdba74',funcionarios:'#5eead4',rdo:'#d8b4fe',todo:'#86efac',despesas:'#fcd34d',ferramentas:'#cbd5e1'};
+  const TAB_COLORS={aditivos:'59,130,246',materiais:'249,115,22',funcionarios:'45,212,191',rdo:'192,132,252',todo:'74,222,128',despesas:'245,158,11',ferramentas:'148,163,184',cronograma:'99,102,241'};
+  const TAB_TEXT={aditivos:'#93c5fd',materiais:'#fdba74',funcionarios:'#5eead4',rdo:'#d8b4fe',todo:'#86efac',despesas:'#fcd34d',ferramentas:'#cbd5e1',cronograma:'#a5b4fc'};
   const nav=tabs.map(t=>{const rgb=TAB_COLORS[t.id]||'59,130,246';const txt=TAB_TEXT[t.id]||'#93c5fd';const isA=S.obraTab===t.id;return`<button class="obra-nav-btn${isA?' active':''}" style="${isA?`background:rgba(${rgb},.18);border-color:rgba(${rgb},.45);color:${txt}`:`background:rgba(${rgb},.07);border-color:rgba(${rgb},.18)`}" data-tabid="${t.id}" onclick="S.obraTab='${t.id}';S.selectedAditivo=null;if('${t.id}'!=='materiais')S.matSearch='';renderApp();"><span class="nav-icon">${t.icon}</span>${t.label}<span class="nav-count" style="background:rgba(${rgb},.2);color:${txt};border-color:rgba(${rgb},.3)">${t.count}</span></button>`;}).join('');
 
   let content='';
@@ -4437,6 +4438,7 @@ function renderObraInner(){
   else if(S.obraTab==='todo')content=renderTodo(todos,obra);
   else if(S.obraTab==='despesas')content=renderDespesas(desp,obra);
   else if(S.obraTab==='ferramentas')content=renderFerramentas(ferramentas,obra);
+  else if(S.obraTab==='cronograma')content=renderCronograma(obra);
 
   const col=obraDisplayColor(obra);
   const obraIsReforma=isReforma(obra);
@@ -4468,6 +4470,175 @@ function renderObraInner(){
 ${content}
 </div></div>`;
 }
+
+// ─── CRONOGRAMA (faseamento PDF → Gantt) ───────────────────────────────────
+const CRONO_PAL=['#3b82f6','#22c55e','#f59e0b','#a855f7','#ef4444','#14b8a6','#ec4899','#eab308','#8b5cf6','#06b6d4'];
+function _cronoSlug(obra){let h=0;const s=String(obra||'');for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))>>>0;return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)+'-'+h.toString(36);}
+const CRONO_PATH=obra=>'meta/cronograma/'+_cronoSlug(obra)+'.json';
+async function loadCronograma(obra){
+  if(!obra)return null;
+  try{
+    const{data,error}=await sb.storage.from(BUCKET).download(CRONO_PATH(obra)+'?t='+Date.now());
+    if(error){const msg=String(error.message||'');if(/not found|404/i.test(msg)){DB.cronogramas[obra]=DB.cronogramas[obra]||null;return DB.cronogramas[obra];}throw error;}
+    DB.cronogramas[obra]=JSON.parse(await data.text());
+    return DB.cronogramas[obra];
+  }catch(err){console.warn('[JET] Cronograma não carregado:',err?.message||err);return DB.cronogramas[obra]||null;}
+}
+async function saveCronograma(obra,data){
+  DB.cronogramas[obra]=data;
+  try{
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const{error}=await sb.storage.from(BUCKET).upload(CRONO_PATH(obra),blob,{upsert:true,contentType:'application/json'});
+    if(error)throw error;
+  }catch(err){toast('Cronograma salvo na tela; falha ao sincronizar.','#f59e0b');console.warn('[JET] Cronograma não salvo:',err?.message||err);}
+}
+async function ensurePdfJs(){
+  if(window.pdfjsLib)return window.pdfjsLib;
+  await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=res;s.onerror=()=>rej(new Error('Falha ao carregar PDF.js'));document.head.appendChild(s);});
+  if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return window.pdfjsLib;
+}
+async function extractPdfText(arrayBuffer){
+  const lib=await ensurePdfJs();
+  const pdf=await lib.getDocument({data:arrayBuffer}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i);const tc=await page.getTextContent();text+=tc.items.map(it=>it.str).join(' ')+'\n';}
+  return text;
+}
+function _br2iso(d,yearFb){const m=String(d||'').match(/(\d{2})\/(\d{2})(?:\/(\d{4}))?/);if(!m)return null;const yr=m[3]||yearFb||String(new Date().getFullYear());return `${yr}-${m[2]}-${m[1]}`;}
+function parseFaseamento(text){
+  const T=String(text||'').replace(/ /g,' ').replace(/\s+/g,' ');
+  const years=(T.match(/\/(20\d{2})/g)||[]).map(s=>s.slice(1));
+  let yearFb=String(new Date().getFullYear());
+  if(years.length){const cnt={};years.forEach(y=>cnt[y]=(cnt[y]||0)+1);yearFb=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];}
+  const fases=[];
+  const re=/Fase\s+([\d.]+)[\s–\-]+(\d{2}\/\d{2}\/\d{4})[\s–\-àa]+(\d{2}\/\d{2}\/\d{4})\s*\(\s*(\d+)\s*dias/gi;
+  let m;
+  while((m=re.exec(T))){
+    const start=re.lastIndex;const nf=T.indexOf('Fase ',start);
+    let desc=T.slice(start,nf>-1?nf:start+130).replace(/^\s*(corridos|úteis|uteis)?\s*\)?\s*/i,'');
+    desc=desc.split(/PONTOS|PRELIMINARES|TOTAL|Revis[ãa]o|Montagem|Reinaug|Início da Reforma|Final da Reforma/i)[0].trim();
+    if(desc.length>100)desc=desc.slice(0,100).trim()+'…';
+    fases.push({id:uid(),nome:'Fase '+m[1],inicio:_br2iso(m[2]),fim:_br2iso(m[3]),dias:+m[4],tipo:'fase',desc});
+  }
+  const pm=/PRELIMINARES:?\s*(\d{2}\/\d{2}\/\d{4})\s*(?:à|a)\s*(\d{2}\/\d{2}\/\d{4})/i.exec(T);
+  if(pm)fases.push({id:uid(),nome:'Preliminares',inicio:_br2iso(pm[1]),fim:_br2iso(pm[2]),tipo:'prelim',desc:'Aprovações, contratação, ARTs, seguro'});
+  const mo=/Montagem(?:\s+de\s+Loja)?\s*[:\-–]?\s*(\d{2}\/\d{2}(?:\/\d{4})?)\s*(?:à|a)\s*(\d{2}\/\d{2}(?:\/\d{4})?)/i.exec(T);
+  if(mo)fases.push({id:uid(),nome:'Montagem de Loja',inicio:_br2iso(mo[1],yearFb),fim:_br2iso(mo[2],yearFb),tipo:'montagem',desc:''});
+  const rv=/Revis[ãa]o\s+Geral\s*[:\-–]?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(T);
+  if(rv)fases.push({id:uid(),nome:'Revisão Geral',inicio:_br2iso(rv[1]),fim:_br2iso(rv[1]),tipo:'marco',desc:''});
+  const ri=/Reinaugura[çc][ãa]o(?:\s+da\s+Loja)?\s*[:\-–]?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(T);
+  if(ri)fases.push({id:uid(),nome:'Reinauguração',inicio:_br2iso(ri[1]),fim:_br2iso(ri[1]),tipo:'marco',desc:''});
+  fases.sort((a,b)=>String(a.inicio||'').localeCompare(String(b.inicio||'')));
+  return fases;
+}
+function _ganttHTML(fases){
+  const items=(fases||[]).filter(f=>f.inicio&&f.fim);
+  if(!items.length)return `<div style="color:var(--text3);font-size:13px;padding:8px 0">Sem fases com datas para montar o Gantt.</div>`;
+  const toD=iso=>new Date(iso+'T12:00:00').getTime();const DAY=864e5;
+  const min=Math.min(...items.map(f=>toD(f.inicio))),max=Math.max(...items.map(f=>toD(f.fim)));
+  const span=(max-min)||DAY;const pct=v=>((v-min)/span)*100;
+  const months=[];let cur=new Date(min);cur.setDate(1);
+  while(cur.getTime()<=max){months.push({pct:pct(cur.getTime()),label:cur.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')+'/'+String(cur.getFullYear()).slice(2)});cur.setMonth(cur.getMonth()+1);}
+  const today=toD(todayISO());const todayPct=(today>=min&&today<=max)?pct(today):null;
+  const gridLines=months.map(mo=>mo.pct>0&&mo.pct<100?`<div style="position:absolute;left:${mo.pct}%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)"></div>`:'').join('')+(todayPct!=null?`<div title="Hoje" style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:2px;background:#ef4444;opacity:.65"></div>`:'');
+  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:150px;flex-shrink:0"></div><div style="flex:1;position:relative;height:14px">${months.map(mo=>`<div style="position:absolute;left:${Math.max(0,mo.pct)}%;font-size:9px;color:var(--text3);font-weight:700;white-space:nowrap">${mo.label}</div>`).join('')}</div></div>`;
+  const rows=items.map((f,i)=>{
+    const s=toD(f.inicio),e=toD(f.fim),left=pct(s),w=Math.max(pct(e)-pct(s),f.tipo==='marco'?0:1.2);
+    const col=f.tipo==='marco'?'#eab308':(f.tipo==='prelim'?'#64748b':CRONO_PAL[i%CRONO_PAL.length]);
+    const dias=f.dias||Math.max(1,Math.round((e-s)/DAY)+1);
+    const bar=f.tipo==='marco'
+      ?`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}" style="position:absolute;left:${left}%;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:13px;height:13px;background:${col};border:1px solid rgba(0,0,0,.4)"></div>`
+      :`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}–${fmtD(f.fim)} (${dias}d)" style="position:absolute;left:${left}%;width:${w}%;top:3px;bottom:3px;background:${col};border-radius:5px;display:flex;align-items:center;padding:0 6px;min-width:16px;box-shadow:0 1px 3px rgba(0,0,0,.3)"><span style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.3)">${dias}d</span></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:150px;flex-shrink:0;font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.nome)}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px"></span>${esc(f.nome)}</div><div style="flex:1;position:relative;height:24px;background:var(--bg3);border-radius:6px;overflow:hidden">${gridLines}${bar}</div></div>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><div style="min-width:680px">${header}${rows}</div></div>`;
+}
+function renderCronograma(obra){
+  if(!window._cronoLoadState)window._cronoLoadState={};
+  const ls=window._cronoLoadState[obra];
+  const loadingHtml=`<div class="empty-state"><p>Carregando cronograma…</p></div>`;
+  if(!ls){window._cronoLoadState[obra]='loading';loadCronograma(obra).then(()=>{window._cronoLoadState[obra]='done';renderApp();}).catch(()=>{window._cronoLoadState[obra]='done';renderApp();});return loadingHtml;}
+  if(ls==='loading')return loadingHtml;
+  const crono=DB.cronogramas[obra];const fases=crono?.fases||[];
+  const obraSafe=escJs(obra);
+  const header=`<div class="section-header"><div><div class="section-title">📅 Cronograma${crono?.nome?' — '+esc(crono.nome):''}</div><div class="section-sub">${fases.length?`${fases.length} fase(s)${crono?.fonte?' · '+esc(crono.fonte):''}`:'Importe o faseamento (PDF) e monte o Gantt automaticamente'}</div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+     <input type="file" id="crono-pdf-input" accept="application/pdf" style="display:none" onchange="window._cronoImportPDF(event,'${obraSafe}')">
+     <button class="btn btn-primary" onclick="document.getElementById('crono-pdf-input').click()">📄 Importar PDF (Faseamento)</button>
+     <button class="btn btn-secondary" onclick="toast('Importação de Excel (Cronograma Físico) chega na próxima etapa.','#3b82f6')">📊 Importar Excel (em breve)</button>
+     ${fases.length?`<button class="btn btn-secondary btn-sm" onclick="window._cronoAddFase('${obraSafe}')">+ Fase</button><button class="btn btn-secondary btn-sm" onclick="window._cronoExportPDF('${obraSafe}')">⬇ Gantt PDF</button><button class="btn btn-secondary btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.4)" onclick="window._cronoClear('${obraSafe}')">Limpar</button>`:''}
+   </div></div>`;
+  if(!fases.length)return `<div>${header}<div class="empty-state" style="margin-top:14px"><p>Nenhum cronograma ainda.</p><p style="font-size:12px;color:var(--text3)">Clique em <b>Importar PDF (Faseamento)</b> — o sistema lê as fases e datas e monta o gráfico de Gantt. Depois dá pra ajustar manualmente.</p></div></div>`;
+  const gantt=`<div class="card" style="margin-bottom:14px;padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Gráfico de Gantt</div>${_ganttHTML(fases)}</div>`;
+  const rows=fases.map(f=>`<tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:var(--text)" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${f.id}','inicio',this.value)"></td>
+    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.fim||'')}" onchange="window._cronoEdit('${obraSafe}','${f.id}','fim',this.value)"></td>
+    <td style="padding:5px 8px;text-align:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.inicio&&f.fim?(Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1)+'d':'—'}</td>
+    <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(f.desc||'')}" placeholder="—" onblur="window._cronoEdit('${obraSafe}','${f.id}','desc',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+    <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-danger" onclick="window._cronoDelFase('${obraSafe}','${f.id}')">×</button></td>
+  </tr>`).join('');
+  const table=`<div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:720px">
+    <thead><tr style="background:#0d0d0d;border-bottom:1px solid var(--border)">
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Fase</th>
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Início</th>
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Fim</th>
+      <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:60px;text-align:center">Dias</th>
+      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Descrição</th>
+      <th style="width:40px"></th>
+    </tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  return `<div>${header}${gantt}${table}</div>`;
+}
+window._cronoImportPDF=async(ev,obra)=>{
+  const file=ev.target.files&&ev.target.files[0];if(ev.target)ev.target.value='';
+  if(!file)return;
+  toast('Lendo faseamento…','#3b82f6');
+  try{
+    const buf=await file.arrayBuffer();
+    const text=await extractPdfText(buf);
+    const fases=parseFaseamento(text);
+    if(!fases.length){toast('Não encontrei fases neste PDF. Você pode montar manualmente em "+ Fase".','#f59e0b');const c0=DB.cronogramas[obra]||{obra,fases:[]};c0.fases=c0.fases||[];await saveCronograma(obra,c0);renderApp();return;}
+    const nm=(/(SB[OB]\s*[-–]?\s*\d+[^.\n]{0,40})/i.exec(text)||[])[1]||'';
+    const data={obra,nome:(nm||'').replace(/\s+/g,' ').trim().slice(0,60),fonte:'PDF faseamento',importadoEm:new Date().toISOString(),fases};
+    await saveCronograma(obra,data);
+    toast(`✓ ${fases.length} item(ns) importado(s) do faseamento!`,'#22c55e');
+    renderApp();
+  }catch(e){toast('Erro ao ler PDF: '+(e&&e.message||e),'#ef4444');console.warn('[JET] import faseamento:',e);}
+};
+window._cronoEdit=async(obra,id,field,val)=>{const c=DB.cronogramas[obra];if(!c)return;const f=(c.fases||[]).find(x=>x.id===id);if(!f||(f[field]||'')===val)return;f[field]=val;if((field==='inicio'||field==='fim')&&f.inicio&&f.fim)f.dias=Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1;await saveCronograma(obra,c);renderApp();};
+window._cronoAddFase=async(obra)=>{const c=DB.cronogramas[obra]||{obra,fases:[]};c.fases=c.fases||[];c.fases.push({id:uid(),nome:'Nova fase',inicio:todayISO(),fim:todayISO(),dias:1,tipo:'fase',desc:''});await saveCronograma(obra,c);renderApp();};
+window._cronoDelFase=async(obra,id)=>{const c=DB.cronogramas[obra];if(!c)return;c.fases=(c.fases||[]).filter(f=>f.id!==id);await saveCronograma(obra,c);renderApp();};
+window._cronoClear=async(obra)=>{if(!confirm('Limpar todo o cronograma desta obra?'))return;await saveCronograma(obra,{obra,fases:[]});renderApp();};
+window._cronoExportPDF=(obra)=>{
+  if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
+  const c=DB.cronogramas[obra];const fases=(c?.fases||[]).filter(f=>f.inicio&&f.fim);
+  if(!fases.length){toast('Sem fases com datas para exportar.','#f59e0b');return;}
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+  const PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),M=12,NAVY=[26,46,107];
+  doc.setFillColor(...NAVY);doc.rect(0,0,PW,20,'F');
+  doc.setFillColor(255,255,255);doc.roundedRect(M,4,13,12,2.5,2.5,'F');doc.setTextColor(26,46,107);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',M+6.5,11.6,{align:'center'});
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Cronograma — Gráfico de Gantt',M+17,9);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(205,216,238);doc.text(`${obra}${c?.nome?' · '+c.nome:''}`,M+17,15);
+  const toD=iso=>new Date(iso+'T12:00:00').getTime();const DAY=864e5;
+  const min=Math.min(...fases.map(f=>toD(f.inicio))),max=Math.max(...fases.map(f=>toD(f.fim)));const span=(max-min)||DAY;
+  const labelW=46,gx=M+labelW,gw=PW-M-gx,top=30;const pct=v=>(v-min)/span;
+  let cur=new Date(min);cur.setDate(1);doc.setFontSize(7);
+  while(cur.getTime()<=max){const x=gx+pct(cur.getTime())*gw;if(x>=gx-0.2){doc.setDrawColor(225,228,235);doc.setLineWidth(.1);doc.line(x,top,x,PH-13);doc.setTextColor(120,130,145);doc.text(cur.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('.',''),x+1,top-1.5);}cur.setMonth(cur.getMonth()+1);}
+  const todayMs=toD(todayISO());if(todayMs>=min&&todayMs<=max){const tx=gx+pct(todayMs)*gw;doc.setDrawColor(239,68,68);doc.setLineWidth(.4);doc.line(tx,top,tx,PH-13);}
+  const rowH=8;let y=top+3;
+  fases.forEach((f,i)=>{
+    if(y>PH-15){doc.addPage();y=top+3;}
+    doc.setTextColor(40,40,50);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(_truncPDF(doc,f.nome||'',labelW-3),M,y+rowH/2+1);
+    const s=toD(f.inicio),e=toD(f.fim),bx=gx+pct(s)*gw,bw=Math.max(gx+pct(e)*gw-bx,f.tipo==='marco'?1:2);
+    const col=_hexRgb(f.tipo==='marco'?'#eab308':f.tipo==='prelim'?'#64748b':CRONO_PAL[i%CRONO_PAL.length]);
+    if(f.tipo==='marco'){doc.setFillColor(234,179,8);doc.triangle(bx-1.7,y+rowH/2,bx+1.7,y+1.2,bx+1.7,y+rowH-1.2,'F');}
+    else{doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(bx,y+1,bw,rowH-2,1,1,'F');const dias=f.dias||Math.round((e-s)/DAY)+1;if(bw>9){doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6);doc.text(dias+'d',bx+1.8,y+rowH/2+1.4);}}
+    y+=rowH+1.5;
+  });
+  const pc=doc.internal.getNumberOfPages();for(let i=1;i<=pc;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(150,160,175);doc.setFont('helvetica','normal');doc.text('JET Gestão de Obras · Cronograma',M,PH-6);doc.text(`${new Date().toLocaleDateString('pt-BR')}  ·  Pág ${i}/${pc}`,PW-M,PH-6,{align:'right'});}
+  doc.save(`Cronograma_${obra.replace(/\s+/g,'_')}.pdf`);toast('Gantt PDF exportado!');
+};
 
 // ─── ADITIVOS ─────────────────────────────────────────────────────────────
 // ─── TABLE HELPERS ────────────────────────────────────────────────────────
