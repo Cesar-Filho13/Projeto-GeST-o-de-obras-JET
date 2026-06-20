@@ -5454,21 +5454,110 @@ function _todoReportData(obra,period){
     .sort((a,b)=>{const da=jcalISO(a.data),db=jcalISO(b.data);if(da!==db)return da<db?-1:1;return (getTodoHora(a.id)||'99:99').localeCompare(getTodoHora(b.id)||'99:99');});
   return{r,items};
 }
+const _hexRgb=h=>{h=String(h||'').replace('#','');return[parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0];};
+const _prioRgb=p=>_hexRgb((TODO_PRIOR[p]||TODO_PRIOR['Normal']).d);
+const _TODO_STATUS_RGB={'Pendente':[245,158,11],'Em andamento':[59,130,246],'Concluído':[34,197,94]};
+function _truncPDF(doc,str,maxW){str=String(str||'');if(doc.getTextWidth(str)<=maxW)return str;let s=str;while(s.length>1&&doc.getTextWidth(s+'…')>maxW)s=s.slice(0,-1);return s+'…';}
+// Desenha um calendário visual do período no PDF; devolve o Y final
+function _todoCalPDF(doc,r,period,items,x,y,w){
+  const byDate={};items.forEach(t=>{const k=jcalISO(t.data);(byDate[k]=byDate[k]||[]).push(t);});
+  let days,cols;
+  if(period==='mes'){days=jcalMonthMatrix(r.start);cols=7;}
+  else if(period==='util'){cols=5;days=Array.from({length:5},(_,i)=>jcalAddDays(r.start,i));}
+  else{cols=7;days=Array.from({length:7},(_,i)=>jcalAddDays(r.start,i));}
+  const rows=Math.round(days.length/cols);
+  const colW=w/cols,headH=7;
+  const wlabels=period==='util'?['Seg','Ter','Qua','Qui','Sex']:JCAL_WD;
+  doc.setFillColor(26,46,107);doc.rect(x,y,w,headH,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);
+  for(let c=0;c<cols;c++)doc.text(wlabels[c],x+c*colW+colW/2,y+headH-2.2,{align:'center'});
+  const monthRef=period==='mes'?jcalParse(r.start).getMonth():null;
+  const today=todayISO();
+  const rowH=period==='mes'?17.5:56;
+  const gy=y+headH;
+  for(let rIdx=0;rIdx<rows;rIdx++){
+    for(let c=0;c<cols;c++){
+      const idx=rIdx*cols+c,iso=days[idx];if(!iso)continue;
+      const cx=x+c*colW,cyy=gy+rIdx*rowH;
+      const inMonth=monthRef===null||jcalParse(iso).getMonth()===monthRef;
+      const isToday=iso===today;
+      if(isToday){doc.setFillColor(225,236,253);doc.rect(cx,cyy,colW,rowH,'F');}
+      else if(!inMonth){doc.setFillColor(249,250,252);doc.rect(cx,cyy,colW,rowH,'F');}
+      doc.setDrawColor(221,227,237);doc.setLineWidth(.15);doc.rect(cx,cyy,colW,rowH,'S');
+      const dnum=jcalParse(iso).getDate();
+      doc.setFont('helvetica','bold');doc.setFontSize(8);
+      if(!inMonth)doc.setTextColor(192,197,205);else if(isToday)doc.setTextColor(26,46,107);else doc.setTextColor(70,80,95);
+      doc.text(String(dnum),cx+2,cyy+4.2);
+      const list=(byDate[iso]||[]).slice().sort((a,b)=>(getTodoHora(a.id)||'99:99').localeCompare(getTodoHora(b.id)||'99:99'));
+      const chipH=3.4,gap=1.0,startTy=cyy+6;
+      const maxChips=Math.max(0,Math.floor((rowH-6)/(chipH+gap)));
+      const show=list.slice(0,list.length>maxChips?Math.max(0,maxChips-1):maxChips);
+      show.forEach((t,ti)=>{
+        const ty=startTy+ti*(chipH+gap);
+        const col=t.status==='Concluído'?[34,197,94]:_prioRgb(t.prioridade||'Normal');
+        doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(cx+1.4,ty,colW-2.8,chipH,.6,.6,'F');
+        doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(5.4);
+        const hora=getTodoHora(t.id);
+        const label=_truncPDF(doc,(t.status==='Concluído'?'✓ ':'')+(hora?hora+' ':'')+(t.descricao||''),colW-3.4);
+        doc.text(label,cx+2.2,ty+chipH-1.1);
+      });
+      const extra=list.length-show.length;
+      if(extra>0){const ty=startTy+show.length*(chipH+gap);doc.setTextColor(110,120,140);doc.setFont('helvetica','bold');doc.setFontSize(5.6);doc.text(`+${extra} mais`,cx+2.2,ty+2.6);}
+    }
+  }
+  return gy+rows*rowH;
+}
 window.todoReportPDF=(obra,period)=>{
   S.todoReportOpen=false;
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');renderApp();return;}
   const{jsPDF}=window.jspdf;const{r,items}=_todoReportData(obra,period);
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  jetLogo(doc,18,14,8);
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text('JET',18,16,{align:'center'});
-  doc.setFontSize(14);doc.setTextColor(20,20,60);doc.text('A Fazer — '+r.title,32,12);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);
-  doc.text(`${obra}  ·  ${r.label}  ·  ${items.length} tarefa(s)`,32,18);
-  doc.autoTable({startY:24,head:[['Data','Hora','Tarefa','Responsável','Prioridade','Status']],
-    body:items.map(t=>[fmtD(t.data),getTodoHora(t.id)||'—',t.descricao||'',t.responsavel||'',t.prioridade||'Normal',t.status||'Pendente']),
-    styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[26,46,107],textColor:255,fontStyle:'bold'},
-    alternateRowStyles:{fillColor:[245,247,250]},columnStyles:{0:{cellWidth:22},1:{cellWidth:14,halign:'center'},4:{cellWidth:22},5:{cellWidth:24}}});
-  if(!items.length){doc.setFontSize(10);doc.setTextColor(150,150,150);doc.text('Nenhuma tarefa neste período.',32,34);}
+  const PW=doc.internal.pageSize.getWidth(),M=12,NAVY=[26,46,107];
+  // ── Cabeçalho ──
+  doc.setFillColor(...NAVY);doc.rect(0,0,PW,26,'F');
+  doc.setFillColor(255,255,255);doc.roundedRect(M,5,16,16,3,3,'F');
+  doc.setTextColor(26,46,107);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('JET',M+8,14.6,{align:'center'});
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('Relatório — A Fazer / Frente de Serviço',M+20,11);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(205,216,238);doc.text(String(obra),M+20,17.3);
+  doc.setFontSize(9);doc.text(`${r.title} · ${r.label}`,M+20,22.4);
+  doc.setFontSize(8);doc.setTextColor(175,190,218);doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`,PW-M,10.5,{align:'right'});
+  doc.setFontSize(10);doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.text(`${items.length} tarefa(s)`,PW-M,16.5,{align:'right'});
+  // ── Chips de resumo ──
+  let y=33;
+  const pend=items.filter(t=>t.status!=='Concluído').length;
+  const conc=items.filter(t=>t.status==='Concluído').length;
+  const crit=items.filter(t=>t.prioridade==='Crítico').length;
+  const urg=items.filter(t=>t.prioridade==='Urgente').length;
+  const chips=[['Total',items.length,NAVY],['Pendentes',pend,[245,158,11]],['Concluídas',conc,[34,197,94]],['Críticas',crit,[239,68,68]],['Urgentes',urg,[245,158,11]]];
+  const chipW=(PW-2*M-4*4)/5;
+  chips.forEach((c,i)=>{const cx=M+i*(chipW+4);
+    doc.setFillColor(247,249,252);doc.setDrawColor(225,231,240);doc.setLineWidth(.2);doc.roundedRect(cx,y,chipW,15,2,2,'FD');
+    doc.setFillColor(c[2][0],c[2][1],c[2][2]);doc.rect(cx,y,1.6,15,'F');
+    doc.setTextColor(c[2][0],c[2][1],c[2][2]);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text(String(c[1]),cx+5,y+8);
+    doc.setTextColor(110,120,140);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(String(c[0]),cx+5,y+12.6);
+  });
+  y+=22;
+  // ── Calendário visual ──
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('📅 Calendário do período',M,y);
+  y=_todoCalPDF(doc,r,period,items,M,y+2.5,PW-2*M)+6;
+  // ── Tabela detalhada ──
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalhamento das tarefas',M,y);
+  if(!items.length){doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(150,150,150);doc.text('Nenhuma tarefa neste período.',M,y+9);}
+  else{doc.autoTable({startY:y+3,margin:{left:M,right:M},
+    head:[['Data','Hora','Tarefa','Responsável','Prioridade','Status']],
+    body:items.map(t=>[fmtD(t.data),getTodoHora(t.id)||'—',t.descricao||'',t.responsavel||'—',t.prioridade||'Normal',t.status||'Pendente']),
+    styles:{fontSize:8,cellPadding:2.6,textColor:[40,40,50],lineColor:[228,233,242],lineWidth:.1},
+    headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',fontSize:8.5},
+    alternateRowStyles:{fillColor:[246,248,251]},
+    columnStyles:{0:{cellWidth:20,halign:'center'},1:{cellWidth:13,halign:'center'},4:{cellWidth:23,halign:'center'},5:{cellWidth:26,halign:'center'}},
+    didParseCell:d=>{if(d.section!=='body')return;if(d.column.index===4){d.cell.styles.textColor=_prioRgb(d.cell.raw);d.cell.styles.fontStyle='bold';}if(d.column.index===5){d.cell.styles.textColor=_TODO_STATUS_RGB[d.cell.raw]||[80,80,90];d.cell.styles.fontStyle='bold';}}
+  });}
+  // ── Rodapé (todas as páginas) ──
+  const pc=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pc;i++){doc.setPage(i);const ph=doc.internal.pageSize.getHeight();
+    doc.setDrawColor(225,231,240);doc.setLineWidth(.2);doc.line(M,ph-10,PW-M,ph-10);
+    doc.setFontSize(7.5);doc.setTextColor(150,160,175);doc.setFont('helvetica','normal');
+    doc.text('JET Gestão de Obras · A Fazer',M,ph-6);doc.text(`Página ${i}/${pc}`,PW-M,ph-6,{align:'right'});}
   doc.save(`AFazer_${r.title.replace(/\s+/g,'_')}_${obra.replace(/\s+/g,'_')}.pdf`);
   toast('PDF do relatório exportado!');renderApp();
 };
