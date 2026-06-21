@@ -4495,7 +4495,7 @@ function renderObraInner(){
     <button class="btn btn-secondary btn-sm" onclick="exportObraConsolidadoPDF('${escJs(obra)}')" title="Relatório consolidado em PDF">📄 Relatório PDF</button>
   </div>
 </div>
-<nav class="obra-nav" style="padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px;margin-bottom:20px;flex-wrap:wrap">${nav}</nav>
+<nav class="obra-nav" style="padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px;margin-bottom:20px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden">${nav}</nav>
 ${content}
 </div></div>`;
 }
@@ -4610,44 +4610,58 @@ function renderCronograma(obra){
   return `<div>${header}${toggle}${_cronoBody(obra,view,items)}</div>`;
 }
 const _cronoRespOf=(it,which)=>(it.resp!=null&&it.resp!=='')?String(it.resp):(which==='fisico'?String(it.desc||''):'');
+function _cronoSelResps(){return Array.isArray(S.cronoResp)?S.cronoResp:(S.cronoResp?[S.cronoResp]:[]);}
+window._cronoToggleResp=(rp)=>{let a=_cronoSelResps();a=a.includes(rp)?a.filter(x=>x!==rp):[...a,rp];S.cronoResp=a;renderApp();};
+window._cronoClearResp=()=>{S.cronoResp=[];renderApp();};
 function _cronoBody(obra,which,allItems){
   const obraSafe=escJs(obra);const isFis=which==='fisico';
   const resps=[...new Set((allItems||[]).map(it=>_cronoRespOf(it,which)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const curResp=(S.cronoResp&&resps.includes(S.cronoResp))?S.cronoResp:'';
-  const items=curResp?allItems.filter(it=>_cronoRespOf(it,which)===curResp):allItems;
+  const sel=_cronoSelResps().filter(rp=>resps.includes(rp));
+  const items=sel.length?allItems.filter(it=>sel.includes(_cronoRespOf(it,which))):allItems;
   const doneN=allItems.filter(it=>it.concluida).length;
-  const respFilter=resps.length?`<select onchange="S.cronoResp=this.value;renderApp()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--text);font-size:12px;outline:none">
-    <option value="">👥 Todos os responsáveis (${allItems.length})</option>
-    ${resps.map(rp=>`<option value="${esc(rp)}"${curResp===rp?' selected':''}>${esc(rp)} (${allItems.filter(it=>_cronoRespOf(it,which)===rp).length})</option>`).join('')}
-  </select>`:'';
+  const tab=(S.cronoTab==='tarefas')?'tarefas':'grafico';
+  const respFilter=resps.length?`<div style="position:relative">
+     <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();S.cronoRespOpen=!S.cronoRespOpen;renderApp()">👥 Responsáveis${sel.length?` (${sel.length})`:''} ▾</button>
+     ${S.cronoRespOpen?`<div onclick="S.cronoRespOpen=false;renderApp()" style="position:fixed;inset:0;z-index:40"></div>
+       <div style="position:absolute;left:0;top:calc(100% + 6px);z-index:50;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.5);padding:6px;min-width:240px;max-height:320px;overflow:auto">
+         <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px 6px;border-bottom:1px solid var(--border);margin-bottom:4px"><span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Filtrar por responsável</span>${sel.length?`<button onclick="event.stopPropagation();window._cronoClearResp()" style="background:none;border:none;color:var(--blue-light);font-size:11px;cursor:pointer;font-family:inherit">Limpar (${sel.length})</button>`:''}</div>
+         ${resps.map(rp=>{const n=allItems.filter(it=>_cronoRespOf(it,which)===rp).length;const on=sel.includes(rp);return `<label onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;color:var(--text)" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background=''"><input type="checkbox" ${on?'checked':''} onclick="window._cronoToggleResp('${escJs(rp)}')" style="width:15px;height:15px;accent-color:#6366f1;flex-shrink:0"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rp)}</span><span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${n}</span></label>`;}).join('')}
+       </div>`:''}
+   </div>`:'';
   const actions=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
     <button class="btn btn-secondary btn-sm" onclick="window._cronoAdd('${obraSafe}','${which}')">+ ${isFis?'Tarefa':'Fase'}</button>
     <button class="btn btn-primary btn-sm" onclick="window._cronoExportPDF('${obraSafe}','${which}')">⬇ Exportar Gantt (PDF)</button>
     ${respFilter}
-    <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="color:#22c55e;font-weight:700">✓ ${doneN}</span>/${allItems.length} concluída${allItems.length!==1?'s':''}</span>
+    <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="color:#22c55e;font-weight:700">✓ ${doneN}</span>/${allItems.length}${sel.length?` · ${items.length} no filtro`:''}</span>
     <button class="btn btn-secondary btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.4);margin-left:auto" onclick="window._cronoClear('${obraSafe}','${which}')">Limpar ${isFis?'físico':'faseamento'}</button>
   </div>`;
-  const gantt=`<div class="card" style="margin-bottom:14px;padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Gráfico de Gantt${curResp?' · '+esc(curResp):(isFis&&items.length>40?' · '+items.length+' tarefas':'')}</div>${_ganttHTML(items)}</div>`;
-  const rows=items.map(f=>`<tr style="border-bottom:1px solid var(--border)${f.concluida?';background:rgba(34,197,94,.06)':''}">
-    <td style="padding:5px 8px;text-align:center;width:30px"><input type="checkbox" ${f.concluida?'checked':''} title="Marcar como concluída" onclick="window._cronoToggleDone('${obraSafe}','${which}','${f.id}')" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer"></td>
-    <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:${f.concluida?'var(--text3)':'var(--text)'};${f.concluida?'text-decoration:line-through':''}" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','inicio',this.value)"></td>
-    <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.fim||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','fim',this.value)"></td>
-    <td style="padding:5px 8px;text-align:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.inicio&&f.fim?(Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1)+'d':'—'}</td>
-    <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(f.desc||'')}" placeholder="—" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','desc',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-    <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-danger" onclick="window._cronoDel('${obraSafe}','${which}','${f.id}')">×</button></td>
-  </tr>`).join('');
-  const table=`<div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:740px">
-    <thead><tr style="background:#0d0d0d;border-bottom:1px solid var(--border)">
-      <th style="width:30px;text-align:center;font-size:10px;color:var(--text3)" title="Concluída">✓</th>
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Tarefa':'Fase'}</th>
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Início</th>
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Fim</th>
-      <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:60px;text-align:center">Dias</th>
-      <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Responsável':'Descrição'}</th>
-      <th style="width:40px"></th>
-    </tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  return actions+gantt+table;
+  const subSeg=(v,lbl,ic)=>`<button class="obra-nav-btn${tab===v?' active':''}" onclick="S.cronoTab='${v}';renderApp()" ${tab===v?'style="background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc"':''}><span class="nav-icon">${ic}</span>${lbl}</button>`;
+  const subnav=`<nav class="obra-nav" style="margin:0 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px;flex-wrap:nowrap;width:fit-content">${subSeg('grafico','Gráfico','📊')}${subSeg('tarefas','Tarefas','📋')}</nav>`;
+  let body;
+  if(tab==='grafico'){
+    body=`<div class="card" style="padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Gráfico de Gantt${sel.length?' · '+sel.length+' resp.':(isFis&&items.length>40?' · '+items.length+' tarefas':'')}</div>${_ganttHTML(items)}</div>`;
+  }else{
+    const rows=items.map(f=>`<tr style="border-bottom:1px solid var(--border)${f.concluida?';background:rgba(34,197,94,.06)':''}">
+      <td style="padding:5px 8px;text-align:center;width:30px"><input type="checkbox" ${f.concluida?'checked':''} title="Marcar como concluída" onclick="window._cronoToggleDone('${obraSafe}','${which}','${f.id}')" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer"></td>
+      <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:${f.concluida?'var(--text3)':'var(--text)'};${f.concluida?'text-decoration:line-through':''}" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+      <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','inicio',this.value)"></td>
+      <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.fim||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','fim',this.value)"></td>
+      <td style="padding:5px 8px;text-align:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${f.inicio&&f.fim?(Math.round((new Date(f.fim)-new Date(f.inicio))/864e5)+1)+'d':'—'}</td>
+      <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(f.desc||'')}" placeholder="—" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','desc',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+      <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-danger" onclick="window._cronoDel('${obraSafe}','${which}','${f.id}')">×</button></td>
+    </tr>`).join('');
+    body=`<div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:740px">
+      <thead><tr style="background:#0d0d0d;border-bottom:1px solid var(--border)">
+        <th style="width:30px;text-align:center;font-size:10px;color:var(--text3)" title="Concluída">✓</th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Tarefa':'Fase'}</th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Início</th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:150px">Fim</th>
+        <th style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:60px;text-align:center">Dias</th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${isFis?'Responsável':'Descrição'}</th>
+        <th style="width:40px"></th>
+      </tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }
+  return actions+subnav+body;
 }
 window._cronoToggleDone=async(obra,which,id)=>{const c=DB.cronogramas[obra];if(!c)return;const f=_cronoArr(c,which).find(x=>x.id===id);if(!f)return;f.concluida=!f.concluida;await saveCronograma(obra,c);renderApp();};
 window._cronoImportPDF=async(ev,obra)=>{
@@ -4722,16 +4736,16 @@ window._cronoImportExcel=async(ev,obra)=>{
 window._cronoExportPDF=(obra,which)=>{
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
   const c=DB.cronogramas[obra];const src=which==='fisico'?((c&&c.fisico&&c.fisico.tarefas)||[]):((c&&c.fases)||[]);
-  const curResp=(S.cronoResp&&src.some(f=>_cronoRespOf(f,which)===S.cronoResp))?S.cronoResp:'';
+  const sel=_cronoSelResps().filter(rp=>src.some(f=>_cronoRespOf(f,which)===rp));
   let fases=src.filter(f=>f.inicio&&f.fim);
-  if(curResp)fases=fases.filter(f=>_cronoRespOf(f,which)===curResp);
+  if(sel.length)fases=fases.filter(f=>sel.includes(_cronoRespOf(f,which)));
   if(!fases.length){toast('Sem itens com datas para exportar.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
   const PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),M=12,NAVY=[26,46,107];
   doc.setFillColor(...NAVY);doc.rect(0,0,PW,20,'F');
   doc.setFillColor(255,255,255);doc.roundedRect(M,4,13,12,2.5,2.5,'F');doc.setTextColor(26,46,107);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',M+6.5,11.6,{align:'center'});
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Cronograma — Gráfico de Gantt',M+17,9);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(205,216,238);doc.text(`${obra}${c?.nome?' · '+c.nome:''}${curResp?' · Resp.: '+curResp:''}`,M+17,15);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(205,216,238);doc.text(`${obra}${c?.nome?' · '+c.nome:''}${sel.length?' · Resp.: '+sel.join(', '):''}`.slice(0,120),M+17,15);
   const toD=iso=>new Date(iso+'T12:00:00').getTime();const DAY=864e5;
   const min=Math.min(...fases.map(f=>toD(f.inicio))),max=Math.max(...fases.map(f=>toD(f.fim)));const span=(max-min)||DAY;
   const labelW=46,gx=M+labelW,gw=PW-M-gx,top=30;const pct=v=>(v-min)/span;
