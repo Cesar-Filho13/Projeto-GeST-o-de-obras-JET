@@ -4565,9 +4565,12 @@ function parseFaseamento(text){
 }
 function _cronoZoom(){let z=S.cronoZoom;if(!['dia','semana','mes'].includes(z)){z=localStorage.getItem('jet-crono-zoom');if(!['dia','semana','mes'].includes(z))z='semana';}return z;}
 function _ganttHTML(fases){
-  const items=(fases||[]).filter(f=>f.inicio&&f.fim);
+  const allI=(fases||[]);
+  const items=allI.filter(f=>f.tipo!=='grupo'&&f.inicio&&f.fim);
   if(!items.length)return `<div style="color:var(--text3);font-size:13px;padding:8px 0">Sem itens com datas para montar o Gantt.</div>`;
   const LW=(()=>{const v=parseInt(localStorage.getItem('jet-crono-labelw'),10);return (v&&v>=120&&v<=700)?v:260;})();
+  const DATEW=72,FIXEDW=LW+DATEW*2;
+  const fmtS=iso=>{const d=new Date(iso+'T12:00:00');return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2);};
   const zoom=_cronoZoom();const PXD={dia:26,semana:9,mes:3.5}[zoom];
   const DAY=864e5;const toD=iso=>new Date(iso+'T12:00:00').getTime();const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
   const minMs0=Math.min(...items.map(f=>toD(f.inicio))),maxMs0=Math.max(...items.map(f=>toD(f.fim)));
@@ -4585,7 +4588,11 @@ function _ganttHTML(fases){
   else{let c=new Date(minDate);while(c.getTime()<=maxMs){grid+=`<div style="position:absolute;left:${dayIdx(new Date(c.getFullYear(),c.getMonth(),1,12).getTime())*PXD}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.13)"></div>`;c=new Date(c.getFullYear(),c.getMonth()+1,1,12);}}
   if(todayIdx!=null)grid+=`<div id="crono-today" style="position:absolute;left:${todayIdx*PXD}px;top:0;bottom:0;width:2px;background:#ef4444;opacity:.75"></div>`;
   const headerH=zoom==='mes'?24:38,ROWH=28;
-  const rows=items.map((f,i)=>{
+  const dcell=v=>`<div style="width:${DATEW}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:var(--text3);border-right:1px solid var(--border);font-family:'DM Mono',monospace">${v}</div>`;
+  const rows=allI.map((f,i)=>{
+    if(f.tipo==='grupo'){const n1=f.nivel===1;
+      return `<div style="display:flex;height:${n1?26:22}px"><div class="crono-fixed" style="position:sticky;left:0;z-index:3;width:${FIXEDW}px;flex-shrink:0;box-sizing:border-box;background:${n1?'rgba(99,102,241,.16)':'var(--bg2)'};border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px 0 ${n1?10:22}px;font-size:${n1?12:10.5}px;font-weight:${n1?800:700};letter-spacing:.3px;color:${n1?'#a5b4fc':'var(--text2)'};text-transform:uppercase;overflow:hidden;white-space:nowrap" title="${esc(f.nome)}">${esc(f.nome)}</div><div style="position:relative;width:${timelineW}px;flex-shrink:0;background:${n1?'rgba(99,102,241,.06)':'rgba(255,255,255,.015)'};border-bottom:1px solid var(--border)"></div></div>`;
+    }
     const done=!!f.concluida;
     const col=done?'#22c55e':(f.tipo==='marco'?'#eab308':(f.tipo==='prelim'?'#64748b':CRONO_PAL[i%CRONO_PAL.length]));
     const sIdx=dayIdx(toD(f.inicio)),eIdx=dayIdx(toD(f.fim));
@@ -4595,27 +4602,27 @@ function _ganttHTML(fases){
     const bar=f.tipo==='marco'
       ?`<div title="${tip}" style="position:absolute;left:${left}px;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:12px;height:12px;background:${col};border:1px solid rgba(0,0,0,.4)"></div>`
       :`<div title="${tip}" style="position:absolute;left:${left}px;width:${w}px;top:5px;bottom:5px;background:${col};border-radius:4px;display:flex;align-items:center;padding:0 5px;box-shadow:0 1px 2px rgba(0,0,0,.35);overflow:hidden">${w>30?`<span style="font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.4)">${done?'✓ ':''}${dias}d</span>`:''}</div>`;
-    const lab=`<div class="crono-glabel" style="position:sticky;left:0;z-index:2;width:${LW}px;flex-shrink:0;box-sizing:border-box;background:var(--bg2);border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;font-size:11.5px;font-weight:600;color:${done?'var(--text3)':'var(--text)'}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px;flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}">${esc(f.nome)}</span></div>`;
-    return `<div style="display:flex;height:${ROWH}px">${lab}<div style="position:relative;width:${timelineW}px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.04)">${bar}</div></div>`;
+    const fixed=`<div class="crono-fixed" style="position:sticky;left:0;z-index:2;width:${FIXEDW}px;flex-shrink:0;box-sizing:border-box;display:flex;background:var(--bg2);border-bottom:1px solid var(--border)"><div class="crono-glabel" style="width:${LW}px;flex-shrink:0;box-sizing:border-box;display:flex;align-items:center;padding:0 8px;border-right:1px solid var(--border);font-size:11.5px;font-weight:600;color:${done?'var(--text3)':'var(--text)'}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px;flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}">${esc(f.nome)}</span></div>${dcell(fmtS(f.inicio))}${dcell(fmtS(f.fim))}</div>`;
+    return `<div style="display:flex;height:${ROWH}px">${fixed}<div style="position:relative;width:${timelineW}px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.04)">${bar}</div></div>`;
   }).join('');
   const header=`<div style="display:flex;height:${headerH}px;position:sticky;top:0;z-index:4">
-    <div class="crono-glabel" style="position:sticky;left:0;z-index:5;width:${LW}px;flex-shrink:0;box-sizing:border-box;background:var(--bg2);border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 8px 5px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Atividade</div>
+    <div class="crono-fixed" style="position:sticky;left:0;z-index:5;width:${FIXEDW}px;flex-shrink:0;box-sizing:border-box;display:flex;background:var(--bg2);border-bottom:1px solid var(--border)"><div class="crono-glabel" style="width:${LW}px;flex-shrink:0;box-sizing:border-box;display:flex;align-items:flex-end;padding:0 8px 5px;border-right:1px solid var(--border);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Atividade</div><div style="width:${DATEW}px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:center;padding:0 0 5px;border-right:1px solid var(--border);font-size:9px;color:var(--text3);text-transform:uppercase">Início</div><div style="width:${DATEW}px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:center;padding:0 0 5px;border-right:1px solid var(--border);font-size:9px;color:var(--text3);text-transform:uppercase">Término</div></div>
     <div style="position:relative;width:${timelineW}px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border)">
       <div style="position:absolute;left:0;top:0;width:${timelineW}px;height:${zoom==='mes'?headerH:18}px;${zoom==='mes'?'':'border-bottom:1px solid var(--border)'}">${monthsHtml}</div>
       ${zoom!=='mes'?`<div style="position:absolute;left:0;top:18px;width:${timelineW}px;bottom:0">${subHtml}</div>`:''}
     </div>
   </div>`;
-  const gridbg=`<div class="crono-gridbg" style="position:absolute;left:${LW}px;top:${headerH}px;bottom:0;width:${timelineW}px;z-index:0;pointer-events:none">${grid}</div>`;
+  const gridbg=`<div class="crono-gridbg" style="position:absolute;left:${FIXEDW}px;top:${headerH}px;bottom:0;width:${timelineW}px;z-index:0;pointer-events:none">${grid}</div>`;
   const grip=`<div onpointerdown="window._cronoLabelResizeStart(event)" title="Arraste para ajustar a largura dos nomes" style="position:absolute;top:0;bottom:0;left:${LW}px;width:9px;margin-left:-4px;cursor:col-resize;z-index:7"></div>`;
-  return `<div id="crono-gantt-scroll" style="overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"><div class="crono-inner" data-tw="${timelineW}" style="position:relative;width:${LW+timelineW}px">${gridbg}${header}<div style="position:relative;z-index:1">${rows}</div>${grip}</div></div>`;
+  return `<div id="crono-gantt-scroll" style="overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"><div class="crono-inner" data-tw="${timelineW}" data-dw="${DATEW*2}" style="position:relative;width:${FIXEDW+timelineW}px">${gridbg}${header}<div style="position:relative;z-index:1">${rows}</div>${grip}</div></div>`;
 }
 window._cronoLabelResizeStart=(e)=>{
   e.preventDefault();e.stopPropagation();
   const grip=e.currentTarget;const inner=grip.closest('.crono-inner');if(!inner)return;
-  const labels=inner.querySelectorAll('.crono-glabel');const gridbg=inner.querySelector('.crono-gridbg');
-  const tw=parseFloat(inner.dataset.tw||'0');const startX=e.clientX;const startW=labels[0]?labels[0].getBoundingClientRect().width:260;
+  const labels=inner.querySelectorAll('.crono-glabel');const fixedBlocks=inner.querySelectorAll('.crono-fixed');const gridbg=inner.querySelector('.crono-gridbg');
+  const tw=parseFloat(inner.dataset.tw||'0'),dw=parseFloat(inner.dataset.dw||'0');const startX=e.clientX;const startW=labels[0]?labels[0].getBoundingClientRect().width:260;
   let w=startW;
-  const move=(ev)=>{w=Math.max(120,Math.min(600,startW+(ev.clientX-startX)));labels.forEach(l=>l.style.width=w+'px');if(gridbg)gridbg.style.left=w+'px';grip.style.left=w+'px';inner.style.width=(w+tw)+'px';};
+  const move=(ev)=>{w=Math.max(120,Math.min(600,startW+(ev.clientX-startX)));labels.forEach(l=>l.style.width=w+'px');fixedBlocks.forEach(fb=>fb.style.width=(w+dw)+'px');if(gridbg)gridbg.style.left=(w+dw)+'px';grip.style.left=w+'px';inner.style.width=(w+dw+tw)+'px';};
   const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);try{localStorage.setItem('jet-crono-labelw',String(Math.round(w)));}catch{}};
   document.addEventListener('pointermove',move);document.addEventListener('pointerup',up);
 };
@@ -4650,12 +4657,22 @@ const _cronoRespOf=(it,which)=>(it.resp!=null&&it.resp!=='')?String(it.resp):(wh
 function _cronoSelResps(){return Array.isArray(S.cronoResp)?S.cronoResp:(S.cronoResp?[S.cronoResp]:[]);}
 window._cronoToggleResp=(rp)=>{let a=_cronoSelResps();a=a.includes(rp)?a.filter(x=>x!==rp):[...a,rp];S.cronoResp=a;renderApp();};
 window._cronoClearResp=()=>{S.cronoResp=[];renderApp();};
+function _cronoFilterItems(allItems,which,sel){
+  if(!sel||!sel.length)return allItems;
+  const out=[];let pend=[];
+  for(const it of allItems){
+    if(it.tipo==='grupo'){pend=pend.filter(g=>g.nivel<it.nivel);pend.push(it);continue;}
+    if(sel.includes(_cronoRespOf(it,which))){out.push(...pend);pend=[];out.push(it);}
+  }
+  return out;
+}
 function _cronoBody(obra,which,allItems){
   const obraSafe=escJs(obra);const isFis=which==='fisico';
-  const resps=[...new Set((allItems||[]).map(it=>_cronoRespOf(it,which)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const tasks=allItems.filter(it=>it.tipo!=='grupo');
+  const resps=[...new Set(tasks.map(it=>_cronoRespOf(it,which)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const sel=_cronoSelResps().filter(rp=>resps.includes(rp));
-  const items=sel.length?allItems.filter(it=>sel.includes(_cronoRespOf(it,which))):allItems;
-  const doneN=allItems.filter(it=>it.concluida).length;
+  const items=_cronoFilterItems(allItems,which,sel);
+  const doneN=tasks.filter(it=>it.concluida).length;
   const tab=(S.cronoTab==='tarefas')?'tarefas':'grafico';
   const respFilter=resps.length?`<div style="position:relative">
      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();S.cronoRespOpen=!S.cronoRespOpen;renderApp()">👥 Responsáveis${sel.length?` (${sel.length})`:''} ▾</button>
@@ -4669,7 +4686,7 @@ function _cronoBody(obra,which,allItems){
     <button class="btn btn-secondary btn-sm" onclick="window._cronoAdd('${obraSafe}','${which}')">+ ${isFis?'Tarefa':'Fase'}</button>
     <button class="btn btn-primary btn-sm" onclick="window._cronoExportPDF('${obraSafe}','${which}')">⬇ Exportar Gantt (PDF)</button>
     ${respFilter}
-    <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="color:#22c55e;font-weight:700">✓ ${doneN}</span>/${allItems.length}${sel.length?` · ${items.length} no filtro`:''}</span>
+    <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="color:#22c55e;font-weight:700">✓ ${doneN}</span>/${tasks.length}${sel.length?` · ${items.filter(it=>it.tipo!=='grupo').length} no filtro`:''}</span>
     <button class="btn btn-secondary btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.4);margin-left:auto" onclick="window._cronoClear('${obraSafe}','${which}')">Limpar ${isFis?'físico':'faseamento'}</button>
   </div>`;
   const subSeg=(v,lbl,ic)=>`<button class="obra-nav-btn${tab===v?' active':''}" onclick="S.cronoTab='${v}';renderApp()" ${tab===v?'style="background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc"':''}><span class="nav-icon">${ic}</span>${lbl}</button>`;
@@ -4681,7 +4698,7 @@ function _cronoBody(obra,which,allItems){
     const ctrls=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Gráfico de Gantt${sel.length?' · '+sel.length+' resp.':(isFis&&items.length>40?' · '+items.length+' tarefas':'')}</span><div style="display:flex;gap:4px;align-items:center;margin-left:auto"><span style="font-size:10px;color:var(--text3);margin-right:2px">Escala:</span>${zbtn('dia','Dia')}${zbtn('semana','Semana')}${zbtn('mes','Mês')}</div><button class="btn btn-secondary btn-sm" onclick="window._cronoScrollToday()">📍 Hoje</button></div>`;
     body=`<div class="card" style="padding:16px">${ctrls}${_ganttHTML(items)}</div>`;
   }else{
-    const rows=items.map(f=>`<tr style="border-bottom:1px solid var(--border)${f.concluida?';background:rgba(34,197,94,.06)':''}">
+    const rows=items.map(f=>f.tipo==='grupo'?`<tr style="background:${f.nivel===1?'rgba(99,102,241,.14)':'rgba(255,255,255,.04)'}"><td></td><td colspan="6" style="padding:6px 8px 6px ${f.nivel===1?10:22}px;font-weight:${f.nivel===1?800:700};font-size:${f.nivel===1?12:11}px;color:${f.nivel===1?'#a5b4fc':'var(--text2)'};text-transform:uppercase;letter-spacing:.3px"><span style="display:inline-flex;align-items:center;gap:6px">${esc(f.nome)}<button class="btn btn-sm btn-danger" style="padding:0 6px;font-size:10px" onclick="window._cronoDel('${obraSafe}','${which}','${f.id}')" title="Remover divisão">×</button></span></td></tr>`:`<tr style="border-bottom:1px solid var(--border)${f.concluida?';background:rgba(34,197,94,.06)':''}">
       <td style="padding:5px 8px;text-align:center;width:30px"><input type="checkbox" ${f.concluida?'checked':''} title="Marcar como concluída" onclick="window._cronoToggleDone('${obraSafe}','${which}','${f.id}')" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer"></td>
       <td style="padding:5px 8px"><input class="ci" style="width:100%;font-weight:600;color:${f.concluida?'var(--text3)':'var(--text)'};${f.concluida?'text-decoration:line-through':''}" value="${esc(f.nome)}" onblur="window._cronoEdit('${obraSafe}','${which}','${f.id}','nome',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td style="padding:5px 8px"><input class="ci" type="date" style="width:100%" value="${esc(f.inicio||'')}" onchange="window._cronoEdit('${obraSafe}','${which}','${f.id}','inicio',this.value)"></td>
@@ -4744,18 +4761,33 @@ function parseCronogramaFisico(arrayBuffer){
     else if(/^a[çc][ãa]o$/.test(s))cAcao=ci;
   });});
   if(cTask<0)cTask=4;if(cIni<0)cIni=5;if(cFim<0)cFim=6;if(cDur<0)cDur=7;if(cAcao<0)cAcao=11;
-  const noise=/CRONOGRAMA F[IÍ]|C&A MODAS|VERS[ÃA]O|PER[IÍ]ODO DE TRABALHO|STATUS NA DATA|PREVIS[ÃA]O INAUGURA|PERIODO TOTAL|REVIS[ÃA]O\s*\d/i;
-  const tarefas=[];
+  const noise=/CRONOGRAMA F[IÍ]|C&A MODAS|VERS[ÃA]O|PER[IÍ]ODO DE TRABALHO|STATUS NA DATA|PREVIS[ÃA]O INAUGURA|PERIODO TOTAL|REVIS[ÃA]O\s*\d|^TAREFA$|^PLANEJADO$|^REALIZADO$|^A[ÇC][ÃA]O$/i;
+  const out=[];
   rows.forEach(row=>{if(!row)return;const nameRaw=row[cTask];if(nameRaw==null||String(nameRaw).trim()==='')return;
-    const ini=_xlDate(row[cIni]),fim=_xlDate(row[cFim]);if(!ini||!fim)return;
-    let nome=String(nameRaw).replace(/\s+/g,' ').replace(/^[\s:]+/,'').trim();
+    const ini=_xlDate(row[cIni]),fim=_xlDate(row[cFim]);
+    let nome=String(nameRaw).replace(/\s+/g,' ').replace(/^[\s:>*]+/,'').trim();
     if(!nome||noise.test(nome))return;
-    const dur=typeof row[cDur]==='number'?row[cDur]:null;
-    let resp=row[cAcao]!=null?String(row[cAcao]).replace(/\s+/g,' ').trim():'';
-    if(!/[A-Za-zÀ-ÿ0-9]/.test(resp))resp='';
-    tarefas.push({id:uid(),nome:nome.slice(0,120),inicio:ini,fim,dias:dur||(Math.round((new Date(fim)-new Date(ini))/864e5)+1),tipo:'fase',desc:resp});
+    if(ini&&fim){
+      const dur=typeof row[cDur]==='number'?row[cDur]:null;
+      let resp=row[cAcao]!=null?String(row[cAcao]).replace(/\s+/g,' ').trim():'';
+      if(!/[A-Za-zÀ-ÿ0-9]/.test(resp))resp='';
+      out.push({id:uid(),nome:nome.slice(0,120),inicio:ini,fim,dias:dur||(Math.round((new Date(fim)-new Date(ini))/864e5)+1),tipo:'fase',desc:resp});
+    }else{
+      // linha-seção (divisão/subdivisão): texto predominantemente em maiúsculas
+      const letters=nome.replace(/[^A-Za-zÀ-ÿ]/g,''),upper=nome.replace(/[^A-ZÀ-Þ]/g,'');
+      if(letters.length>=2&&upper.length/letters.length>=0.6&&nome.length<=60){
+        const gnome=nome.replace(/^CRONOGRAMA\s+/i,'').trim();
+        out.push({id:uid(),tipo:'grupo',nivel:/\bFASE\b/i.test(gnome)?1:2,nome:gnome.slice(0,60)});
+      }
+    }
   });
-  return tarefas;
+  // remove cabeçalhos órfãos (sem tarefa antes do próximo grupo de mesmo nível ou superior)
+  const cleaned=[];
+  for(let i=0;i<out.length;i++){
+    if(out[i].tipo==='grupo'){let child=false;for(let j=i+1;j<out.length;j++){if(out[j].tipo==='grupo'){if(out[j].nivel<=out[i].nivel)break;continue;}child=true;break;}if(!child)continue;}
+    cleaned.push(out[i]);
+  }
+  return cleaned;
 }
 window._cronoImportExcel=async(ev,obra)=>{
   const file=ev.target.files&&ev.target.files[0];if(ev.target)ev.target.value='';
