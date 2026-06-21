@@ -335,8 +335,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .obra-badge:hover{background:rgba(59,126,248,.25)}
 
 /* ── Obra inner nav ── */
-.obra-nav{display:flex;gap:8px;padding:0 0 18px;border-bottom:1px solid var(--border);margin-bottom:28px;flex-wrap:wrap;overflow:visible;align-items:center}
-.obra-nav-btn{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;border:1px solid transparent;transition:all .2s;font-family:'Inter',sans-serif;color:var(--text3);background:transparent;white-space:nowrap;flex-shrink:0;position:relative}
+.obra-nav{display:flex;gap:8px;padding:0 0 18px;border-bottom:1px solid var(--border);margin-bottom:28px;flex-wrap:wrap;overflow:visible;align-items:center;scrollbar-width:none;-ms-overflow-style:none}
+.obra-nav::-webkit-scrollbar{width:0;height:0;display:none}
+.obra-nav-btn{display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:12px;cursor:pointer;font-size:12.5px;font-weight:600;border:1px solid transparent;transition:all .2s;font-family:'Inter',sans-serif;color:var(--text3);background:transparent;white-space:nowrap;flex-shrink:0;position:relative}
 .obra-nav-btn::after{content:'';position:absolute;bottom:-24px;left:0;right:0;height:2px;background:var(--blue);transform:scaleX(0);transition:transform .2s;transform-origin:left}
 .obra-nav-btn:hover{background:var(--surface-soft);color:var(--text);border-color:rgba(79,140,255,.22)}
 .obra-nav-btn.active{background:rgba(79,140,255,.14);color:#60a5fa;border-color:rgba(79,140,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
@@ -4572,7 +4573,7 @@ function _ganttHTML(fases){
   while(cur.getTime()<=max){months.push({pct:pct(cur.getTime()),label:cur.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')+'/'+String(cur.getFullYear()).slice(2)});cur.setMonth(cur.getMonth()+1);}
   const today=toD(todayISO());const todayPct=(today>=min&&today<=max)?pct(today):null;
   const gridLines=months.map(mo=>mo.pct>0&&mo.pct<100?`<div style="position:absolute;left:${mo.pct}%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)"></div>`:'').join('')+(todayPct!=null?`<div title="Hoje" style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:2px;background:#ef4444;opacity:.65"></div>`:'');
-  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:150px;flex-shrink:0"></div><div style="flex:1;position:relative;height:14px">${months.map(mo=>`<div style="position:absolute;left:${Math.max(0,mo.pct)}%;font-size:9px;color:var(--text3);font-weight:700;white-space:nowrap">${mo.label}</div>`).join('')}</div></div>`;
+  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:230px;flex-shrink:0"></div><div style="flex:1;position:relative;height:14px">${months.map(mo=>`<div style="position:absolute;left:${Math.max(0,mo.pct)}%;font-size:9px;color:var(--text3);font-weight:700;white-space:nowrap">${mo.label}</div>`).join('')}</div></div>`;
   const rows=items.map((f,i)=>{
     const s=toD(f.inicio),e=toD(f.fim),left=pct(s),w=Math.max(pct(e)-pct(s),f.tipo==='marco'?0:1.2);
     const done=!!f.concluida;
@@ -4581,9 +4582,9 @@ function _ganttHTML(fases){
     const bar=f.tipo==='marco'
       ?`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}${done?' · concluída':''}" style="position:absolute;left:${left}%;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:13px;height:13px;background:${col};border:1px solid rgba(0,0,0,.4)"></div>`
       :`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}–${fmtD(f.fim)} (${dias}d)${done?' · concluída':''}" style="position:absolute;left:${left}%;width:${w}%;top:3px;bottom:3px;background:${col};border-radius:5px;display:flex;align-items:center;padding:0 6px;min-width:16px;box-shadow:0 1px 3px rgba(0,0,0,.3);${done?'opacity:.92':''}"><span style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.3)">${done?'✓ ':''}${dias}d</span></div>`;
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:150px;flex-shrink:0;font-size:12px;color:${done?'var(--text3)':'var(--text)'};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px"></span>${esc(f.nome)}</div><div style="flex:1;position:relative;height:24px;background:var(--bg3);border-radius:6px;overflow:hidden">${gridLines}${bar}</div></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:230px;flex-shrink:0;font-size:11.5px;color:${done?'var(--text3)':'var(--text)'};font-weight:600;line-height:1.25;word-break:break-word;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px;vertical-align:middle"></span>${esc(f.nome)}</div><div style="flex:1;position:relative;min-height:24px;align-self:stretch;background:var(--bg3);border-radius:6px;overflow:hidden">${gridLines}${bar}</div></div>`;
   }).join('');
-  return `<div style="overflow-x:auto"><div style="min-width:680px">${header}${rows}</div></div>`;
+  return `<div style="overflow-x:auto"><div style="min-width:760px">${header}${rows}</div></div>`;
 }
 function renderCronograma(obra){
   if(!window._cronoLoadState)window._cronoLoadState={};
