@@ -2810,8 +2810,37 @@ let sessionTimer=null;
 function clearSensitiveLocalCache(){
   ['jet-baixadas','jet-despesa-files','jet-material-req-files','jet-almox-meta','jet-almox-movimentos','jet-home-notices','jet-propostas'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 }
-function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;toast('Sessão expirada. Faça login novamente.','#ef4444');renderAuth();},SESSION_TIMEOUT);}
-document.addEventListener('click',resetSessionTimeout);document.addEventListener('keydown',resetSessionTimeout);
+// Está o usuário ocupado preenchendo algo? (modal aberto OU foco em campo editável)
+function isUserBusy(){
+  if(typeof S!=='undefined'&&S.modal)return true;
+  const ae=document.activeElement;
+  if(!ae)return false;
+  if(ae.isContentEditable)return true;
+  const tag=ae.tagName;
+  if((tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')&&!ae.disabled&&!ae.readOnly&&ae.type!=='checkbox'&&ae.type!=='radio'&&ae.type!=='button'&&ae.type!=='submit')return true;
+  return false;
+}
+function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessionTimer=setTimeout(async()=>{
+  // Não desloga se o usuário estiver preenchendo uma lista/formulário — reagenda
+  if(isUserBusy()){resetSessionTimeout();return;}
+  try{saveNavState();}catch{}
+  await sb.auth.signOut();clearSensitiveLocalCache();currentUser=null;toast('Sessão expirada por inatividade. Faça login para continuar de onde parou.','#ef4444');renderAuth();
+},SESSION_TIMEOUT);}
+['click','keydown','input','change','mousedown','touchstart'].forEach(ev=>document.addEventListener(ev,resetSessionTimeout,true));
+// Persistência da navegação (para reabrir na mesma lista)
+function saveNavState(){
+  if(typeof currentUser==='undefined'||!currentUser||typeof S==='undefined')return;
+  try{localStorage.setItem('jet-nav',JSON.stringify({page:S.page,modulo:S.modulo,obra:S.obra,obraTab:S.obraTab,matSubTab:S.matSubTab,todoView:S.todoView,calView:S.calView,cronoView:S.cronoView,obraTipo:S.obraTipo,obraStatusFilter:S.obraStatusFilter}));}catch{}
+}
+function restoreNavState(){
+  try{
+    const n=JSON.parse(localStorage.getItem('jet-nav')||'null');
+    if(!n||typeof n!=='object')return;
+    ['page','modulo','obra','obraTab','matSubTab','todoView','calView','cronoView','obraTipo','obraStatusFilter'].forEach(k=>{if(n[k]!=null)S[k]=n[k];});
+    if(S.page==='obra'&&(!S.obra||!getAllObras().includes(S.obra))){S.page='home';S.obra=null;}
+    S.modal=null;S.selectedAditivo=null;
+  }catch{}
+}
 
 // ─── UNDO DELETION (10 segundos) ──────────────────────────────────────────
 let deletionHistory=[];
@@ -3156,8 +3185,8 @@ window._login=async()=>{
     const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error){renderAuth(error.message==='Invalid login credentials'?'E-mail ou senha incorretos.':error.message);return;}
     currentUser=data.user;
-    S.page='home';
     await loadAll();
+    restoreNavState();
     try{setupRT();}catch(e){console.warn('RT setup error:',e);}
     try{setupPresence();}catch(e){console.warn('Presence error:',e);}
     renderApp();
@@ -13663,6 +13692,8 @@ function safeRenderModal(){
 }
 function renderApp(){
   if(!currentUser){renderAuth();return;}
+  resetSessionTimeout();
+  saveNavState();
   let content='';
   if(S.page==='home'){
     document.getElementById('root').innerHTML=renderHome()+safeRenderModal()+(S.globalSearchOpen?renderGlobalSearch():'');
@@ -13708,12 +13739,12 @@ try{
       await new Promise(r=>{const check=()=>typeof supabase!=='undefined'?r():setTimeout(check,100);check();});
     }
     const{data:{session}}=await sb.auth.getSession();
-    if(session?.user){currentUser=session.user;await loadAll();setupRT();try{setupPresence();}catch(e){}renderApp();}
+    if(session?.user){currentUser=session.user;await loadAll();restoreNavState();setupRT();try{setupPresence();}catch(e){}renderApp();}
     else renderAuth();
     sb.auth.onAuthStateChange((event,session)=>{
       if(event==='SIGNED_OUT'){currentUser=null;renderAuth();}
       else if(event==='SIGNED_IN'&&session?.user&&!currentUser){
-        currentUser=session.user;S.page='home';loadAll().then(()=>{setupRT();try{setupPresence();}catch(e){}renderApp();});
+        currentUser=session.user;loadAll().then(()=>{restoreNavState();setupRT();try{setupPresence();}catch(e){}renderApp();});
       }
     });
   }catch(e){console.warn('[JET] Init error:',e);renderAuth();}
