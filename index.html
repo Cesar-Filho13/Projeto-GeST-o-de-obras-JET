@@ -4292,7 +4292,7 @@ function renderDashboard(){
       fornecedores:`<button class="btn btn-secondary btn-sm" onclick="window.fornecedoresCSV()">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window.fornecedoresXLSX()">📊 Excel</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-fornecedor';S.modalData={};renderApp()">+ Novo Fornecedor</button>`,
       cotacoes:`<button class="btn btn-secondary btn-sm" onclick="window.cotacoesCSV()">⬇ CSV</button><button class="btn btn-secondary btn-sm" onclick="window.cotacoesXLSX()">📊 Excel</button><button class="btn btn-primary btn-sm" onclick="S.modal='new-cotacao';S.modalData={obra:S.obra||''};renderApp()">+ Nova Cotação</button>`
     };
-    const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="S.page='home';renderApp()">← HOME</button><div class="page-hero-actions-group">${exportByTab[tab]||exportByTab.pedidos}</div>`;
+    const heroActions=`<button class="btn btn-primary btn-sm" style="min-width:100px;font-weight:700" onclick="window._goBack()">← Voltar</button><div class="page-hero-actions-group">${exportByTab[tab]||exportByTab.pedidos}</div>`;
     return `<div class="page">${renderPageHero('🛒','Compras','PAINEL DE COMPRAS · Pedidos, fornecedores e cotações',heroActions)}${renderComprasModule(pedidos,fornecedores,cotacoes)}</div>`;
   }
 
