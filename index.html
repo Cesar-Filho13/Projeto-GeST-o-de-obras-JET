@@ -4483,7 +4483,7 @@ function renderObraInner(){
 <div class="page">
 <div style="margin-bottom:24px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-  <button class="btn btn-primary btn-sm" style="min-width:80px" onclick="S.page='home';renderApp()">← Voltar</button>
+  <button class="btn btn-primary btn-sm" style="min-width:80px" onclick="window._goBack()">← Voltar</button>
   <span style="color:var(--text3);font-size:12px">/</span>
   <button class="btn btn-primary btn-sm" style="min-width:80px" onclick="S.page='dashboard';S.obra=null;S.selectedAditivo=null;renderApp()">Obras</button>
 </div>
@@ -13640,7 +13640,7 @@ function updateOnlinePresenceUI(){
   document.querySelectorAll('[data-online-count]').forEach(el=>{el.innerHTML=renderOnlineCount();});
 }
 
-let _historyBootstrapped=false,_historyApplying=false,_lastHistoryKey='';
+let _historyBootstrapped=false,_historyApplying=false,_lastHistoryKey='',_jetNavDepth=0;
 function compactModalData(data={}){
   const picked={};
   ['id','obra','ids'].forEach(key=>{if(data&&data[key]!=null)picked[key]=data[key];});
@@ -13695,10 +13695,16 @@ function syncAppHistory({replace=false}={}){
   if(key===_lastHistoryKey)return;
   history.pushState({__jet:true,snapshot},'',location.href);
   _lastHistoryKey=key;
+  _jetNavDepth++;
 }
+window._goBack=()=>{
+  if(_jetNavDepth>0){history.back();return;}
+  S.page='home';S.obra=null;S.selectedAditivo=null;S.modal=null;renderApp();
+};
 window.addEventListener('popstate',event=>{
   if(!event.state?.__jet||!currentUser)return;
   _historyApplying=true;
+  _jetNavDepth=Math.max(0,_jetNavDepth-1);
   applyNavSnapshot(event.state.snapshot||{});
   renderApp();
   _historyApplying=false;
