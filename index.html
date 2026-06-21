@@ -4566,6 +4566,7 @@ function parseFaseamento(text){
 function _ganttHTML(fases){
   const items=(fases||[]).filter(f=>f.inicio&&f.fim);
   if(!items.length)return `<div style="color:var(--text3);font-size:13px;padding:8px 0">Sem fases com datas para montar o Gantt.</div>`;
+  const LW=(()=>{const v=parseInt(localStorage.getItem('jet-crono-labelw'),10);return (v&&v>=120&&v<=700)?v:260;})();
   const toD=iso=>new Date(iso+'T12:00:00').getTime();const DAY=864e5;
   const min=Math.min(...items.map(f=>toD(f.inicio))),max=Math.max(...items.map(f=>toD(f.fim)));
   const span=(max-min)||DAY;const pct=v=>((v-min)/span)*100;
@@ -4573,7 +4574,7 @@ function _ganttHTML(fases){
   while(cur.getTime()<=max){months.push({pct:pct(cur.getTime()),label:cur.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')+'/'+String(cur.getFullYear()).slice(2)});cur.setMonth(cur.getMonth()+1);}
   const today=toD(todayISO());const todayPct=(today>=min&&today<=max)?pct(today):null;
   const gridLines=months.map(mo=>mo.pct>0&&mo.pct<100?`<div style="position:absolute;left:${mo.pct}%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)"></div>`:'').join('')+(todayPct!=null?`<div title="Hoje" style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:2px;background:#ef4444;opacity:.65"></div>`:'');
-  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:230px;flex-shrink:0"></div><div style="flex:1;position:relative;height:14px">${months.map(mo=>`<div style="position:absolute;left:${Math.max(0,mo.pct)}%;font-size:9px;color:var(--text3);font-weight:700;white-space:nowrap">${mo.label}</div>`).join('')}</div></div>`;
+  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="crono-glabel" style="width:${LW}px;flex-shrink:0"></div><div style="flex:1;position:relative;height:14px">${months.map(mo=>`<div style="position:absolute;left:${Math.max(0,mo.pct)}%;font-size:9px;color:var(--text3);font-weight:700;white-space:nowrap">${mo.label}</div>`).join('')}</div></div>`;
   const rows=items.map((f,i)=>{
     const s=toD(f.inicio),e=toD(f.fim),left=pct(s),w=Math.max(pct(e)-pct(s),f.tipo==='marco'?0:1.2);
     const done=!!f.concluida;
@@ -4582,10 +4583,22 @@ function _ganttHTML(fases){
     const bar=f.tipo==='marco'
       ?`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}${done?' · concluída':''}" style="position:absolute;left:${left}%;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:13px;height:13px;background:${col};border:1px solid rgba(0,0,0,.4)"></div>`
       :`<div title="${esc(f.nome)} · ${fmtD(f.inicio)}–${fmtD(f.fim)} (${dias}d)${done?' · concluída':''}" style="position:absolute;left:${left}%;width:${w}%;top:3px;bottom:3px;background:${col};border-radius:5px;display:flex;align-items:center;padding:0 6px;min-width:16px;box-shadow:0 1px 3px rgba(0,0,0,.3);${done?'opacity:.92':''}"><span style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.3)">${done?'✓ ':''}${dias}d</span></div>`;
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:230px;flex-shrink:0;font-size:11.5px;color:${done?'var(--text3)':'var(--text)'};font-weight:600;line-height:1.25;word-break:break-word;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px;vertical-align:middle"></span>${esc(f.nome)}</div><div style="flex:1;position:relative;min-height:24px;align-self:stretch;background:var(--bg3);border-radius:6px;overflow:hidden">${gridLines}${bar}</div></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div class="crono-glabel" style="width:${LW}px;flex-shrink:0;font-size:11.5px;color:${done?'var(--text3)':'var(--text)'};font-weight:600;line-height:1.25;word-break:break-word;${done?'text-decoration:line-through':''}" title="${esc(f.nome)}"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};margin-right:6px;vertical-align:middle"></span>${esc(f.nome)}</div><div style="flex:1;position:relative;min-height:24px;align-self:stretch;background:var(--bg3);border-radius:6px;overflow:hidden">${gridLines}${bar}</div></div>`;
   }).join('');
-  return `<div style="overflow-x:auto"><div style="min-width:760px">${header}${rows}</div></div>`;
+  const grip=`<div onpointerdown="window._cronoLabelResizeStart(event)" title="Arraste para ajustar a largura dos nomes" style="position:absolute;top:0;bottom:0;left:${LW}px;width:10px;margin-left:-4px;cursor:col-resize;z-index:8;display:flex;justify-content:center"><div class="crono-grip-line" style="width:2px;background:var(--border2);border-radius:2px;height:100%"></div></div>`;
+  return `<div style="overflow-x:auto"><div data-gantt="1" style="position:relative;min-width:${LW+530}px">${header}${rows}${grip}</div></div>`;
 }
+window._cronoLabelResizeStart=(e)=>{
+  e.preventDefault();e.stopPropagation();
+  const grip=e.currentTarget;const cont=grip.closest('[data-gantt]');if(!cont)return;
+  const labels=cont.querySelectorAll('.crono-glabel');
+  const startX=e.clientX;const startW=labels[0]?labels[0].getBoundingClientRect().width:260;
+  const line=grip.querySelector('.crono-grip-line');if(line)line.style.background='var(--blue)';
+  let w=startW;
+  const move=(ev)=>{w=Math.max(120,Math.min(600,startW+(ev.clientX-startX)));labels.forEach(l=>l.style.width=w+'px');grip.style.left=w+'px';cont.style.minWidth=(w+530)+'px';};
+  const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);if(line)line.style.background='var(--border2)';try{localStorage.setItem('jet-crono-labelw',String(Math.round(w)));}catch{}};
+  document.addEventListener('pointermove',move);document.addEventListener('pointerup',up);
+};
 function renderCronograma(obra){
   if(!window._cronoLoadState)window._cronoLoadState={};
   const ls=window._cronoLoadState[obra];
