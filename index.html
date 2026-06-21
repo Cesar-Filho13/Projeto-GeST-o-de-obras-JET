@@ -4532,6 +4532,15 @@ async function saveCronograma(obra,data){
     if(error)throw error;
   }catch(err){toast('Cronograma salvo na tela; falha ao sincronizar.','#f59e0b');console.warn('[JET] Cronograma não salvo:',err?.message||err);}
 }
+const CRONO_PDF_PATH=obra=>'meta/cronograma-pdf/'+_cronoSlug(obra)+'.json';
+async function saveCronogramaPdf(obra,name,dataUrl){
+  if(!DB.cronoPdf)DB.cronoPdf={};
+  try{const blob=new Blob([JSON.stringify({name,at:new Date().toISOString(),data:dataUrl})],{type:'application/json'});const{error}=await sb.storage.from(BUCKET).upload(CRONO_PDF_PATH(obra),blob,{upsert:true,contentType:'application/json'});if(error)throw error;DB.cronoPdf[obra]={name,dataUrl,loaded:true};}catch(err){console.warn('[JET] PDF cronograma não salvo:',err?.message||err);toast('Falha ao guardar o PDF.','#f59e0b');}
+}
+async function loadCronogramaPdf(obra){
+  if(!DB.cronoPdf)DB.cronoPdf={};
+  try{const{data,error}=await sb.storage.from(BUCKET).download(CRONO_PDF_PATH(obra)+'?t='+Date.now());if(error){DB.cronoPdf[obra]={loaded:true};return;}const j=JSON.parse(await data.text());DB.cronoPdf[obra]={name:j.name,dataUrl:j.data,loaded:true};}catch(err){DB.cronoPdf[obra]={loaded:true};}
+}
 async function ensurePdfJs(){
   if(window.pdfjsLib)return window.pdfjsLib;
   await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=res;s.onerror=()=>rej(new Error('Falha ao carregar PDF.js'));document.head.appendChild(s);});
@@ -4651,9 +4660,9 @@ function renderCronograma(obra){
   if(ls==='loading')return loadingHtml;
   const crono=DB.cronogramas[obra]||null;
   const fases=crono?.fases||[];const tarefas=crono?.fisico?.tarefas||[];
-  const hasF=fases.length>0,hasX=tarefas.length>0;
-  let view=S.cronoView;if(view!=='fisico'&&view!=='faseamento')view=hasF?'faseamento':(hasX?'fisico':'faseamento');
-  if(view==='faseamento'&&!hasF&&hasX)view='fisico';if(view==='fisico'&&!hasX&&hasF)view='faseamento';
+  const hasF=fases.length>0,hasX=tarefas.length>0,hasPdf=!!(crono&&crono.pdfDoc);
+  const avail=[];if(hasF)avail.push('faseamento');if(hasX)avail.push('fisico');avail.push('pdf');
+  let view=S.cronoView;if(!avail.includes(view))view=avail[0];
   const obraSafe=escJs(obra);
   const header=`<div class="section-header"><div><div class="section-title">📅 Cronograma${crono?.nome?' — '+esc(crono.nome):''}</div><div class="section-sub">${hasF?fases.length+' fase(s)':''}${hasF&&hasX?' · ':''}${hasX?tarefas.length+' tarefa(s) (físico)':''}${(!hasF&&!hasX)?'Importe o faseamento (PDF) ou o cronograma físico (Excel)':''}</div></div>
    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -4662,12 +4671,32 @@ function renderCronograma(obra){
      <button class="btn btn-primary" onclick="document.getElementById('crono-pdf-input').click()">📄 Importar PDF (Faseamento)</button>
      <button class="btn btn-primary" style="background:#0e7490;border-color:#0e7490" onclick="document.getElementById('crono-xls-input').click()">📊 Importar Excel (Físico)</button>
    </div></div>`;
-  if(!hasF&&!hasX)return `<div>${header}<div class="empty-state" style="margin-top:14px"><p>Nenhum cronograma ainda.</p><p style="font-size:12px;color:var(--text3)"><b>📄 PDF (Faseamento)</b> monta um Gantt por fases automaticamente. <b>📊 Excel (Físico)</b> importa o cronograma físico detalhado (tarefas + datas).</p></div></div>`;
-  const seg=(v,lbl,n)=>`<button class="obra-nav-btn${view===v?' active':''}" onclick="S.cronoView='${v}';renderApp()" ${view===v?'style="background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc"':''}>${lbl}<span class="nav-count">${n}</span></button>`;
-  const toggle=(hasF&&hasX)?`<nav class="obra-nav" style="margin:6px 0 14px">${seg('faseamento','Faseamento',fases.length)}${seg('fisico','Cronograma Físico',tarefas.length)}</nav>`:'';
-  const items=view==='fisico'?tarefas:fases;
-  return `<div>${header}${toggle}${_cronoBody(obra,view,items)}</div>`;
+  if(!hasF&&!hasX&&!hasPdf)return `<div>${header}<div class="empty-state" style="margin-top:14px"><p>Nenhum cronograma ainda.</p><p style="font-size:12px;color:var(--text3)"><b>📄 PDF (Faseamento)</b> monta um Gantt por fases automaticamente. <b>📊 Excel (Físico)</b> importa o cronograma físico detalhado (tarefas + datas).</p></div></div>`;
+  const seg=(v,lbl,n)=>`<button class="obra-nav-btn${view===v?' active':''}" onclick="S.cronoView='${v}';renderApp()" ${view===v?'style="background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc"':''}>${lbl}${(n!=null&&n!=='')?`<span class="nav-count">${n}</span>`:''}</button>`;
+  const navBtns=[hasF?seg('faseamento','Faseamento',fases.length):'',hasX?seg('fisico','Cronograma Físico',tarefas.length):'',seg('pdf','📄 PDF',hasPdf?'•':'')].join('');
+  const toggle=(avail.length>=2)?`<nav class="obra-nav" style="margin:6px 0 14px">${navBtns}</nav>`:'';
+  const body=view==='pdf'?_cronoPdfBody(obra):_cronoBody(obra,view,view==='fisico'?tarefas:fases);
+  return `<div>${header}${toggle}${body}</div>`;
 }
+function _cronoPdfBody(obra){
+  const obraSafe=escJs(obra);if(!DB.cronoPdf)DB.cronoPdf={};
+  const st=DB.cronoPdf[obra];const crono=DB.cronogramas[obra]||{};
+  const upBtn=`<input type="file" id="crono-pdfdoc-input" accept="application/pdf" style="display:none" onchange="window._cronoUploadPdf(event,'${obraSafe}')"><button class="btn btn-primary btn-sm" onclick="document.getElementById('crono-pdfdoc-input').click()">⬆ Enviar PDF</button>`;
+  if(!st||!st.loaded){if(!window._cronoPdfLoading)window._cronoPdfLoading={};if(!window._cronoPdfLoading[obra]){window._cronoPdfLoading[obra]=1;loadCronogramaPdf(obra).then(()=>renderApp());}return `<div class="empty-state"><p>Carregando PDF…</p></div>`;}
+  if(st.dataUrl)return `<div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><span style="font-size:12px;color:var(--text2);font-weight:600">📄 ${esc((crono.pdfDoc&&crono.pdfDoc.name)||st.name||'Documento.pdf')}</span><div style="margin-left:auto;display:flex;gap:8px">${upBtn}<a class="btn btn-secondary btn-sm" href="${st.dataUrl}" target="_blank" rel="noopener">↗ Abrir em nova aba</a></div></div><div class="card" style="padding:0;overflow:hidden"><iframe src="${st.dataUrl}" style="width:100%;height:75vh;border:0;background:#fff;display:block" title="Cronograma PDF"></iframe></div></div>`;
+  return `<div class="empty-state" style="margin-top:14px"><p>Nenhum PDF enviado nesta sub-aba.</p><p style="font-size:12px;color:var(--text3)">Envie um PDF do cronograma para visualizá-lo aqui (ele fica salvo na obra).</p><div style="margin-top:12px">${upBtn}</div></div>`;
+}
+window._cronoUploadPdf=async(ev,obra)=>{
+  const file=ev.target.files&&ev.target.files[0];if(ev.target)ev.target.value='';if(!file)return;
+  toast('Enviando PDF…','#3b82f6');
+  try{
+    const dataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r('');fr.readAsDataURL(file);});
+    if(!dataUrl){toast('Não foi possível ler o arquivo.','#ef4444');return;}
+    await saveCronogramaPdf(obra,file.name,dataUrl);
+    const c=DB.cronogramas[obra]||{obra};c.obra=obra;c.pdfDoc={name:file.name,at:new Date().toISOString()};await saveCronograma(obra,c);
+    S.cronoView='pdf';toast('✓ PDF enviado!','#22c55e');renderApp();
+  }catch(e){toast('Erro ao enviar PDF: '+(e&&e.message||e),'#ef4444');}
+};
 const _cronoRespOf=(it,which)=>(it.resp!=null&&it.resp!=='')?String(it.resp):(which==='fisico'?String(it.desc||''):'');
 function _cronoSelResps(){return Array.isArray(S.cronoResp)?S.cronoResp:(S.cronoResp?[S.cronoResp]:[]);}
 window._cronoToggleResp=(rp)=>{let a=_cronoSelResps();a=a.includes(rp)?a.filter(x=>x!==rp):[...a,rp];S.cronoResp=a;renderApp();};
@@ -4717,7 +4746,8 @@ function _cronoBody(obra,which,allItems){
     const revisar=tasks.filter(t=>!t.inicio||!t.fim).length;
     let per='—';if(dated.length){const ds=dated.map(t=>t.inicio).sort(),de=dated.map(t=>t.fim).sort();per=fmtD(ds[0])+' – '+fmtD(de[de.length-1]);}
     const chip=(l,v,c)=>`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:7px 12px;min-width:90px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'}">${v}</div></div>`;
-    const chips=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chip('Período',per,'#60a5fa')}${chip('Atividades',tasks.length,'#a5b4fc')}${chip(gruposN?'Divisões':'Itens',gruposN||tasks.length,'#34d399')}${revisar?chip('A revisar',revisar,'#f87171'):''}</div>`;
+    const _cr=DB.cronogramas[obra]||{};const _ver=which==='fisico'?(_cr.fisico&&_cr.fisico.versao):_cr.versao;
+    const chips=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chip('Período',per,'#60a5fa')}${chip('Atividades',tasks.length,'#a5b4fc')}${chip(gruposN?'Divisões':'Itens',gruposN||tasks.length,'#34d399')}${revisar?chip('A revisar',revisar,'#f87171'):''}${_ver?chip('Versão','REV '+_ver,'#fbbf24'):''}</div>`;
     const catsPresent=CRONO_CATS.filter(c=>tasks.some(t=>_cronoCatColor(t.nome)===c));
     const hasOutros=tasks.some(t=>!_cronoCatColor(t.nome)&&t.tipo!=='marco'&&t.tipo!=='prelim');
     const lg=i=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:${i.color};display:inline-block"></span>${i.label}</span>`;
@@ -4757,8 +4787,11 @@ window._cronoImportPDF=async(ev,obra)=>{
     const fases=parseFaseamento(text);
     if(!fases.length){toast('Não encontrei fases neste PDF. Você pode montar manualmente em "+ Fase".','#f59e0b');const c0=DB.cronogramas[obra]||{obra};c0.fases=c0.fases||[];await saveCronograma(obra,c0);renderApp();return;}
     const nm=(/(SB[OB]\s*[-–]?\s*\d+[^.\n]{0,40})/i.exec(text)||[])[1]||'';
+    const ver=(/rev\.?\s*0*([0-9]+[a-z]?)/i.exec(file.name)||/rev\.?\s*0*([0-9]+[a-z]?)/i.exec(text)||[])[1]||'';
     const cur=DB.cronogramas[obra]||{obra};
-    const data={...cur,obra,nome:(nm||cur.nome||'').replace(/\s+/g,' ').trim().slice(0,60),fonte:'PDF faseamento',importadoEm:new Date().toISOString(),fases};
+    const dataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r('');fr.readAsDataURL(file);});
+    if(dataUrl)await saveCronogramaPdf(obra,file.name,dataUrl);
+    const data={...cur,obra,nome:(nm||cur.nome||'').replace(/\s+/g,' ').trim().slice(0,60),fonte:'PDF faseamento',versao:ver||cur.versao||'',importadoEm:new Date().toISOString(),fases,pdfDoc:dataUrl?{name:file.name,at:new Date().toISOString()}:cur.pdfDoc};
     await saveCronograma(obra,data);
     S.cronoView='faseamento';
     toast(`✓ ${fases.length} item(ns) importado(s) do faseamento!`,'#22c55e');
@@ -4823,8 +4856,9 @@ window._cronoImportExcel=async(ev,obra)=>{
     const buf=await file.arrayBuffer();
     const tarefas=parseCronogramaFisico(buf);
     if(!tarefas.length){toast('Não encontrei tarefas com datas. Verifique as colunas Tarefa/Início/Término.','#f59e0b');return;}
+    const ver=(/rev\.?\s*0*([0-9]+[a-z]?)/i.exec(file.name||'')||[])[1]||'';
     const c=DB.cronogramas[obra]||{obra};c.obra=obra;
-    c.fisico={nome:String(file.name||'').replace(/\.(xlsx|xls)$/i,'').slice(0,60),fonte:'Excel cronograma físico',importadoEm:new Date().toISOString(),tarefas};
+    c.fisico={nome:String(file.name||'').replace(/\.(xlsx|xls)$/i,'').slice(0,60),fonte:'Excel cronograma físico',versao:ver,importadoEm:new Date().toISOString(),tarefas};
     await saveCronograma(obra,c);
     S.cronoView='fisico';
     toast(`✓ ${tarefas.length} tarefa(s) importada(s) do cronograma físico!`,'#22c55e');
@@ -4835,34 +4869,55 @@ window._cronoExportPDF=(obra,which)=>{
   if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
   const c=DB.cronogramas[obra];const src=which==='fisico'?((c&&c.fisico&&c.fisico.tarefas)||[]):((c&&c.fases)||[]);
   const sel=_cronoSelResps().filter(rp=>src.some(f=>_cronoRespOf(f,which)===rp));
-  let fases=src.filter(f=>f.inicio&&f.fim);
-  if(sel.length)fases=fases.filter(f=>sel.includes(_cronoRespOf(f,which)));
-  if(!fases.length){toast('Sem itens com datas para exportar.','#f59e0b');return;}
+  const itemsAll=_cronoFilterItems(src,which,sel);
+  const dated=itemsAll.filter(f=>f.tipo!=='grupo'&&f.inicio&&f.fim);
+  if(!dated.length){toast('Sem itens com datas para exportar.','#f59e0b');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
-  const PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),M=12,NAVY=[26,46,107];
-  doc.setFillColor(...NAVY);doc.rect(0,0,PW,20,'F');
-  doc.setFillColor(255,255,255);doc.roundedRect(M,4,13,12,2.5,2.5,'F');doc.setTextColor(26,46,107);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('JET',M+6.5,11.6,{align:'center'});
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Cronograma — Gráfico de Gantt',M+17,9);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(205,216,238);doc.text(`${obra}${c?.nome?' · '+c.nome:''}${sel.length?' · Resp.: '+sel.join(', '):''}`.slice(0,120),M+17,15);
+  const PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),M=10,NAVY=[26,46,107];
   const toD=iso=>new Date(iso+'T12:00:00').getTime();const DAY=864e5;
-  const min=Math.min(...fases.map(f=>toD(f.inicio))),max=Math.max(...fases.map(f=>toD(f.fim)));const span=(max-min)||DAY;
-  const labelW=46,gx=M+labelW,gw=PW-M-gx,top=30;const pct=v=>(v-min)/span;
-  let cur=new Date(min);cur.setDate(1);doc.setFontSize(7);
-  while(cur.getTime()<=max){const x=gx+pct(cur.getTime())*gw;if(x>=gx-0.2){doc.setDrawColor(225,228,235);doc.setLineWidth(.1);doc.line(x,top,x,PH-13);doc.setTextColor(120,130,145);doc.text(cur.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('.',''),x+1,top-1.5);}cur.setMonth(cur.getMonth()+1);}
-  const todayMs=toD(todayISO());if(todayMs>=min&&todayMs<=max){const tx=gx+pct(todayMs)*gw;doc.setDrawColor(239,68,68);doc.setLineWidth(.4);doc.line(tx,top,tx,PH-13);}
-  const rowH=8;let y=top+3;
-  fases.forEach((f,i)=>{
-    if(y>PH-15){doc.addPage();y=top+3;}
-    doc.setTextColor(40,40,50);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(_truncPDF(doc,f.nome||'',labelW-3),M,y+rowH/2+1);
-    const s=toD(f.inicio),e=toD(f.fim),bx=gx+pct(s)*gw,bw=Math.max(gx+pct(e)*gw-bx,f.tipo==='marco'?1:2);
-    const _cat=_cronoCatColor(f.nome);
-    const col=_hexRgb(f.concluida?'#22c55e':(f.tipo==='marco'?'#eab308':f.tipo==='prelim'?'#64748b':(_cat?_cat.color:CRONO_PAL[i%CRONO_PAL.length])));
-    if(f.tipo==='marco'){doc.setFillColor(col[0],col[1],col[2]);doc.triangle(bx-1.7,y+rowH/2,bx+1.7,y+1.2,bx+1.7,y+rowH-1.2,'F');}
-    else{doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(bx,y+1,bw,rowH-2,1,1,'F');const dias=f.dias||Math.round((e-s)/DAY)+1;if(bw>9){doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6);doc.text((f.concluida?'✓ ':'')+dias+'d',bx+1.8,y+rowH/2+1.4);}}
-    y+=rowH+1.5;
+  const min=Math.min(...dated.map(f=>toD(f.inicio))),max=Math.max(...dated.map(f=>toD(f.fim)));const span=(max-min)||DAY;
+  const nameW=58,iniW=15,fimW=15,diasW=9,labelW=nameW+iniW+fimW+diasW,gx=M+labelW,gw=PW-M-gx,pct=v=>(v-min)/span;
+  const axisTop=24,bottom=PH-11;const ver=which==='fisico'?(c&&c.fisico&&c.fisico.versao):(c&&c.versao);
+  const fmtSx=iso=>{const d=new Date(iso+'T12:00:00');return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2);};
+  const mIso=ms=>{const d=new Date(ms);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  function topBand(){
+    doc.setFillColor(...NAVY);doc.rect(0,0,PW,18,'F');
+    doc.setFillColor(255,255,255);doc.roundedRect(M,3,12,11,2.5,2.5,'F');doc.setTextColor(26,46,107);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text('JET',M+6,10.5,{align:'center'});
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('Cronograma'+(which==='fisico'?' Físico':' — Faseamento'),M+16,8);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(205,216,238);doc.text((`${obra}${c&&c.nome?' · '+c.nome:''}${ver?' · REV '+ver:''}${sel.length?' · '+sel.join(', '):''}`).slice(0,150),M+16,13.5);
+    doc.setFontSize(8);doc.setTextColor(180,195,225);doc.text(`${fmtD(mIso(min))} – ${fmtD(mIso(max))}  ·  ${dated.length} atividades`,PW-M,8,{align:'right'});
+  }
+  function colHead(){
+    doc.setFillColor(238,241,246);doc.rect(M,axisTop-6,labelW,6,'F');doc.rect(gx,axisTop-6,gw,6,'F');
+    doc.setTextColor(70,80,95);doc.setFont('helvetica','bold');doc.setFontSize(7);
+    doc.text('ATIVIDADE',M+2,axisTop-1.8);doc.text('INÍCIO',M+nameW+1,axisTop-1.8);doc.text('TÉRMINO',M+nameW+iniW+1,axisTop-1.8);doc.text('DIAS',M+nameW+iniW+fimW+1,axisTop-1.8);
+    let cur=new Date(min);cur=new Date(cur.getFullYear(),cur.getMonth(),1);doc.setFontSize(6.5);
+    while(cur.getTime()<=max){const x=Math.max(gx+pct(cur.getTime())*gw,gx);doc.setDrawColor(222,226,233);doc.setLineWidth(.1);doc.line(x,axisTop,x,bottom);doc.setTextColor(110,120,135);doc.setFont('helvetica','bold');doc.text(cur.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('.',''),x+1,axisTop-1.8);cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+    const tMs=toD(todayISO());if(tMs>=min&&tMs<=max){const tx=gx+pct(tMs)*gw;doc.setDrawColor(239,68,68);doc.setLineWidth(.4);doc.line(tx,axisTop,tx,bottom);}
+    doc.setDrawColor(205,210,220);doc.setLineWidth(.2);doc.line(M,axisTop,PW-M,axisTop);doc.line(gx,axisTop-6,gx,bottom);
+  }
+  topBand();colHead();
+  const rowH=6;let y=axisTop+1;
+  itemsAll.forEach((f,i)=>{
+    if(y+rowH>bottom){doc.addPage();topBand();colHead();y=axisTop+1;}
+    if(f.tipo==='grupo'){const n1=f.nivel===1;
+      doc.setFillColor(n1?224:236,n1?227:239,n1?248:252);doc.rect(M,y,PW-2*M,rowH,'F');
+      doc.setDrawColor(n1?99:245,n1?102:158,n1?241:11);doc.setLineWidth(1.2);doc.line(M+0.6,y,M+0.6,y+rowH);
+      doc.setTextColor(n1?60:150,n1?63:105,n1?170:20);doc.setFont('helvetica','bold');doc.setFontSize(n1?8:7);
+      doc.text(_truncPDF(doc,f.nome||'',PW-2*M-6),M+3,y+rowH/2+1.4);y+=rowH+0.5;return;}
+    if(i&1){doc.setFillColor(247,249,251);doc.rect(M,y,labelW,rowH,'F');}
+    const done=!!f.concluida,cat=_cronoCatColor(f.nome);
+    const col=_hexRgb(done?'#22c55e':(f.tipo==='marco'?'#eab308':f.tipo==='prelim'?'#64748b':(cat?cat.color:CRONO_PAL[i%CRONO_PAL.length])));
+    doc.setTextColor(40,42,52);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(_truncPDF(doc,(done?'✓ ':'')+(f.nome||''),nameW-2),M+2,y+rowH/2+1.3);
+    doc.setTextColor(90,98,112);doc.setFontSize(6.5);doc.text(fmtSx(f.inicio),M+nameW+1,y+rowH/2+1.3);doc.text(fmtSx(f.fim),M+nameW+iniW+1,y+rowH/2+1.3);
+    const dias=f.dias||Math.round((toD(f.fim)-toD(f.inicio))/DAY)+1;doc.text(String(dias),M+nameW+iniW+fimW+2,y+rowH/2+1.3);
+    const s=toD(f.inicio),e=toD(f.fim),bx=gx+pct(s)*gw,bw=Math.max(gx+pct(e)*gw-bx,f.tipo==='marco'?1:1.5);
+    if(f.tipo==='marco'){doc.setFillColor(col[0],col[1],col[2]);doc.triangle(bx-1.5,y+rowH/2,bx+1.5,y+1,bx+1.5,y+rowH-1,'F');}
+    else{doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(bx,y+1,bw,rowH-2,.8,.8,'F');if(bw>8){doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(5.5);doc.text((done?'✓':'')+dias+'d',bx+1.3,y+rowH/2+1.2);}}
+    y+=rowH+0.5;
   });
-  const pc=doc.internal.getNumberOfPages();for(let i=1;i<=pc;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(150,160,175);doc.setFont('helvetica','normal');doc.text('JET Gestão de Obras · Cronograma',M,PH-6);doc.text(`${new Date().toLocaleDateString('pt-BR')}  ·  Pág ${i}/${pc}`,PW-M,PH-6,{align:'right'});}
-  doc.save(`Cronograma_${obra.replace(/\s+/g,'_')}.pdf`);toast('Gantt PDF exportado!');
+  const pc=doc.internal.getNumberOfPages();for(let p=1;p<=pc;p++){doc.setPage(p);doc.setFontSize(7);doc.setTextColor(150,160,175);doc.setFont('helvetica','normal');doc.text('JET Gestão de Obras · Cronograma',M,PH-5);doc.text(`${new Date().toLocaleDateString('pt-BR')}  ·  Pág ${p}/${pc}`,PW-M,PH-5,{align:'right'});}
+  doc.save(`Cronograma_${obra.replace(/\s+/g,'_')}.pdf`);toast('PDF do cronograma exportado!');
 };
 
 // ─── ADITIVOS ─────────────────────────────────────────────────────────────
