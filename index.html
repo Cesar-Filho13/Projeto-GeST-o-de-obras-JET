@@ -4504,6 +4504,15 @@ ${content}
 
 // ─── CRONOGRAMA (faseamento PDF → Gantt) ───────────────────────────────────
 const CRONO_PAL=['#3b82f6','#22c55e','#f59e0b','#a855f7','#ef4444','#14b8a6','#ec4899','#eab308','#8b5cf6','#06b6d4'];
+// Categorias por palavra-chave (cor + legenda), inspirado no cronograma da instaladora
+const CRONO_CATS=[
+  {k:'lum',label:'Luminárias',color:'#a855f7',rx:/lumin|spot|ilumina/i},
+  {k:'inc',label:'Combate/Incêndio',color:'#ef4444',rx:/inc[eê]ndio|\bspk\b|sprinkler|pressuriz|ampola|detec[çc]|extintor/i},
+  {k:'hid',label:'Hidrante/Hidráulica',color:'#14b8a6',rx:/hidrante|hidr[áa]ul|sanit[áa]|esgoto|[áa]gua\b/i},
+  {k:'inf',label:'Infra/Elétrica',color:'#3b82f6',rx:/infra|cabeament|eletrod|eletrocal|el[ée]tric|\bcabo|fia[çc]|tomada|quadro|antena/i},
+  {k:'civ',label:'Civil/Acabamento',color:'#f59e0b',rx:/alvenar|gesso|pintura|\bpiso|porcelan|cer[âa]mic|forro|demoli|reboco|contrapiso|dry ?wall|marcenar|vidro|fachada/i},
+];
+function _cronoCatColor(nome){const n=String(nome||'');for(const c of CRONO_CATS)if(c.rx.test(n))return c;return null;}
 function _cronoSlug(obra){let h=0;const s=String(obra||'');for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))>>>0;return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)+'-'+h.toString(36);}
 const CRONO_PATH=obra=>'meta/cronograma/'+_cronoSlug(obra)+'.json';
 async function loadCronograma(obra){
@@ -4581,6 +4590,7 @@ function _ganttHTML(fases){
   const timelineW=Math.max(Math.round(totalDays*PXD),320);
   const dayIdx=ms=>Math.round((ms-minMs)/DAY);
   const todayMs=toD(todayISO());const todayIdx=(todayMs>=minMs&&todayMs<=maxMs)?dayIdx(todayMs):null;
+  const todayBadge=todayIdx!=null?`<div style="position:absolute;left:${todayIdx*PXD}px;top:0;transform:translateX(-50%);font-size:8px;font-weight:800;color:#fff;background:#ef4444;padding:1px 5px;border-radius:0 0 5px 5px;white-space:nowrap;z-index:3">HOJE ${fmtS(todayISO())}</div>`:'';
   let monthsHtml='';{let c=new Date(minDate);while(c.getTime()<=maxMs){const ms=new Date(c.getFullYear(),c.getMonth(),1,12).getTime(),me=new Date(c.getFullYear(),c.getMonth()+1,0,12).getTime();const i0=dayIdx(Math.max(ms,minMs)),i1=dayIdx(Math.min(me,maxMs));monthsHtml+=`<div style="position:absolute;left:${i0*PXD}px;width:${(i1-i0+1)*PXD}px;height:100%;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);font-size:${zoom==='mes'?11:10}px;font-weight:700;color:var(--text2);overflow:hidden;white-space:nowrap">${cap(new Date(ms).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}))}</div>`;c=new Date(c.getFullYear(),c.getMonth()+1,1,12);}}
   let subHtml='',grid='';
   if(zoom==='dia'){for(let i=0;i<totalDays;i++){const d=new Date(minMs+i*DAY);const we=d.getDay()===0||d.getDay()===6,m1=d.getDate()===1;subHtml+=`<div style="position:absolute;left:${i*PXD}px;width:${PXD}px;height:100%;display:flex;align-items:center;justify-content:center;font-size:8px;color:${we?'#f87171':'var(--text3)'}">${d.getDate()}</div>`;if(we)grid+=`<div style="position:absolute;left:${i*PXD}px;width:${PXD}px;top:0;bottom:0;background:rgba(255,255,255,.035)"></div>`;grid+=`<div style="position:absolute;left:${i*PXD}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,${m1?.13:.05})"></div>`;}}
@@ -4593,8 +4603,8 @@ function _ganttHTML(fases){
     if(f.tipo==='grupo'){const n1=f.nivel===1;
       return `<div style="display:flex;height:${n1?26:22}px"><div class="crono-fixed" style="position:sticky;left:0;z-index:3;width:${FIXEDW}px;flex-shrink:0;box-sizing:border-box;background:${n1?'rgba(99,102,241,.16)':'var(--bg2)'};border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px 0 ${n1?10:22}px;font-size:${n1?12:10.5}px;font-weight:${n1?800:700};letter-spacing:.3px;color:${n1?'#a5b4fc':'var(--text2)'};text-transform:uppercase;overflow:hidden;white-space:nowrap" title="${esc(f.nome)}">${esc(f.nome)}</div><div style="position:relative;width:${timelineW}px;flex-shrink:0;background:${n1?'rgba(99,102,241,.06)':'rgba(255,255,255,.015)'};border-bottom:1px solid var(--border)"></div></div>`;
     }
-    const done=!!f.concluida;
-    const col=done?'#22c55e':(f.tipo==='marco'?'#eab308':(f.tipo==='prelim'?'#64748b':CRONO_PAL[i%CRONO_PAL.length]));
+    const done=!!f.concluida;const cat=_cronoCatColor(f.nome);
+    const col=done?'#22c55e':(f.tipo==='marco'?'#eab308':(f.tipo==='prelim'?'#64748b':(cat?cat.color:CRONO_PAL[i%CRONO_PAL.length])));
     const sIdx=dayIdx(toD(f.inicio)),eIdx=dayIdx(toD(f.fim));
     const left=sIdx*PXD,w=Math.max((eIdx-sIdx+1)*PXD,f.tipo==='marco'?0:6);
     const dias=f.dias||Math.max(1,eIdx-sIdx+1);
@@ -4610,6 +4620,7 @@ function _ganttHTML(fases){
     <div style="position:relative;width:${timelineW}px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border)">
       <div style="position:absolute;left:0;top:0;width:${timelineW}px;height:${zoom==='mes'?headerH:18}px;${zoom==='mes'?'':'border-bottom:1px solid var(--border)'}">${monthsHtml}</div>
       ${zoom!=='mes'?`<div style="position:absolute;left:0;top:18px;width:${timelineW}px;bottom:0">${subHtml}</div>`:''}
+      ${todayBadge}
     </div>
   </div>`;
   const gridbg=`<div class="crono-gridbg" style="position:absolute;left:${FIXEDW}px;top:${headerH}px;bottom:0;width:${timelineW}px;z-index:0;pointer-events:none">${grid}</div>`;
@@ -4696,7 +4707,18 @@ function _cronoBody(obra,which,allItems){
     const zoom=_cronoZoom();
     const zbtn=(z,l)=>`<button onclick="window._cronoSetZoom('${z}')" style="padding:5px 12px;border:1px solid ${zoom===z?'rgba(99,102,241,.5)':'var(--border2)'};background:${zoom===z?'rgba(99,102,241,.18)':'var(--bg2)'};color:${zoom===z?'#a5b4fc':'var(--text2)'};border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">${l}</button>`;
     const ctrls=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Gráfico de Gantt${sel.length?' · '+sel.length+' resp.':(isFis&&items.length>40?' · '+items.length+' tarefas':'')}</span><div style="display:flex;gap:4px;align-items:center;margin-left:auto"><span style="font-size:10px;color:var(--text3);margin-right:2px">Escala:</span>${zbtn('dia','Dia')}${zbtn('semana','Semana')}${zbtn('mes','Mês')}</div><button class="btn btn-secondary btn-sm" onclick="window._cronoScrollToday()">📍 Hoje</button></div>`;
-    body=`<div class="card" style="padding:16px">${ctrls}${_ganttHTML(items)}</div>`;
+    // chips de resumo + legenda de categorias
+    const dated=tasks.filter(t=>t.inicio&&t.fim);
+    const gruposN=allItems.filter(it=>it.tipo==='grupo').length;
+    const revisar=tasks.filter(t=>!t.inicio||!t.fim).length;
+    let per='—';if(dated.length){const ds=dated.map(t=>t.inicio).sort(),de=dated.map(t=>t.fim).sort();per=fmtD(ds[0])+' – '+fmtD(de[de.length-1]);}
+    const chip=(l,v,c)=>`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:7px 12px;min-width:90px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'}">${v}</div></div>`;
+    const chips=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chip('Período',per,'#60a5fa')}${chip('Atividades',tasks.length,'#a5b4fc')}${chip(gruposN?'Divisões':'Itens',gruposN||tasks.length,'#34d399')}${revisar?chip('A revisar',revisar,'#f87171'):''}</div>`;
+    const catsPresent=CRONO_CATS.filter(c=>tasks.some(t=>_cronoCatColor(t.nome)===c));
+    const hasOutros=tasks.some(t=>!_cronoCatColor(t.nome)&&t.tipo!=='marco'&&t.tipo!=='prelim');
+    const lg=i=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:${i.color};display:inline-block"></span>${i.label}</span>`;
+    const legenda=(catsPresent.length?`<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px">${catsPresent.map(lg).join('')}${hasOutros?lg({color:'#3b82f6',label:'Outros'}):''}${lg({color:'#22c55e',label:'Concluída'})}</div>`:'');
+    body=`<div class="card" style="padding:16px">${ctrls}${chips}${legenda}${_ganttHTML(items)}</div>`;
   }else{
     const rows=items.map(f=>f.tipo==='grupo'?`<tr style="background:${f.nivel===1?'rgba(99,102,241,.14)':'rgba(255,255,255,.04)'}"><td></td><td colspan="6" style="padding:6px 8px 6px ${f.nivel===1?10:22}px;font-weight:${f.nivel===1?800:700};font-size:${f.nivel===1?12:11}px;color:${f.nivel===1?'#a5b4fc':'var(--text2)'};text-transform:uppercase;letter-spacing:.3px"><span style="display:inline-flex;align-items:center;gap:6px">${esc(f.nome)}<button class="btn btn-sm btn-danger" style="padding:0 6px;font-size:10px" onclick="window._cronoDel('${obraSafe}','${which}','${f.id}')" title="Remover divisão">×</button></span></td></tr>`:`<tr style="border-bottom:1px solid var(--border)${f.concluida?';background:rgba(34,197,94,.06)':''}">
       <td style="padding:5px 8px;text-align:center;width:30px"><input type="checkbox" ${f.concluida?'checked':''} title="Marcar como concluída" onclick="window._cronoToggleDone('${obraSafe}','${which}','${f.id}')" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer"></td>
@@ -4829,7 +4851,8 @@ window._cronoExportPDF=(obra,which)=>{
     if(y>PH-15){doc.addPage();y=top+3;}
     doc.setTextColor(40,40,50);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(_truncPDF(doc,f.nome||'',labelW-3),M,y+rowH/2+1);
     const s=toD(f.inicio),e=toD(f.fim),bx=gx+pct(s)*gw,bw=Math.max(gx+pct(e)*gw-bx,f.tipo==='marco'?1:2);
-    const col=_hexRgb(f.concluida?'#22c55e':(f.tipo==='marco'?'#eab308':f.tipo==='prelim'?'#64748b':CRONO_PAL[i%CRONO_PAL.length]));
+    const _cat=_cronoCatColor(f.nome);
+    const col=_hexRgb(f.concluida?'#22c55e':(f.tipo==='marco'?'#eab308':f.tipo==='prelim'?'#64748b':(_cat?_cat.color:CRONO_PAL[i%CRONO_PAL.length])));
     if(f.tipo==='marco'){doc.setFillColor(col[0],col[1],col[2]);doc.triangle(bx-1.7,y+rowH/2,bx+1.7,y+1.2,bx+1.7,y+rowH-1.2,'F');}
     else{doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(bx,y+1,bw,rowH-2,1,1,'F');const dias=f.dias||Math.round((e-s)/DAY)+1;if(bw>9){doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6);doc.text((f.concluida?'✓ ':'')+dias+'d',bx+1.8,y+rowH/2+1.4);}}
     y+=rowH+1.5;
