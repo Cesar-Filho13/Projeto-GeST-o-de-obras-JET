@@ -2830,13 +2830,14 @@ function resetSessionTimeout(){if(sessionTimer)clearTimeout(sessionTimer);sessio
 // Persistência da navegação (para reabrir na mesma lista)
 function saveNavState(){
   if(typeof currentUser==='undefined'||!currentUser||typeof S==='undefined')return;
-  try{localStorage.setItem('jet-nav',JSON.stringify({page:S.page,modulo:S.modulo,obra:S.obra,obraTab:S.obraTab,matSubTab:S.matSubTab,todoView:S.todoView,calView:S.calView,cronoView:S.cronoView,obraTipo:S.obraTipo,obraStatusFilter:S.obraStatusFilter}));}catch{}
+  try{localStorage.setItem('jet-nav',JSON.stringify({page:S.page,modulo:S.modulo,obra:S.obra,obraTab:S.obraTab,matSubTab:S.matSubTab,todoView:S.todoView,calView:S.calView,cronoView:S.cronoView,cronoTab:S.cronoTab,cronoResp:_cronoSelResps(),obraTipo:S.obraTipo,obraStatusFilter:S.obraStatusFilter}));}catch{}
 }
 function restoreNavState(){
   try{
     const n=JSON.parse(localStorage.getItem('jet-nav')||'null');
     if(!n||typeof n!=='object')return;
-    ['page','modulo','obra','obraTab','matSubTab','todoView','calView','cronoView','obraTipo','obraStatusFilter'].forEach(k=>{if(n[k]!=null)S[k]=n[k];});
+    ['page','modulo','obra','obraTab','matSubTab','todoView','calView','cronoView','cronoTab','cronoResp','obraTipo','obraStatusFilter'].forEach(k=>{if(n[k]!=null)S[k]=n[k];});
+    if(!Array.isArray(S.cronoResp))S.cronoResp=S.cronoResp?[S.cronoResp]:[];
     if(S.page==='obra'&&(!S.obra||!getAllObras().includes(S.obra))){S.page='home';S.obra=null;}
     S.modal=null;S.selectedAditivo=null;
   }catch{}
