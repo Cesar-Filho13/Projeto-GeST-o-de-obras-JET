@@ -5260,7 +5260,9 @@ function renderAditivoDetail(){
       ${makeCd(PL,PS,a.proposta,`updateField('aditivos','${a.id}','proposta',VAL)`,true)}
     </div>
   </div>
-  <div style="display:flex;gap:8px;flex-shrink:0">
+  <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+    <button class="btn btn-secondary btn-sm" onclick="window.aditivoOrcamentoPDF('${a.id}')" title="Exportar orçamento detalhado em PDF">📄 Orçamento PDF</button>
+    <button class="btn btn-secondary btn-sm" onclick="window.aditivoOrcamentoXLSX('${a.id}')" title="Exportar orçamento detalhado em Excel">📊 Excel</button>
     <button class="btn btn-secondary btn-sm" onclick="_openModal('edit-aditivo',{id:'${a.id}'})">✎ Editar</button>
     <button class="btn btn-danger btn-sm" onclick="_deleteAditivo('${a.id}')">🗑</button>
   </div>
@@ -9314,6 +9316,51 @@ window._exportFormat=(type,obra,fmt)=>{
 window.aditivosCSV=(obra)=>{const ads=DB.aditivos.filter(a=>a.obra===obra);exportCSV(ads.map(a=>[a.numero,a.nome,a.status,a.valor,a.solicitacao,a.data,a.proposta,a.responsavel]),['Número','Nome','Status','Valor','Solicitação','Data','Proposta','Responsável'],`Aditivos_${obra}`);};
 window.aditivosXLSX=(obra)=>{const ads=DB.aditivos.filter(a=>a.obra===obra);const _f=adFechamento(obra);return exportStyledXLSX({sheetName:'Aditivos',filename:`Aditivos_${obra}`,title:'Aditivos de Obra',meta:[obra,`Exportado em ${new Date().toLocaleDateString('pt-BR')}`,`${ads.length} aditivo(s)`,`Extras ${fmtV(_f.extras)}  •  Exclusões/Glosas ${fmtV(-_f.exclus)}  •  Desconto ${fmtV(-_f.desconto)}  •  Saldo a pagar ${fmtV(_f.saldo)}`],columns:[{header:'#',key:'idx',width:8,align:'center'},{header:'Número',key:'numero',width:18},{header:'Nome',key:'nome',width:34},{header:'Status',key:'status',width:20,badgeMap:SS},{header:'Valor',key:'valor',width:16,align:'right',type:'currency'},{header:'Solicitação',key:'solicitacao',width:28},{header:'Data',key:'data',width:14},{header:'Proposta',key:'proposta',width:18,badgeMap:PS},{header:'Responsável',key:'responsavel',width:20}],rows:ads.map((a,i)=>({idx:i+1,numero:a.numero||'',nome:a.nome||'',status:a.status||'',valor:a.valor||'',solicitacao:a.solicitacao||'',data:fmtD(a.data),proposta:a.proposta||'',responsavel:a.responsavel||''}))});};
 window.aditivosPDF=exportAditivosPDF;
+// Orçamento detalhado de UM aditivo (formato "Orçamento INST"): itens + MAT/M.OBRA + IPI/ST/ADM + TOTAL GERAL + justificativa
+function _adOrcResumo(a){
+  const mk=planMarkups(a);const items=planItems(a);
+  const matBase=items.reduce((s,r)=>s+(Number(r.quantidade)||0)*(Number(r.mat_unit)||0)*(r.tipo==='exclusao'?-1:1),0);
+  const mobBase=items.reduce((s,r)=>s+(Number(r.quantidade)||0)*(Number(r.mobra_unit)||0)*(r.tipo==='exclusao'?-1:1),0);
+  const ipiV=matBase*(mk.ipi||0)/100, stV=matBase*(mk.st||0)/100;
+  const admBase=matBase+ipiV+stV+mobBase, admV=admBase*(mk.adm||0)/100, total=admBase+admV;
+  return {mk,items,matBase,mobBase,ipiV,stV,admV,total};
+}
+function _adJustificativa(a){return (a.comentarios||[]).map(c=>c&&c.texto||'').filter(t=>/justific/i.test(t)).join(' ').replace(/^.*?justificativa:\s*/i,'').trim();}
+window.aditivoOrcamentoPDF=(aid)=>{
+  if(!window.jspdf){toast('Biblioteca não carregada.','#f59e0b');return;}
+  const a=DB.aditivos.find(x=>x.id===aid);if(!a){toast('Aditivo não encontrado.','#f59e0b');return;}
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const R=_adOrcResumo(a);
+  jetLogo(doc,18,13,9);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text('JET',18,16,{align:'center'});
+  doc.setFontSize(14);doc.setTextColor(20,20,60);doc.text('Orçamento de Aditivo',31,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,90,110);doc.text(String(a.obra||''),31,17);
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(20,20,60);doc.text(`${a.numero||''} — ${a.nome||''}`,14,28);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,110);
+  doc.text(`Solicitação: ${a.solicitacao||'—'}     Data: ${fmtD(a.data)||'—'}     Status: ${a.status||'—'}`,14,33);
+  const body=R.items.map(r=>{const q=Number(r.quantidade)||0;return [(r.tipo==='exclusao'?'(exclusão) ':'')+(r.nome||''),r.unidade||'',q||'',fmtV(Number(r.mat_unit)||0),fmtV(Number(r.mobra_unit)||0),fmtV(adRowSubtotal(r,R.mk))];});
+  doc.autoTable({startY:37,head:[['Descrição','Un','Qtd','MAT unit','M.OBRA unit','Subtotal']],body,
+    styles:{fontSize:7.5,cellPadding:2,textColor:[40,40,50]},headStyles:{fillColor:[26,46,107],textColor:[255,255,255],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:80},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right',fontStyle:'bold'}}});
+  let y=doc.lastAutoTable.finalY+7;
+  const lines=[['Material',R.matBase],['Mão de obra',R.mobBase],[`IPI (${R.mk.ipi||0}%)`,R.ipiV],[`ST (${R.mk.st||0}%)`,R.stV],[`ADM JET (${R.mk.adm||0}%)`,R.admV],['TOTAL GERAL',R.total]];
+  doc.setFontSize(9);
+  lines.forEach(([l,v],i)=>{const bold=i===lines.length-1;if(bold){doc.setDrawColor(200,210,240);doc.line(118,y-3,196,y-3);}doc.setFont('helvetica',bold?'bold':'normal');doc.setTextColor(bold?20:90,bold?20:90,bold?60:110);doc.text(l,118,y);doc.text(fmtV(v),196,y,{align:'right'});y+=5.5;});
+  const just=_adJustificativa(a);
+  if(just){y+=5;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,60);doc.text('Justificativa:',14,y);y+=5;doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(70,70,90);doc.text(doc.splitTextToSize(just,182),14,y);}
+  doc.save(`Orcamento_${String(a.numero||a.nome||'aditivo').replace(/[^\w]+/g,'_')}.pdf`);toast('Orçamento PDF gerado!');
+};
+window.aditivoOrcamentoXLSX=(aid)=>{
+  const a=DB.aditivos.find(x=>x.id===aid);if(!a){toast('Aditivo não encontrado.','#f59e0b');return;}
+  const R=_adOrcResumo(a);
+  const rows=R.items.map(r=>({desc:(r.tipo==='exclusao'?'(exclusão) ':'')+(r.nome||''),un:r.unidade||'',qtd:Number(r.quantidade)||0,mat:Number(r.mat_unit)||0,mob:Number(r.mobra_unit)||0,sub:adRowSubtotal(r,R.mk)}));
+  rows.push({desc:'',un:'',qtd:'',mat:'',mob:'',sub:''});
+  [['Material',R.matBase],['Mão de obra',R.mobBase],[`IPI (${R.mk.ipi||0}%)`,R.ipiV],[`ST (${R.mk.st||0}%)`,R.stV],[`ADM JET (${R.mk.adm||0}%)`,R.admV],['TOTAL GERAL',R.total]].forEach(([l,v])=>rows.push({desc:l,un:'',qtd:'',mat:'',mob:'',sub:v}));
+  const just=_adJustificativa(a);
+  return exportStyledXLSX({sheetName:'Orçamento',filename:`Orcamento_${String(a.numero||a.nome||'aditivo').replace(/[^\w]+/g,'_')}`,title:`Orçamento de Aditivo — ${a.numero||''} ${a.nome||''}`,
+    meta:[String(a.obra||''),`Solicitação: ${a.solicitacao||'—'}  •  Data: ${fmtD(a.data)||'—'}  •  Status: ${a.status||'—'}`,just?('Justificativa: '+just):''],
+    columns:[{header:'Descrição',key:'desc',width:52},{header:'Un',key:'un',width:8,align:'center'},{header:'Qtd',key:'qtd',width:10,align:'right'},{header:'MAT unit',key:'mat',width:14,align:'right',type:'currency'},{header:'M.OBRA unit',key:'mob',width:14,align:'right',type:'currency'},{header:'Subtotal',key:'sub',width:16,align:'right',type:'currency'}],
+    rows});
+};
 window.materiaisCSV=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportCSV(m.map(x=>[x.item,x.quantidade,normalizeMaterialUnit(x.unidade||'un'),x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
 window.materiaisXLSX=(obra)=>{
   const m=DB.materiais.filter(mat=>mat.obra===obra);
