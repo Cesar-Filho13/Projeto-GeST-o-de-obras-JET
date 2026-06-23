@@ -5339,12 +5339,16 @@ ${rows.map(r=>{const sub=adRowSubtotal(r,mk);const isExc=r.tipo==='exclusao';con
 </td>
 </tr>`;}).join('')}
 </tbody></table></div>
+<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
 <button onclick="window._plAdd('${a.id}')" class="btn-pulse"
-  style="margin-top:10px;background:linear-gradient(135deg,#1d4ed8,#3b7ef8);border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:700;padding:9px 18px;border-radius:9px;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:7px;transition:all .15s"
+  style="background:linear-gradient(135deg,#1d4ed8,#3b7ef8);border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:700;padding:9px 18px;border-radius:9px;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:7px;transition:all .15s"
   onmouseover="this.style.transform='scale(1.03)';this.style.background='linear-gradient(135deg,#1e40af,#2563eb)'"
   onmouseout="this.style.transform='scale(1)';this.style.background='linear-gradient(135deg,#1d4ed8,#3b7ef8)'">
   <span style="font-size:18px;line-height:1">+</span> Adicionar item
 </button>
+<button class="btn btn-secondary btn-sm" onclick="window._plGenAllMiu('${a.id}')" title="Gerar miudezas de todos os materiais com regra">⚙ Gerar miudezas de todos</button>
+${rows.some(r=>r&&r.gerado_de)?`<button class="btn btn-secondary btn-sm" onclick="window._plClearMiu('${a.id}')" title="Remover todas as miudezas geradas">🧹 Limpar miudezas geradas</button>`:''}
+</div>
 </div>`;
 }
 
@@ -5356,6 +5360,8 @@ window._plPick=async(aid,rid,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!
 window._plMk=async(aid,field,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;let rows=[...(a.planilha||[])];let m=rows.find(r=>r&&r._meta);if(!m){m={id:'__mk__',_meta:true,ipi:0,st:0,adm:45};rows=[m,...rows];}rows=rows.map(r=>r&&r._meta?{...r,[field]:Number(val)||0}:r);await _plSave(aid,rows);renderApp();};
 window._plToggleExc=async(aid,rid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=(a.planilha||[]).map(r=>(r.id===rid||r.gerado_de===rid)?{...r,tipo:r.tipo==='exclusao'?'extra':'exclusao'}:r);await _plSave(aid,rows);renderApp();};
 window._plGenMiu=async(aid,rid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const base=(a.planilha||[]).find(r=>r.id===rid);if(!base)return;const regras=adMiudezasFor(base.nome);if(!regras){toast('Sem regra de miudezas para este item.','#f59e0b');return;}const q=Number(base.quantidade)||0;if(!q){toast('Defina a quantidade do material primeiro.','#f59e0b');return;}let rows=(a.planilha||[]).filter(r=>r.gerado_de!==rid);const idx=rows.findIndex(r=>r.id===rid);const novas=regras.map(g=>({id:uid(),nome:g.n,unidade:'un',quantidade:Math.round(q*(g.c||0)*100)/100,mat_unit:g.v!=null?g.v:'',mobra_unit:'',observacao:'miudeza · '+g.t,tipo:base.tipo==='exclusao'?'exclusao':'extra',gerado_de:rid}));rows.splice(idx+1,0,...novas);await _plSave(aid,rows);renderApp();toast(novas.length+' miudezas geradas.');};
+window._plGenAllMiu=async(aid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const semGer=(a.planilha||[]).filter(r=>!r||!r.gerado_de);const result=[];let added=0;semGer.forEach(r=>{result.push(r);if(!r||r._meta)return;const regras=adMiudezasFor(r.nome);const q=Number(r.quantidade)||0;if(regras&&regras.length&&q){regras.forEach(g=>{result.push({id:uid(),nome:g.n,unidade:'un',quantidade:Math.round(q*(g.c||0)*100)/100,mat_unit:g.v!=null?g.v:'',mobra_unit:'',observacao:'miudeza · '+g.t,tipo:r.tipo==='exclusao'?'exclusao':'extra',gerado_de:r.id});added++;});}});if(!added){toast('Nenhum material com regra de miudezas e quantidade na planilha.','#f59e0b');return;}await _plSave(aid,result);renderApp();toast(added+' miudezas geradas.');};
+window._plClearMiu=async(aid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=(a.planilha||[]).filter(r=>!r||!r.gerado_de);if(!confirm('Remover todas as miudezas geradas automaticamente?'))return;await _plSave(aid,rows);renderApp();toast('Miudezas geradas removidas.','#f59e0b');};
 
 // ─── ARQUIVOS ─────────────────────────────────────────────────────────────
 const FC={pdf:{bg:'#3b1515',c:'#f87171',l:'PDF'},png:{bg:'#0a2214',c:'#4ade80',l:'IMG'},jpg:{bg:'#0a2214',c:'#4ade80',l:'IMG'},jpeg:{bg:'#0a2214',c:'#4ade80',l:'IMG'},dwg:{bg:'#0e1f3d',c:'#60a5fa',l:'DWG'},dxf:{bg:'#0e1f3d',c:'#60a5fa',l:'DXF'},xlsx:{bg:'#062018',c:'#34d399',l:'XLS'},docx:{bg:'#1a0f3d',c:'#a78bfa',l:'DOC'}};
