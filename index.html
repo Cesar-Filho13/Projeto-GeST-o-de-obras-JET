@@ -4952,6 +4952,7 @@ function _thCol(field,icon,label,minW){
 }
 
 function renderAditivos(ads,obra){
+  if(S.adView==='catalogo')return renderCatalogoAdmin(obra);
   const adSubTab=S.adSubTab||'todos';
   const cntTodos=ads.length;
   const cntAnd=ads.filter(a=>a.status!=='Concluído').length;
@@ -4973,6 +4974,7 @@ function renderAditivos(ads,obra){
     ${renderExportMenu('aditivos',obra)}
     <button class="btn btn-secondary" onclick="window._adImportClick('${escJs(obra)}')" title="Importar planilha de Orçamentos/Extras (.xlsx)">📥 Importar .xlsx</button>
     <input type="file" id="ad-import-file" accept=".xlsx,.xls" style="display:none" onchange="window._adImportFile(event)">
+    <button class="btn btn-secondary" onclick="window._openCatalogo()" title="Gerenciar catálogo de preços, regras de miudezas e markups">⚙ Catálogo & Regras</button>
     <button class="btn btn-primary" onclick="_openModal('new-aditivo')">+ Novo Aditivo</button>
   </div>
 </div>
@@ -5139,6 +5141,109 @@ window._adImportFile=async(ev)=>{
     toast(created+' aditivo(s) importado(s)!');renderApp();
   }catch(e){toast('Falha ao ler arquivo: '+(e&&e.message||e),'#ef4444');}
 };
+
+// ─── ADMIN: CATÁLOGO DE PREÇOS + REGRAS DE MIUDEZAS + MARKUPS POR OBRA ────────
+const CAT_ADMIN={mat:[],reg:[],mk:[],loaded:false,err:null};
+function _catRefreshLive(){
+  AD_CAT_LIVE=CAT_ADMIN.mat.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit}));
+  const M={};CAT_ADMIN.reg.forEach(r=>{if(r.usar===false)return;const k=adNorm(r.material_base);(M[k]=M[k]||[]).push({n:r.miudeza,t:r.tipo_verba,c:r.coef,v:r.valor_unit});});AD_MIU_LIVE=M;
+  Object.keys(AD_OBRA_MK).forEach(k=>delete AD_OBRA_MK[k]);CAT_ADMIN.mk.forEach(r=>{AD_OBRA_MK[r.obra]={ipi:Number(r.ipi)||0,st:Number(r.st)||0,adm:r.adm!=null?(Number(r.adm)||0):45};});
+}
+async function _catAdminLoad(){
+  try{
+    const[c,m,o]=await Promise.all([
+      sb.from('catalogo_materiais').select('*').order('descricao').limit(5000),
+      sb.from('miudezas_regras').select('*').order('material_base').limit(5000),
+      sb.from('obra_markups').select('*').order('obra').limit(2000)]);
+    const e=(c&&c.error)||(m&&m.error)||(o&&o.error);
+    if(e){CAT_ADMIN.err=e.message;CAT_ADMIN.loaded=true;renderApp();return;}
+    CAT_ADMIN.mat=c.data||[];CAT_ADMIN.reg=m.data||[];CAT_ADMIN.mk=o.data||[];CAT_ADMIN.err=null;CAT_ADMIN.loaded=true;
+    _catRefreshLive();renderApp();
+  }catch(e){CAT_ADMIN.err=(e&&e.message)||String(e);CAT_ADMIN.loaded=true;renderApp();}
+}
+window._openCatalogo=()=>{S.adView='catalogo';S.catTab=S.catTab||'mat';CAT_ADMIN.loaded=false;CAT_ADMIN.err=null;renderApp();_catAdminLoad();};
+window._closeCatalogo=()=>{S.adView=null;renderApp();};
+window._catTab=(t)=>{S.catTab=t;renderApp();};
+window._catFilter=(q)=>{const k=adNorm(q);document.querySelectorAll('#cat-rows tr').forEach(tr=>{tr.style.display=(!k||(tr.dataset.s||'').indexOf(k)>=0)?'':'none';});};
+// catalogo_materiais CRUD
+window._catUp=async(id,field,val)=>{const num=field==='mat_unit'||field==='mobra_unit';const v=num?(val===''?null:Number(val)):val;const{error}=await sb.from('catalogo_materiais').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.mat.find(x=>x.id===id);if(r)r[field]=v;_catRefreshLive();};
+window._catAdd=async()=>{const{data,error}=await sb.from('catalogo_materiais').insert({descricao:'Novo material '+Date.now(),unidade:'un',mat_unit:null,mobra_unit:null}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mat.unshift(data);_catRefreshLive();renderApp();};
+window._catDel=async(id)=>{if(!confirm('Excluir este material do catálogo?'))return;const{error}=await sb.from('catalogo_materiais').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mat=CAT_ADMIN.mat.filter(x=>x.id!==id);_catRefreshLive();renderApp();};
+// miudezas_regras CRUD
+window._regUp=async(id,field,val)=>{const num=field==='coef'||field==='valor_unit';const v=field==='usar'?!!val:(num?(val===''?null:Number(val)):val);const{error}=await sb.from('miudezas_regras').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.reg.find(x=>x.id===id);if(r)r[field]=v;_catRefreshLive();if(field==='usar')renderApp();};
+window._regAdd=async()=>{const{data,error}=await sb.from('miudezas_regras').insert({material_base:'Novo material base',miudeza:'Nova miudeza',tipo_verba:'Conexoes/acessorios',coef:1,valor_unit:0,usar:true}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.reg.unshift(data);_catRefreshLive();renderApp();};
+window._regDel=async(id)=>{if(!confirm('Excluir esta regra de miudeza?'))return;const{error}=await sb.from('miudezas_regras').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.reg=CAT_ADMIN.reg.filter(x=>x.id!==id);_catRefreshLive();renderApp();};
+// obra_markups CRUD
+window._mkUp=async(obra,field,val)=>{const v=val===''?(field==='adm'?45:0):Number(val);const{error}=await sb.from('obra_markups').update({[field]:v}).eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.mk.find(x=>x.obra===obra);if(r)r[field]=v;_catRefreshLive();};
+window._mkAdd=async(obra)=>{const o=prompt('Obra para os markups:',obra||'');if(!o)return;const{data,error}=await sb.from('obra_markups').upsert({obra:o,ipi:0,st:0,adm:45}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}if(!CAT_ADMIN.mk.some(x=>x.obra===o))CAT_ADMIN.mk.unshift(data);_catRefreshLive();renderApp();};
+window._mkDel=async(obra)=>{if(!confirm('Excluir markups de '+obra+'?'))return;const{error}=await sb.from('obra_markups').delete().eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mk=CAT_ADMIN.mk.filter(x=>x.obra!==obra);_catRefreshLive();renderApp();};
+
+function renderCatalogoAdmin(obra){
+  const tab=S.catTab||'mat';
+  const tabBtn=(id,label,n)=>`<button class="obra-nav-btn${tab===id?' active':''}" style="${tab===id?'background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.45);color:#93c5fd':'background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.18)'}" onclick="window._catTab('${id}')">${label}<span class="nav-count" style="background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.3)">${n}</span></button>`;
+  let body;
+  if(!CAT_ADMIN.loaded){body=`<div class="loader">Carregando catálogo…</div>`;}
+  else if(CAT_ADMIN.err){body=`<div class="card" style="border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.08)">
+    <div style="font-size:14px;font-weight:700;color:#fbbf24;margin-bottom:6px">⚠ Tabelas do catálogo ainda não existem no Supabase</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6">Para ativar a edição, rode uma vez o script <code style="background:var(--bg3);padding:2px 6px;border-radius:5px">supabase/aditivos-catalogo-miudezas.sql</code> no <b>SQL Editor</b> do Supabase. Enquanto isso, o app continua usando o catálogo e as regras embutidos (somente leitura).<br><br><span style="color:var(--text3)">Detalhe técnico: ${esc(CAT_ADMIN.err)}</span></div>
+  </div>`;}
+  else{
+    const inp=(onb,val,type='text',w='100%')=>`<input class="ci" type="${type}"${type==='number'?' step="0.01"':''} style="width:${w}" value="${esc(String(val==null?'':val))}" onblur="${onb}" onkeydown="if(event.key==='Enter')this.blur()">`;
+    if(tab==='mat'){
+      body=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <input placeholder="🔎 Buscar material…" oninput="window._catFilter(this.value)" style="flex:1;min-width:220px;background:#0f0f0f;border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px">
+        <button class="btn btn-primary btn-sm" onclick="window._catAdd()">+ Material</button>
+      </div>
+      <div class="tbl-wrap"><table style="width:100%"><thead><tr><th style="min-width:300px">Descrição</th><th style="width:70px">Un</th><th style="width:120px">MAT unit</th><th style="width:120px">M.OBRA unit</th><th style="width:40px"></th></tr></thead>
+      <tbody id="cat-rows">${CAT_ADMIN.mat.map(r=>`<tr data-s="${esc(adNorm((r.descricao||'')+' '+(r.unidade||'')))}">
+        <td>${inp(`window._catUp(${r.id},'descricao',this.value)`,r.descricao)}</td>
+        <td>${inp(`window._catUp(${r.id},'unidade',this.value)`,r.unidade)}</td>
+        <td>${inp(`window._catUp(${r.id},'mat_unit',this.value)`,r.mat_unit,'number')}</td>
+        <td>${inp(`window._catUp(${r.id},'mobra_unit',this.value)`,r.mobra_unit,'number')}</td>
+        <td><button onclick="window._catDel(${r.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">×</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    }else if(tab==='reg'){
+      const tipos=['Conexoes/acessorios','Fixacoes/suportes','Miudezas/consumiveis','Miscelaneas'];
+      body=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <input placeholder="🔎 Buscar material-base ou miudeza…" oninput="window._catFilter(this.value)" style="flex:1;min-width:220px;background:#0f0f0f;border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px">
+        <button class="btn btn-primary btn-sm" onclick="window._regAdd()">+ Regra</button>
+      </div>
+      <div class="tbl-wrap"><table style="width:100%"><thead><tr><th style="min-width:220px">Material-base</th><th style="min-width:200px">Miudeza gerada</th><th style="width:160px">Tipo verba</th><th style="width:90px">Coef.</th><th style="width:100px">R$ unit</th><th style="width:50px">Usar</th><th style="width:40px"></th></tr></thead>
+      <tbody id="cat-rows">${CAT_ADMIN.reg.map(r=>`<tr data-s="${esc(adNorm((r.material_base||'')+' '+(r.miudeza||'')))}">
+        <td>${inp(`window._regUp(${r.id},'material_base',this.value)`,r.material_base)}</td>
+        <td>${inp(`window._regUp(${r.id},'miudeza',this.value)`,r.miudeza)}</td>
+        <td><select class="ci" style="width:100%" onchange="window._regUp(${r.id},'tipo_verba',this.value)">${tipos.map(t=>`<option ${adNorm(t)===adNorm(r.tipo_verba)?'selected':''}>${t}</option>`).join('')}</select></td>
+        <td>${inp(`window._regUp(${r.id},'coef',this.value)`,r.coef,'number')}</td>
+        <td>${inp(`window._regUp(${r.id},'valor_unit',this.value)`,r.valor_unit,'number')}</td>
+        <td style="text-align:center"><input type="checkbox" ${r.usar!==false?'checked':''} onchange="window._regUp(${r.id},'usar',this.checked)"></td>
+        <td><button onclick="window._regDel(${r.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">×</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    }else{
+      body=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text3)">Markups padrão por obra (usados quando o aditivo não tem markup próprio). Padrão geral: ADM 45%.</span>
+        <button class="btn btn-primary btn-sm" onclick="window._mkAdd('${escJs(obra||'')}')">+ Obra</button>
+      </div>
+      <div class="tbl-wrap"><table style="width:100%"><thead><tr><th style="min-width:240px">Obra</th><th style="width:120px">IPI %</th><th style="width:120px">ST %</th><th style="width:120px">ADM JET %</th><th style="width:40px"></th></tr></thead>
+      <tbody id="cat-rows">${CAT_ADMIN.mk.map(r=>`<tr data-s="${esc(adNorm(r.obra||''))}">
+        <td style="font-weight:600;color:var(--text)">${esc(r.obra||'')}</td>
+        <td>${inp(`window._mkUp('${escJs(r.obra)}','ipi',this.value)`,r.ipi,'number')}</td>
+        <td>${inp(`window._mkUp('${escJs(r.obra)}','st',this.value)`,r.st,'number')}</td>
+        <td>${inp(`window._mkUp('${escJs(r.obra)}','adm',this.value)`,r.adm,'number')}</td>
+        <td><button onclick="window._mkDel('${escJs(r.obra)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">×</button></td>
+      </tr>`).join('')}${CAT_ADMIN.mk.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:14px">Nenhuma obra com markup específico. O padrão (ADM 45%) é aplicado.</td></tr>`:''}</tbody></table></div>`;
+    }
+  }
+  return`<div>
+<button class="btn btn-secondary btn-sm" onclick="window._closeCatalogo()" style="margin-bottom:12px">← Voltar para Aditivos</button>
+<div class="section-header"><div><div class="section-title">⚙ Catálogo & Regras</div><div class="section-sub">Catálogo de preços, motor de miudezas e markups por obra (compartilhado entre todas as obras)</div></div></div>
+<nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
+  ${tabBtn('mat','Materiais',CAT_ADMIN.mat.length)}
+  ${tabBtn('reg','Miudezas',CAT_ADMIN.reg.length)}
+  ${tabBtn('mk','Markups',CAT_ADMIN.mk.length)}
+</nav>
+${body}
+</div>`;
+}
 
 function renderAditivoDetail(){
   const a=DB.aditivos.find(x=>x.id===S.selectedAditivo);
