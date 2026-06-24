@@ -5059,10 +5059,10 @@ const AD_MK_DEFAULT={ipi:0,st:0,adm:45};
 // Carrega catalogo/regras/markups do Supabase se as tabelas existirem; senao usa o embed.
 async function _adLoadRefData(){try{
   const[c,m,o]=await Promise.all([
-    sb.from('catalogo_materiais').select('descricao,unidade,mat_unit,mobra_unit').limit(5000),
+    sb.from('catalogo_materiais').select('descricao,unidade,mat_unit,mobra_unit,cc,item').limit(5000),
     sb.from('miudezas_regras').select('material_base,miudeza,tipo_verba,coef,valor_unit,usar').limit(5000),
     sb.from('obra_markups').select('obra,ipi,st,adm').limit(2000)]);
-  if(c&&!c.error&&Array.isArray(c.data)&&c.data.length)AD_CAT_LIVE=c.data.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit}));
+  if(c&&!c.error&&Array.isArray(c.data)&&c.data.length)AD_CAT_LIVE=c.data.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit,cc:x.cc||'',it:x.item||''}));
   if(m&&!m.error&&Array.isArray(m.data)&&m.data.length){const M={};m.data.forEach(r=>{if(r.usar===false)return;const k=adNorm(r.material_base);(M[k]=M[k]||[]).push({n:r.miudeza,t:r.tipo_verba,c:r.coef,v:r.valor_unit});});AD_MIU_LIVE=M;}
   if(o&&!o.error&&Array.isArray(o.data))o.data.forEach(r=>{AD_OBRA_MK[r.obra]={ipi:Number(r.ipi)||0,st:Number(r.st)||0,adm:r.adm!=null?(Number(r.adm)||0):45};});
   }catch(e){/* tabelas ainda nao criadas */}
