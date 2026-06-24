@@ -5065,7 +5065,17 @@ async function _adLoadRefData(){try{
   if(c&&!c.error&&Array.isArray(c.data)&&c.data.length)AD_CAT_LIVE=c.data.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit}));
   if(m&&!m.error&&Array.isArray(m.data)&&m.data.length){const M={};m.data.forEach(r=>{if(r.usar===false)return;const k=adNorm(r.material_base);(M[k]=M[k]||[]).push({n:r.miudeza,t:r.tipo_verba,c:r.coef,v:r.valor_unit});});AD_MIU_LIVE=M;}
   if(o&&!o.error&&Array.isArray(o.data))o.data.forEach(r=>{AD_OBRA_MK[r.obra]={ipi:Number(r.ipi)||0,st:Number(r.st)||0,adm:r.adm!=null?(Number(r.adm)||0):45};});
-}catch(e){/* tabelas ainda nao criadas - segue com embed */}}
+  }catch(e){/* tabelas ainda nao criadas */}
+  // fallback: catalogo editado localmente (navegador) quando Supabase nao tem as tabelas
+  if(!AD_CAT_LIVE){try{
+    const c=JSON.parse(localStorage.getItem('ad_cat_local')||'null');
+    if(c&&c.length)AD_CAT_LIVE=c.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit,cc:x.cc||'',it:x.item||x.it||''}));
+    const r=JSON.parse(localStorage.getItem('ad_reg_local')||'null');
+    if(r&&r.length){const M={};r.forEach(x=>{if(x.usar===false)return;const k=adNorm(x.material_base);(M[k]=M[k]||[]).push({n:x.miudeza,t:x.tipo_verba,c:x.coef,v:x.valor_unit});});AD_MIU_LIVE=M;}
+    const k=JSON.parse(localStorage.getItem('ad_mk_local')||'null');
+    if(k&&k.length)k.forEach(x=>{AD_OBRA_MK[x.obra]={ipi:Number(x.ipi)||0,st:Number(x.st)||0,adm:x.adm!=null?(Number(x.adm)||0):45};});
+  }catch(e){}}
+}
 function planMeta(a){return (a.planilha||[]).find(r=>r&&r._meta)||null;}
 function planMarkups(a){const m=planMeta(a);if(m)return{ipi:Number(m.ipi)||0,st:Number(m.st)||0,adm:m.adm!=null?(Number(m.adm)||0):45};const o=a&&AD_OBRA_MK[a.obra];return o?{...o}:{...AD_MK_DEFAULT};}
 function planItems(a){return (a.planilha||[]).filter(r=>r&&!r._meta);}
@@ -5152,11 +5162,20 @@ window._adImportFile=async(ev)=>{
 };
 
 // ─── ADMIN: CATÁLOGO DE PREÇOS + REGRAS DE MIUDEZAS + MARKUPS POR OBRA ────────
-const CAT_ADMIN={mat:[],reg:[],mk:[],loaded:false,err:null};
+const CAT_ADMIN={mat:[],reg:[],mk:[],loaded:false,err:null,local:false};
 function _catRefreshLive(){
-  AD_CAT_LIVE=CAT_ADMIN.mat.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit}));
+  AD_CAT_LIVE=CAT_ADMIN.mat.map(x=>({d:x.descricao,u:x.unidade||'',m:x.mat_unit,o:x.mobra_unit,cc:x.cc||'',it:x.item||x.it||''}));
   const M={};CAT_ADMIN.reg.forEach(r=>{if(r.usar===false)return;const k=adNorm(r.material_base);(M[k]=M[k]||[]).push({n:r.miudeza,t:r.tipo_verba,c:r.coef,v:r.valor_unit});});AD_MIU_LIVE=M;
   Object.keys(AD_OBRA_MK).forEach(k=>delete AD_OBRA_MK[k]);CAT_ADMIN.mk.forEach(r=>{AD_OBRA_MK[r.obra]={ipi:Number(r.ipi)||0,st:Number(r.st)||0,adm:r.adm!=null?(Number(r.adm)||0):45};});
+}
+function _catPersistLocal(){try{localStorage.setItem('ad_cat_local',JSON.stringify(CAT_ADMIN.mat));localStorage.setItem('ad_reg_local',JSON.stringify(CAT_ADMIN.reg));localStorage.setItem('ad_mk_local',JSON.stringify(CAT_ADMIN.mk));}catch(e){}}
+function _catSeedLocal(){
+  let saved=false;
+  try{const c=JSON.parse(localStorage.getItem('ad_cat_local')||'null');if(c){CAT_ADMIN.mat=c;CAT_ADMIN.reg=JSON.parse(localStorage.getItem('ad_reg_local')||'[]')||[];CAT_ADMIN.mk=JSON.parse(localStorage.getItem('ad_mk_local')||'[]')||[];saved=true;}}catch(e){}
+  if(!saved){
+    let i=1;CAT_ADMIN.mat=adCatList().map(x=>({id:'L'+(i++),descricao:x.d,unidade:x.u||'',mat_unit:x.m,mobra_unit:x.o,cc:x.cc||'',item:x.it||''}));
+    const reg=[];let j=1;const M=adMiuMap();Object.keys(M).forEach(k=>{const base=adCatList().find(c=>adNorm(c.d)===k);(M[k]||[]).forEach(g=>reg.push({id:'R'+(j++),material_base:base?base.d:k,miudeza:g.n,tipo_verba:g.t,coef:g.c,valor_unit:g.v,usar:true}));});CAT_ADMIN.reg=reg;CAT_ADMIN.mk=[];
+  }
 }
 async function _catAdminLoad(){
   try{
@@ -5165,27 +5184,28 @@ async function _catAdminLoad(){
       sb.from('miudezas_regras').select('*').order('material_base').limit(5000),
       sb.from('obra_markups').select('*').order('obra').limit(2000)]);
     const e=(c&&c.error)||(m&&m.error)||(o&&o.error);
-    if(e){CAT_ADMIN.err=e.message;CAT_ADMIN.loaded=true;renderApp();return;}
-    CAT_ADMIN.mat=c.data||[];CAT_ADMIN.reg=m.data||[];CAT_ADMIN.mk=o.data||[];CAT_ADMIN.err=null;CAT_ADMIN.loaded=true;
+    if(e){CAT_ADMIN.local=true;CAT_ADMIN.err=null;_catSeedLocal();CAT_ADMIN.loaded=true;_catRefreshLive();renderApp();return;}
+    CAT_ADMIN.local=false;CAT_ADMIN.mat=c.data||[];CAT_ADMIN.reg=m.data||[];CAT_ADMIN.mk=o.data||[];CAT_ADMIN.err=null;CAT_ADMIN.loaded=true;
     _catRefreshLive();renderApp();
-  }catch(e){CAT_ADMIN.err=(e&&e.message)||String(e);CAT_ADMIN.loaded=true;renderApp();}
+  }catch(e){CAT_ADMIN.local=true;CAT_ADMIN.err=null;_catSeedLocal();CAT_ADMIN.loaded=true;_catRefreshLive();renderApp();}
 }
 window._openCatalogo=()=>{S.adView='catalogo';S.catTab=S.catTab||'mat';CAT_ADMIN.loaded=false;CAT_ADMIN.err=null;renderApp();_catAdminLoad();};
 window._closeCatalogo=()=>{S.adView=null;renderApp();};
 window._catTab=(t)=>{S.catTab=t;renderApp();};
 window._catFilter=(q)=>{const k=adNorm(q);document.querySelectorAll('#cat-rows tr').forEach(tr=>{tr.style.display=(!k||(tr.dataset.s||'').indexOf(k)>=0)?'':'none';});};
-// catalogo_materiais CRUD
-window._catUp=async(id,field,val)=>{const num=field==='mat_unit'||field==='mobra_unit';const v=num?(val===''?null:Number(val)):val;const{error}=await sb.from('catalogo_materiais').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.mat.find(x=>x.id===id);if(r)r[field]=v;_catRefreshLive();};
-window._catAdd=async()=>{const{data,error}=await sb.from('catalogo_materiais').insert({descricao:'Novo material '+Date.now(),unidade:'un',mat_unit:null,mobra_unit:null}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mat.unshift(data);_catRefreshLive();renderApp();};
-window._catDel=async(id)=>{if(!confirm('Excluir este material do catálogo?'))return;const{error}=await sb.from('catalogo_materiais').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mat=CAT_ADMIN.mat.filter(x=>x.id!==id);_catRefreshLive();renderApp();};
+const _L=()=>CAT_ADMIN.local;
+// catalogo_materiais CRUD (Supabase quando existir; senão local/navegador)
+window._catUp=async(id,field,val)=>{const num=field==='mat_unit'||field==='mobra_unit';const v=num?(val===''?null:Number(val)):val;const r=CAT_ADMIN.mat.find(x=>String(x.id)===String(id));if(r)r[field]=v;if(_L()){_catPersistLocal();_catRefreshLive();return;}const{error}=await sb.from('catalogo_materiais').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();};
+window._catAdd=async()=>{if(_L()){CAT_ADMIN.mat.unshift({id:'L'+Date.now(),descricao:'Novo material',unidade:'un',mat_unit:null,mobra_unit:null,cc:'',item:''});_catPersistLocal();_catRefreshLive();renderApp();return;}const{data,error}=await sb.from('catalogo_materiais').insert({descricao:'Novo material '+Date.now(),unidade:'un',mat_unit:null,mobra_unit:null}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mat.unshift(data);_catRefreshLive();renderApp();};
+window._catDel=async(id)=>{if(!confirm('Excluir este material do catálogo?'))return;CAT_ADMIN.mat=CAT_ADMIN.mat.filter(x=>String(x.id)!==String(id));if(_L()){_catPersistLocal();_catRefreshLive();renderApp();return;}const{error}=await sb.from('catalogo_materiais').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();renderApp();};
 // miudezas_regras CRUD
-window._regUp=async(id,field,val)=>{const num=field==='coef'||field==='valor_unit';const v=field==='usar'?!!val:(num?(val===''?null:Number(val)):val);const{error}=await sb.from('miudezas_regras').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.reg.find(x=>x.id===id);if(r)r[field]=v;_catRefreshLive();if(field==='usar')renderApp();};
-window._regAdd=async()=>{const{data,error}=await sb.from('miudezas_regras').insert({material_base:'Novo material base',miudeza:'Nova miudeza',tipo_verba:'Conexoes/acessorios',coef:1,valor_unit:0,usar:true}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.reg.unshift(data);_catRefreshLive();renderApp();};
-window._regDel=async(id)=>{if(!confirm('Excluir esta regra de miudeza?'))return;const{error}=await sb.from('miudezas_regras').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.reg=CAT_ADMIN.reg.filter(x=>x.id!==id);_catRefreshLive();renderApp();};
+window._regUp=async(id,field,val)=>{const num=field==='coef'||field==='valor_unit';const v=field==='usar'?!!val:(num?(val===''?null:Number(val)):val);const r=CAT_ADMIN.reg.find(x=>String(x.id)===String(id));if(r)r[field]=v;if(_L()){_catPersistLocal();_catRefreshLive();if(field==='usar')renderApp();return;}const{error}=await sb.from('miudezas_regras').update({[field]:v}).eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();if(field==='usar')renderApp();};
+window._regAdd=async()=>{if(_L()){CAT_ADMIN.reg.unshift({id:'R'+Date.now(),material_base:'Novo material base',miudeza:'Nova miudeza',tipo_verba:'Conexoes/acessorios',coef:1,valor_unit:0,usar:true});_catPersistLocal();_catRefreshLive();renderApp();return;}const{data,error}=await sb.from('miudezas_regras').insert({material_base:'Novo material base',miudeza:'Nova miudeza',tipo_verba:'Conexoes/acessorios',coef:1,valor_unit:0,usar:true}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.reg.unshift(data);_catRefreshLive();renderApp();};
+window._regDel=async(id)=>{if(!confirm('Excluir esta regra de miudeza?'))return;CAT_ADMIN.reg=CAT_ADMIN.reg.filter(x=>String(x.id)!==String(id));if(_L()){_catPersistLocal();_catRefreshLive();renderApp();return;}const{error}=await sb.from('miudezas_regras').delete().eq('id',id);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();renderApp();};
 // obra_markups CRUD
-window._mkUp=async(obra,field,val)=>{const v=val===''?(field==='adm'?45:0):Number(val);const{error}=await sb.from('obra_markups').update({[field]:v}).eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}const r=CAT_ADMIN.mk.find(x=>x.obra===obra);if(r)r[field]=v;_catRefreshLive();};
-window._mkAdd=async(obra)=>{const o=prompt('Obra para os markups:',obra||'');if(!o)return;const{data,error}=await sb.from('obra_markups').upsert({obra:o,ipi:0,st:0,adm:45}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}if(!CAT_ADMIN.mk.some(x=>x.obra===o))CAT_ADMIN.mk.unshift(data);_catRefreshLive();renderApp();};
-window._mkDel=async(obra)=>{if(!confirm('Excluir markups de '+obra+'?'))return;const{error}=await sb.from('obra_markups').delete().eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}CAT_ADMIN.mk=CAT_ADMIN.mk.filter(x=>x.obra!==obra);_catRefreshLive();renderApp();};
+window._mkUp=async(obra,field,val)=>{const v=val===''?(field==='adm'?45:0):Number(val);const r=CAT_ADMIN.mk.find(x=>x.obra===obra);if(r)r[field]=v;if(_L()){_catPersistLocal();_catRefreshLive();return;}const{error}=await sb.from('obra_markups').update({[field]:v}).eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();};
+window._mkAdd=async(obra)=>{const o=prompt('Obra para os markups:',obra||'');if(!o)return;if(_L()){if(!CAT_ADMIN.mk.some(x=>x.obra===o))CAT_ADMIN.mk.unshift({obra:o,ipi:0,st:0,adm:45});_catPersistLocal();_catRefreshLive();renderApp();return;}const{data,error}=await sb.from('obra_markups').upsert({obra:o,ipi:0,st:0,adm:45}).select().single();if(error){toast('Erro: '+error.message,'#ef4444');return;}if(!CAT_ADMIN.mk.some(x=>x.obra===o))CAT_ADMIN.mk.unshift(data);_catRefreshLive();renderApp();};
+window._mkDel=async(obra)=>{if(!confirm('Excluir markups de '+obra+'?'))return;CAT_ADMIN.mk=CAT_ADMIN.mk.filter(x=>x.obra!==obra);if(_L()){_catPersistLocal();_catRefreshLive();renderApp();return;}const{error}=await sb.from('obra_markups').delete().eq('obra',obra);if(error){toast('Erro: '+error.message,'#ef4444');return;}_catRefreshLive();renderApp();};
 
 function renderCatalogoAdmin(obra){
   const tab=S.catTab||'mat';
@@ -5244,7 +5264,8 @@ function renderCatalogoAdmin(obra){
   }
   return`<div>
 <button class="btn btn-secondary btn-sm" onclick="window._closeCatalogo()" style="margin-bottom:12px">← Voltar para Aditivos</button>
-<div class="section-header"><div><div class="section-title">⚙ Catálogo & Regras</div><div class="section-sub">Catálogo de preços, motor de miudezas e markups por obra (compartilhado entre todas as obras)</div></div></div>
+<div class="section-header"><div><div class="section-title">⚙ Catálogo & Regras</div><div class="section-sub">Catálogo de preços, motor de miudezas e markups por obra</div></div></div>
+${CAT_ADMIN.local?`<div style="margin:0 0 12px;padding:9px 12px;border:1px solid var(--border2);border-radius:9px;background:rgba(96,165,250,.06);font-size:12px;color:var(--text2)">💾 <b>Edição local</b> (salva neste navegador). As alterações já valem nos orçamentos gerados aqui. Para compartilhar entre dispositivos/usuários, rode uma vez <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">supabase/aditivos-catalogo-miudezas.sql</code> no SQL Editor do Supabase.</div>`:''}
 <nav class="obra-nav" style="margin:8px 0 14px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;gap:3px">
   ${tabBtn('mat','Materiais',CAT_ADMIN.mat.length)}
   ${tabBtn('reg','Miudezas',CAT_ADMIN.reg.length)}
