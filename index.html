@@ -9372,16 +9372,32 @@ function planHeader(a){
   return {
     loja: h.loja||_adObraSetting(ob,'loja'),
     codigo: h.codigo||(a&&a.numero)||'',
-    tamanho: h.tamanho||'',
-    area: h.area||'',
-    inicio: h.inicio||(a&&a.data)||'',
-    inaug: h.inaug||'',
+    tamanho: h.tamanho||_adObraSetting(ob,'tamanho'),
+    area: h.area||_adObraSetting(ob,'area'),
+    inicio: h.inicio||_adObraSetting(ob,'inicio')||(a&&a.data)||'',
+    inaug: h.inaug||_adObraSetting(ob,'inaug'),
+    periodo: h.periodo||_adObraSetting(ob,'periodo'),
     solicitante: h.solicitante||od.gerente||od.gerenciador||'',
     razao: h.razao||_adObraSetting(ob,'razao')||ob,
     cnpj: h.cnpj||_adObraSetting(ob,'cnpj')
   };
 }
 function _adParseDate(s){if(!s)return null;s=String(s).trim();let m;if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)))return new Date(+m[1],+m[2]-1,+m[3]);if((m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/)))return new Date(+m[3],+m[2]-1,+m[1]);const d=new Date(s);return isNaN(d.getTime())?null:d;}
+// ── Itens do aditivo dentro do popup (colar lista + catálogo) ──
+function _adItemRowHtml(desc='',un='',qtd='',mat='',mob=''){
+  const st="padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:#0f0f0f;color:var(--text);font-size:12px;outline:none;width:100%";
+  return `<div class="ad-item-row" style="display:grid;grid-template-columns:2fr 48px 52px 72px 72px 24px;gap:4px;margin-bottom:5px">`
+    +`<input class="adi-desc" list="adcat-modal" placeholder="Descrição (busca catálogo)" value="${esc(String(desc))}" style="${st}" onblur="window._adItemPick(this)">`
+    +`<input class="adi-un" placeholder="un" value="${esc(String(un))}" style="${st};text-align:center">`
+    +`<input class="adi-qtd" type="number" step="any" placeholder="0" value="${esc(String(qtd))}" style="${st};text-align:center">`
+    +`<input class="adi-mat" type="number" step="any" placeholder="MAT" value="${esc(String(mat))}" style="${st};text-align:right">`
+    +`<input class="adi-mob" type="number" step="any" placeholder="M.OBRA" value="${esc(String(mob))}" style="${st};text-align:right">`
+    +`<button type="button" title="Remover" onclick="this.closest('.ad-item-row').remove()" style="background:#200c0c;border:none;border-radius:6px;color:#f87171;cursor:pointer;font-size:14px">×</button>`
+    +`</div>`;
+}
+window._adItemRow=(desc,un,qtd,mat,mob)=>{const list=document.getElementById('ad-items-list');if(!list)return;list.insertAdjacentHTML('beforeend',_adItemRowHtml(desc,un,qtd,mat,mob));if(!desc){const rows=list.querySelectorAll('.ad-item-row .adi-desc');const last=rows[rows.length-1];if(last)last.focus();}};
+window._adItemPick=(inp)=>{const row=inp.closest('.ad-item-row');if(!row)return;const cat=adCatLookup(inp.value);if(!cat)return;const un=row.querySelector('.adi-un'),mat=row.querySelector('.adi-mat'),mob=row.querySelector('.adi-mob');if(un&&!un.value&&cat.u)un.value=cat.u;if(mat&&!mat.value&&cat.m!=null)mat.value=cat.m;if(mob&&!mob.value&&cat.o!=null)mob.value=cat.o;};
+window._adItemPaste=()=>{const ta=document.getElementById('m-ad-paste');if(!ta)return;const items=(typeof parseQtyItemList==='function')?parseQtyItemList(ta.value):[];if(!items.length){toast('Nenhum item reconhecido (use: qtd = descrição).','#f59e0b');return;}const list=document.getElementById('ad-items-list');const rep=document.getElementById('m-ad-paste-rep');if(rep&&rep.checked&&list)list.innerHTML='';items.forEach(it=>{const cat=adCatLookup(it.item)||{};window._adItemRow(it.item,(cat.u||it.unidade||''),(it.qtd||''),(cat.m!=null?cat.m:''),(cat.o!=null?cat.o:''));});ta.value='';toast(items.length+' item(ns) inserido(s).');};
 // Export do orçamento usando o MOLDE real (template .xlsx embutido) — fontes/cores/bordas/fórmulas idênticas
 // preenche UMA aba de orçamento no molde: cabeçalho + itens, splice das linhas não usadas, re-seta fórmulas. Retorna {geralRow,total}.
 async function _fillOrcSheet(ws,a){
@@ -10093,29 +10109,51 @@ function renderModal(){
   if(m==='new-aditivo'||m==='edit-aditivo'){
     const a=m==='edit-aditivo'?DB.aditivos.find(x=>x.id===d.id):null;
     const gv=(k,def='')=>a?(a[k]??def):def;
-    const gh=(k)=>a?String(planHeader(a)[k]??''):'';
-    const sel=(list,map,val,field)=>`<div class="form-group"><label>${field}</label>${makeCd(list,map,val,`S.modalData._${field.toLowerCase()}=VAL`,true)}</div>`;
+    const H=planHeader(a||{obra:S.obra});const gh=(k)=>String(H[k]??'');
+    const mk0=a?planMarkups(a):((typeof AD_OBRA_MK!=='undefined'&&AD_OBRA_MK[S.obra])?AD_OBRA_MK[S.obra]:{ipi:0,st:0,adm:45});
+    const dataVal=gv('data')||(typeof todayISO==='function'?todayISO():new Date().toISOString().slice(0,10));
+    const itensHtml=a?(planItems(a).map(r=>_adItemRowHtml(r.nome,r.unidade,r.quantidade,r.mat_unit,r.mobra_unit)).join('')||_adItemRowHtml()):_adItemRowHtml();
+    const inpMk='width:58px;background:#0f0f0f;border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 7px;font-size:12px;text-align:right';
     title=m==='new-aditivo'?'Novo Aditivo':`Editar ${a?.numero||''}`;
     body=`<div class="form-grid-2">
 <div class="form-group" style="grid-column:1/-1"><label>Nome do Aditivo *</label><input id="m-nome" value="${esc(gv('nome'))}" placeholder="Descreva o aditivo..."></div>
 <div class="form-group"><label>Solicitação</label><input id="m-sol" list="m-sols" value="${esc(gv('solicitacao'))}" placeholder="Ex: Definição in loco..."><datalist id="m-sols"><option value="Definição in loco"><option value="Revisão de Projeto"><option value="Armando Dallari"></datalist></div>
-<div class="form-group"><label>Data</label><input id="m-data" type="date" value="${esc(gv('data'))}"></div>
-<div class="form-group"><label>Valor (R$)</label><input id="m-valor" type="number" step="0.01" value="${a&&a.valor!=null?a.valor:''}" placeholder="Preencher após aprovação"></div>
+<div class="form-group"><label>Data</label><input id="m-data" type="date" value="${esc(dataVal)}"></div>
 <div class="form-group"><label>Responsável</label><input id="m-resp" value="${esc(gv('responsavel',currentUser?.email?.split('@')[0]||''))}"></div>
+<div class="form-group"><label>Valor (R$)</label><input id="m-valor" value="${a&&a.valor!=null?fmtV(a.valor):'— calculado da planilha'}" readonly title="Calculado automaticamente da planilha + markups" style="background:#161616;color:var(--text3)"></div>
 </div>
-<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:8px 11px;background:rgba(96,165,250,.05)"${m==='edit-aditivo'?'':' open'}>
-<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#60a5fa">📋 Dados do cabeçalho do orçamento (saem no Excel idêntico à planilha)</summary>
+<div style="margin-top:12px;border:1px solid var(--border2);border-radius:9px;padding:10px 12px;background:rgba(96,165,250,.04)">
+<div style="font-size:11px;font-weight:800;color:#60a5fa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Itens da planilha</div>
+<datalist id="adcat-modal">${adCatList().map(c=>`<option value="${esc(c.d)}">`).join('')}</datalist>
+<details open style="margin-bottom:8px"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:#60a5fa">📋 Colar lista — <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">qtd = descrição</code> (um por linha)</summary>
+<textarea id="m-ad-paste" style="width:100%;min-height:78px;font-family:'DM Mono',monospace;font-size:12px;padding:8px;background:#0a0a0a;border:1px solid var(--border2);border-radius:8px;color:var(--text);resize:vertical;margin-top:6px" placeholder="300 = Eletroduto de ferro galvanizado Ø 3/4&quot;&#10;50 = Condulete de alumínio Ø 3/4&quot;"></textarea>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:5px"><button type="button" class="btn btn-primary btn-sm" onclick="window._adItemPaste()">➕ Inserir na lista</button><label style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px"><input type="checkbox" id="m-ad-paste-rep"> substituir itens</label><span style="font-size:11px;color:var(--text3)">preço/un/C.C. vêm do catálogo automaticamente</span></div>
+</details>
+<div style="display:grid;grid-template-columns:2fr 48px 52px 72px 72px 24px;gap:4px;font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:3px;padding:0 2px"><span>Descrição</span><span>Un</span><span>Qtd</span><span>MAT</span><span>M.OBRA</span><span></span></div>
+<div id="ad-items-list">${itensHtml}</div>
+<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="window._adItemRow()">+ adicionar item</button>
+<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid var(--border2)">
+  <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px"><input type="checkbox" id="m-ad-genmiu"> ⚙ gerar miudezas automaticamente</label>
+  <span style="font-size:11px;color:var(--text3)">Markups:</span>
+  <label style="font-size:12px;color:var(--text2)">IPI% <input id="m-ad-ipi" type="number" step="0.01" value="${mk0.ipi||0}" style="${inpMk}"></label>
+  <label style="font-size:12px;color:var(--text2)">ST% <input id="m-ad-st" type="number" step="0.01" value="${mk0.st||0}" style="${inpMk}"></label>
+  <label style="font-size:12px;color:var(--text2)">ADM% <input id="m-ad-adm" type="number" step="0.01" value="${mk0.adm!=null?mk0.adm:45}" style="${inpMk}"></label>
+</div>
+</div>
+<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:8px 11px;background:rgba(96,165,250,.05)">
+<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#60a5fa">🏢 Dados da obra (cabeçalho do Excel — preenche 1x por obra)</summary>
 <div class="form-grid-2" style="margin-top:10px">
 <div class="form-group"><label>Loja (código)</label><input id="m-h-loja" value="${esc(gh('loja'))}" placeholder="Ex: SBO-117"></div>
-<div class="form-group"><label>Orçamento (código)</label><input id="m-h-codigo" value="${esc(gh('codigo'))}"></div>
+<div class="form-group"><label>Período</label><input id="m-h-periodo" value="${esc(gh('periodo'))}" placeholder="Ex: 120 dias"></div>
 <div class="form-group"><label>Tamanho</label><input id="m-h-tamanho" value="${esc(gh('tamanho'))}"></div>
 <div class="form-group"><label>Área</label><input id="m-h-area" value="${esc(gh('area'))}"></div>
 <div class="form-group"><label>Início da obra</label><input id="m-h-inicio" type="date" value="${esc(gh('inicio'))}"></div>
 <div class="form-group"><label>Inauguração</label><input id="m-h-inaug" type="date" value="${esc(gh('inaug'))}"></div>
-<div class="form-group"><label>Solicitante</label><input id="m-h-solic" value="${esc(gh('solicitante'))}" placeholder="${esc(gv('responsavel',currentUser?.email?.split('@')[0]||''))}"></div>
 <div class="form-group"><label>Razão social</label><input id="m-h-razao" value="${esc(gh('razao'))}"></div>
-<div class="form-group" style="grid-column:1/-1"><label>CNPJ</label><input id="m-h-cnpj" value="${esc(gh('cnpj'))}"></div>
+<div class="form-group"><label>CNPJ</label><input id="m-h-cnpj" value="${esc(gh('cnpj'))}"></div>
+<div class="form-group" style="grid-column:1/-1"><label>Solicitante</label><input id="m-h-solic" value="${esc(gh('solicitante'))}" placeholder="gerente da obra"></div>
 </div>
+<div style="font-size:11px;color:var(--text3);margin-top:6px">Código do orçamento = número do aditivo (automático).</div>
 </details>`;
     onSave=`_saveAditivo('${m}','${d.id||''}')`;
   }
@@ -11094,17 +11132,29 @@ window._previewMatPDF=()=>{
 
 window._saveAditivo=async(mode,eid)=>{
   const nome=document.getElementById('m-nome')?.value?.trim();if(!nome){toast('Nome obrigatório.','#ef4444');return;}
-  const obj={nome,solicitacao:document.getElementById('m-sol')?.value||'',data:document.getElementById('m-data')?.value||null,valor:document.getElementById('m-valor')?.value?parseFloat(document.getElementById('m-valor').value):null,responsavel:document.getElementById('m-resp')?.value||'',obra:S.obra,status:'Em Elaboração',proposta:'EM ANÁLISE'};
-  let savedId=eid;
-  if(mode==='edit-aditivo'){const{error}=await sb.from('aditivos').update(obj).eq('id',eid);if(error){toast('Erro: '+error.message,'#ef4444');return;}DB.aditivos=DB.aditivos.map(a=>a.id===eid?{...a,...obj}:a);}
-  else{const num=nextNum(DB.aditivos.filter(a=>a.obra===S.obra),'AD');const item={id:uid(),numero:num,...obj,comentarios:[],arquivos:[],planilha:[]};const{error}=await sb.from('aditivos').insert(item);if(error){toast('Erro: '+error.message,'#ef4444');return;}DB.aditivos.push(item);savedId=item.id;}
-  // cabeçalho do orçamento -> meta-linha da planilha
   const hv=id=>document.getElementById(id)?.value?.trim()||'';
-  const hdr={loja:hv('m-h-loja'),codigo:hv('m-h-codigo'),tamanho:hv('m-h-tamanho'),area:hv('m-h-area'),inicio:hv('m-h-inicio'),inaug:hv('m-h-inaug'),solicitante:hv('m-h-solic'),razao:hv('m-h-razao'),cnpj:hv('m-h-cnpj')};
-  try{const ob=S.obra;if(ob){if(hdr.loja)localStorage.setItem('ad_loja_'+ob,hdr.loja);if(hdr.razao)localStorage.setItem('ad_razao_'+ob,hdr.razao);if(hdr.cnpj)localStorage.setItem('ad_cnpj_'+ob,hdr.cnpj);}}catch(e){}
-  const aRec=DB.aditivos.find(x=>x.id===savedId);
-  if(aRec&&(Object.values(hdr).some(v=>v)||planMeta(aRec))){let rows=[...(aRec.planilha||[])];let meta=rows.find(r=>r&&r._meta);if(!meta){meta={id:'__mk__',_meta:true,ipi:0,st:0,adm:45};rows=[meta,...rows];}rows=rows.map(r=>r&&r._meta?{...r,hdr}:r);aRec.planilha=rows;await sb.from('aditivos').update({planilha:rows}).eq('id',savedId);}
-  toast('Aditivo salvo!');_closeModal();
+  // dados da obra (cabeçalho) — persistidos por obra (preenche 1x)
+  const hdr={loja:hv('m-h-loja'),tamanho:hv('m-h-tamanho'),area:hv('m-h-area'),inicio:hv('m-h-inicio'),inaug:hv('m-h-inaug'),periodo:hv('m-h-periodo'),solicitante:hv('m-h-solic'),razao:hv('m-h-razao'),cnpj:hv('m-h-cnpj')};
+  try{const ob=S.obra;if(ob)[['loja',hdr.loja],['razao',hdr.razao],['cnpj',hdr.cnpj],['tamanho',hdr.tamanho],['area',hdr.area],['inicio',hdr.inicio],['inaug',hdr.inaug],['periodo',hdr.periodo]].forEach(([k,v])=>{if(v)localStorage.setItem('ad_'+k+'_'+ob,v);});}catch(e){}
+  // markups
+  const nm=id=>{const v=document.getElementById(id)?.value;return (v===''||v==null)?null:Number(v);};
+  const admv=document.getElementById('m-ad-adm')?.value;
+  const mk={ipi:nm('m-ad-ipi')||0,st:nm('m-ad-st')||0,adm:(admv===''||admv==null)?45:(Number(admv)||0)};
+  // itens lançados no popup
+  let rows=[...document.querySelectorAll('#ad-items-list .ad-item-row')].map(r=>({
+    id:uid(),nome:(r.querySelector('.adi-desc')?.value||'').trim(),unidade:(r.querySelector('.adi-un')?.value||'').trim(),
+    quantidade:r.querySelector('.adi-qtd')?.value||'',mat_unit:r.querySelector('.adi-mat')?.value||'',mobra_unit:r.querySelector('.adi-mob')?.value||'',observacao:'',tipo:'extra'
+  })).filter(r=>r.nome);
+  // gerar miudezas automaticamente
+  if(document.getElementById('m-ad-genmiu')?.checked){
+    const exp=[];rows.forEach(r=>{exp.push(r);const regras=adMiudezasFor(r.nome);const q=Number(r.quantidade)||0;if(regras&&regras.length&&q)regras.forEach(g=>exp.push({id:uid(),nome:g.n,unidade:'un',quantidade:Math.round(q*(g.c||0)*100)/100,mat_unit:g.v!=null?g.v:'',mobra_unit:'',observacao:'miudeza · '+g.t,tipo:'extra',gerado_de:r.id}));});rows=exp;
+  }
+  const planilha=[{id:'__mk__',_meta:true,ipi:mk.ipi,st:mk.st,adm:mk.adm,hdr}].concat(rows);
+  const valor=rows.some(adRowHasMM)?Math.round(adTotalFromRows(planilha)*100)/100:null;
+  const obj={nome,solicitacao:document.getElementById('m-sol')?.value||'',data:document.getElementById('m-data')?.value||null,valor,responsavel:document.getElementById('m-resp')?.value||'',obra:S.obra,status:'Em Elaboração',proposta:'EM ANÁLISE'};
+  if(mode==='edit-aditivo'){const{error}=await sb.from('aditivos').update({...obj,planilha}).eq('id',eid);if(error){toast('Erro: '+error.message,'#ef4444');return;}DB.aditivos=DB.aditivos.map(a=>a.id===eid?{...a,...obj,planilha}:a);}
+  else{const num=nextNum(DB.aditivos.filter(a=>a.obra===S.obra),'AD');const item={id:uid(),numero:num,...obj,comentarios:[],arquivos:[],planilha};const{error}=await sb.from('aditivos').insert(item);if(error){toast('Erro: '+error.message,'#ef4444');return;}DB.aditivos.push(item);}
+  toast('Aditivo salvo!');_closeModal();renderApp();
 };
 
 window._deleteAditivo=async(id)=>{const a=DB.aditivos.find(x=>x.id===id);if(!confirm(`Excluir aditivo ${a?.numero||id}?`))return;await sb.from('aditivos').delete().eq('id',id);DB.aditivos=DB.aditivos.filter(a=>a.id!==id);S.selectedAditivo=null;toast('Excluído.','#f59e0b');renderApp();};
