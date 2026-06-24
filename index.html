@@ -8208,7 +8208,7 @@ function renderGerenciarObras(){
     const val=DB.aditivos.filter(a=>a.obra===obra).reduce((s,a)=>s+(Number(a.valor)||0),0);
     const col=obraDisplayColor(obra);
     const totalAditivos=DB.aditivos.filter(a=>a.obra===obra).length;
-    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Tipo</label><select data-obra="${esc(obra)}" onchange="window._changeObraTipo('${escJs(obra)}',this.value)" style="width:100%"><option value="obra"${!isReforma(obra)?' selected':''}>🏗️ Obra</option><option value="reforma"${isReforma(obra)?' selected':''}>🔨 Reforma</option></select></div><div class="form-group" style="margin:0"><label>Status da Obra</label><select data-obra="${esc(obra)}" data-field="status" onchange="window._saveObraField(this);renderApp()" style="width:100%"><option value="Ativa"${(d.status||'Ativa')==='Ativa'?' selected':''}>✅ Ativa</option><option value="Concluída"${d.status==='Concluída'?' selected':''}>🏁 Concluída</option><option value="Paralisada"${d.status==='Paralisada'?' selected':''}>⏸ Paralisada</option></select></div><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Vencimento do Contrato</label><input type="date" value="${esc(d.data_vencimento||'')}" data-obra="${esc(obra)}" data-field="data_vencimento" onchange="window._saveObraField(this)"></div></div></div>`;
+    return`<div class="card" style="border-left:3px solid ${col.bar}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><input value="${esc(obra)}" data-orig="${esc(obra)}" style="font-size:16px;font-weight:800;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 4px;width:100%;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='transparent'" onfocus="this.style.borderColor='var(--blue)'" onblur="window._renameObra(this)" onkeydown="if(event.key==='Enter')this.blur()" title="Clique para renomear"><div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">${totalAditivos} aditivo${totalAditivos!==1?'s':''}</span>${val>0?`<span style="font-size:11px;color:#34d399">${fmtV(val)}</span>`:''}${linkedTotal>0?`<span style="font-size:11px;color:var(--text2)">${linkedTotal} registro(s) vinculados</span>`:`<span style="font-size:11px;color:var(--text3)">Sem vínculos ativos</span>`}</div></div><div class="manage-obra-actions"><button class="btn btn-secondary btn-sm manage-obra-btn" onclick="window._archiveObra('${escJs(obra)}')" title="Arquivar obra">📦 Arquivar</button><button class="btn btn-danger btn-sm manage-obra-btn" onclick="window._delObra('${escJs(obra)}')" title="Excluir obra">🗑 Excluir</button></div></div><div class="form-grid-3"><div class="form-group" style="margin:0"><label>Tipo</label><select data-obra="${esc(obra)}" onchange="window._changeObraTipo('${escJs(obra)}',this.value)" style="width:100%"><option value="obra"${!isReforma(obra)?' selected':''}>🏗️ Obra</option><option value="reforma"${isReforma(obra)?' selected':''}>🔨 Reforma</option></select></div><div class="form-group" style="margin:0"><label>Status da Obra</label><select data-obra="${esc(obra)}" data-field="status" onchange="window._saveObraField(this);renderApp()" style="width:100%"><option value="Ativa"${(d.status||'Ativa')==='Ativa'?' selected':''}>✅ Ativa</option><option value="Concluída"${d.status==='Concluída'?' selected':''}>🏁 Concluída</option><option value="Paralisada"${d.status==='Paralisada'?' selected':''}>⏸ Paralisada</option></select></div><div class="form-group" style="margin:0"><label>Engenheiro Responsável</label><input value="${esc(d.engenheiro||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="engenheiro" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Gerente da Obra</label><input value="${esc(d.gerente||'')}" placeholder="Nome..." data-obra="${esc(obra)}" data-field="gerente" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label title="Vai no cabeçalho da planilha de aditivos (Gerenciador/Solicitante)">Gerenciador da Obra (planilha)</label><input value="${esc(d.gerenciador||'')}" placeholder="Ex: Eva Galvão" data-obra="${esc(obra)}" data-field="gerenciador" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Outras Informações</label><input value="${esc(d.outros||'')}" placeholder="Contrato, prazo..." data-obra="${esc(obra)}" data-field="outros" onblur="window._saveObraField(this)" onkeydown="if(event.key==='Enter')this.blur()"></div><div class="form-group" style="margin:0"><label>Vencimento do Contrato</label><input type="date" value="${esc(d.data_vencimento||'')}" data-obra="${esc(obra)}" data-field="data_vencimento" onchange="window._saveObraField(this)"></div></div></div>`;
   }).join('');
 
   const _depGer=getAlmoxDepositos();
@@ -9377,7 +9377,7 @@ function planHeader(a){
     inicio: h.inicio||_adObraSetting(ob,'inicio')||(a&&a.data)||'',
     inaug: h.inaug||_adObraSetting(ob,'inaug'),
     periodo: h.periodo||_adObraSetting(ob,'periodo'),
-    solicitante: h.solicitante||od.gerente||od.gerenciador||'',
+    solicitante: h.solicitante||od.gerenciador||'',
     razao: h.razao||_adObraSetting(ob,'razao')||ob,
     cnpj: h.cnpj||_adObraSetting(ob,'cnpj')
   };
@@ -9408,7 +9408,7 @@ async function _fillOrcSheet(ws,a){
   ws.getCell('D3').value=H.codigo||a.numero||'';
   ws.getCell('E3').value=H.tamanho||'';
   ws.getCell('F3').value=H.area||'';
-  ws.getCell('B4').value=H.solicitante||a.responsavel||'';
+  ws.getCell('B4').value=H.solicitante||'';
   ws.getCell('C5').value=H.razao||a.obra||'';
   ws.getCell('C6').value=H.cnpj||'';
   const di=_adParseDate(H.inicio||a.data),df=_adParseDate(H.inaug);
@@ -9436,29 +9436,32 @@ async function _fillOrcSheet(ws,a){
   const total=Math.round((secSum-desc)*100)/100;
   ws.getCell('H'+rGeral).value={formula:`H${rTotal}-H${rDesc}`,result:total};
   const just=_adJustificativa(a);if(just)ws.getCell('A'+(16+keep)).value=just;
-  // REGISTRO FOTOGRÁFICO: imagens anexadas ao aditivo (adicionadas via sistema), 2 por linha
+  // REGISTRO FOTOGRÁFICO: grade de caixas emolduradas (3 col x 2 lin) + legenda, como o modelo.
+  // As caixas existem sempre (espaço reservado); as imagens anexadas ao aditivo entram dentro.
   try{
     const isImage=(nm)=>(typeof isImg==='function'?isImg(nm):/\.(png|jpe?g|webp|gif)$/i.test(String(nm||'')));
     const imgs=(a.arquivos||[]).filter(f=>f&&f.url&&isImage(f.name)).slice(0,6);
-    if(imgs.length){
-      const T=18+keep; // titulo algumas linhas abaixo da justificativa
-      ws.getCell('A'+T).value='REGISTRO FOTOGRÁFICO';
-      ws.getCell('A'+T).font={name:'Calibri',size:11,bold:true};
-      for(let i=0;i<imgs.length;i++){
-        try{
-          const resp=await fetch(imgs[i].url); if(!resp||!resp.ok) continue;
-          const buf=await resp.arrayBuffer();
-          let ext=String((imgs[i].name||'').split('.').pop()||'png').toLowerCase();
-          if(ext==='jpg')ext='jpeg'; if(['png','jpeg','gif'].indexOf(ext)<0)ext='png';
-          const imgId=wb.addImage({buffer:buf,extension:ext});
-          const sc=i%2, sr=Math.floor(i/2);
-          const colTL=sc===0?0:6, rowTL=T+sr*14; // 0-indexed
-          ws.addImage(imgId,{tl:{col:colTL,row:rowTL},ext:{width:330,height:230}});
-          const capRow=rowTL+13, capCol=sc===0?'A':'G';
-          ws.getCell(capCol+capRow).value=imgs[i].observacao||imgs[i].name||('Foto '+(i+1));
-          ws.getCell(capCol+capRow).font={name:'Calibri',size:9,italic:true};
-          ws.getCell(capCol+capRow).alignment={horizontal:'center'};
-        }catch(e){}
+    const T=16+keep+2;
+    ws.getCell('A'+T).value='REGISTRO FOTOGRÁFICO';
+    ws.getCell('A'+T).font={name:'Calibri',size:11,bold:true};
+    const tri=[[1,3],[5,8],[10,12]], BH=16, med={style:'thin',color:{argb:'FF000000'}};
+    const box=(c1,r1,c2,r2)=>{for(let c=c1;c<=c2;c++){const t=ws.getCell(r1,c);t.border={...(t.border||{}),top:med};const b=ws.getCell(r2,c);b.border={...(b.border||{}),bottom:med};}for(let r=r1;r<=r2;r++){const l=ws.getCell(r,c1);l.border={...(l.border||{}),left:med};const rr=ws.getCell(r,c2);rr.border={...(rr.border||{}),right:med};}};
+    for(let g=0;g<2;g++){
+      const top=T+1+g*(BH+2), bot=top+BH-1, capRow=bot+1;
+      for(let ci=0;ci<3;ci++){
+        const c1=tri[ci][0], c2=tri[ci][1], idx=g*3+ci;
+        try{ws.mergeCells(top,c1,bot,c2);}catch(e){}
+        box(c1,top,c2,bot);
+        try{ws.mergeCells(capRow,c1,capRow,c2);}catch(e){}
+        const cap=ws.getCell(capRow,c1); cap.alignment={horizontal:'center',vertical:'middle',wrapText:true}; cap.font={name:'Calibri',size:9,bold:true}; cap.border={top:med,bottom:med,left:med,right:med};
+        ws.getRow(capRow).height=18;
+        if(imgs[idx]){
+          try{
+            const resp=await fetch(imgs[idx].url);
+            if(resp&&resp.ok){const buf=await resp.arrayBuffer();let ext=String((imgs[idx].name||'').split('.').pop()||'png').toLowerCase();if(ext==='jpg')ext='jpeg';if(['png','jpeg','gif'].indexOf(ext)<0)ext='png';const imgId=wb.addImage({buffer:buf,extension:ext});ws.addImage(imgId,{tl:{col:c1-1+0.05,row:top-1+0.1},br:{col:c2,row:bot+0.95}});}
+          }catch(e){}
+          cap.value=imgs[idx].observacao||imgs[idx].name||('Foto '+(idx+1));
+        }
       }
     }
   }catch(e){}
@@ -9486,7 +9489,7 @@ window.aditivosXLSX=async(obra)=>{
     det.getCell('B1').value=obra||'';
     det.getCell('B2').value=H0.loja||'';
     det.getCell('B4').value=od.engenheiro||'';
-    det.getCell('B5').value=od.gerente||od.gerenciador||'';
+    det.getCell('B5').value=od.gerenciador||'';
     det.getCell('B6').value=new Date();
     try{if(typeof ADITIVO_LOGO_B64!=='undefined'&&ADITIVO_LOGO_B64){const _imgId=wb.addImage({base64:ADITIVO_LOGO_B64,extension:'png'});det.addImage(_imgId,{tl:{col:6,row:0},br:{col:9,row:6}});}}catch(e){}
     const n=Math.min(ads.length,NS);
