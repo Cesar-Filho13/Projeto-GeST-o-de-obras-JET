@@ -5106,7 +5106,8 @@ function _adBusy(msg){let el=document.getElementById('ad-busy');if(!el){el=docum
 function _adBusyDone(){const el=document.getElementById('ad-busy');if(el)el.style.display='none';}
 function _xlsDate(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*86400000));return isNaN(d.getTime())?null:d.toISOString().slice(0,10);}const s=String(v).trim();let m;if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)))return m[0];if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)))return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);return null;}
 function _adParseWorkbook(wb){
-  const res=[];
+  // 1) abas de orçamento -> indexadas pelo número (sufixo do nome da aba)
+  const orcByNum={}, orcOrphan=[];
   (wb.SheetNames||[]).forEach(sh=>{
     if(!adNorm(sh).startsWith('orcamento'))return;
     const ws=wb.Sheets[sh];if(!ws)return;
@@ -5132,22 +5133,44 @@ function _adParseWorkbook(wb){
       if(qde==null&&mat==null&&mob==null)continue;
       itens.push({desc:desc.replace(/\s+/g,' ').trim(),un,qde,mat,mob});
     }
-    if(itens.length)res.push({aba:sh,nome:nome,itens:itens,justif:justif.trim()});
+    const entry={aba:sh,nome,itens,justif:justif.trim()};
+    const m=String(sh).match(/(\d+)\s*$/);
+    if(m)orcByNum[parseInt(m[1],10)]=entry; else if(itens.length)orcOrphan.push(entry);
   });
-  // aba "Detalhe": SOLICITAÇÃO (justificativa) + DATA (atualização) por Nº
+  // 2) aba "Detalhe" (lista mestre): 1 aditivo por linha numerada
+  let atualizacao=null; const detRows=[];
   try{
     const detName=(wb.SheetNames||[]).find(s=>adNorm(s).startsWith('detalhe'));
     if(detName){
       const dr=XLSX.utils.sheet_to_json(wb.Sheets[detName],{header:1,raw:true,defval:null});
-      let atualizacao=null;
       dr.slice(0,10).forEach(r=>{const c=(r||[]).map(x=>x==null?'':String(x).trim());const li=c.findIndex(x=>adNorm(x).indexOf('atualiza')===0);if(li>=0){const d=_xlsDate((r||[])[li+1]);if(d)atualizacao=d;}});
       let dh=-1;for(let i=0;i<dr.length;i++){const j=adNorm((dr[i]||[]).map(x=>x==null?'':x).join(' '));if(j.indexOf('categoria')>=0&&j.indexOf('descricao')>=0){dh=i;break;}}
-      const detMap={};
-      if(dh>=0){const hd=(dr[dh]||[]).map(x=>adNorm(x));const ij=hd.findIndex(x=>x.indexOf('justificativa')>=0),ist=hd.findIndex(x=>x.indexOf('status')>=0);
-        for(let i=dh+1;i<dr.length;i++){const r=dr[i]||[];const nn=parseInt(String(r[1]==null?'':r[1]).replace(/\D/g,''),10);if(!nn)continue;detMap[nn]={just:(ij>=0&&r[ij]!=null)?String(r[ij]).trim():'',status:(ist>=0&&r[ist]!=null)?String(r[ist]).trim():''};}}
-      res.forEach(p=>{const m=String(p.aba).match(/(\d+)\s*$/);const nn=m?parseInt(m[1],10):null;const d=nn?detMap[nn]:null;p.solicitacao=(d&&d.just)||'';p.statusImp=(d&&d.status)||'';p.data=atualizacao||null;});
+      if(dh>=0){const hd=(dr[dh]||[]).map(x=>adNorm(x));
+        const ic=hd.findIndex(x=>x.indexOf('descricao')>=0),ij=hd.findIndex(x=>x.indexOf('justificativa')>=0),ig=hd.findIndex(x=>x.indexOf('orcamento')>=0),ist=hd.findIndex(x=>x.indexOf('status')>=0);
+        for(let i=dh+1;i<dr.length;i++){const r=dr[i]||[];
+          const jrow=adNorm((r||[]).map(x=>x==null?'':x).join(' '));
+          if(jrow.indexOf('saldo')>=0||jrow.indexOf('glosa')>=0||jrow.indexOf('desconto')>=0)continue;
+          const nn=parseInt(String(r[1]==null?'':r[1]).replace(/\D/g,''),10);if(!nn)continue;
+          const descr=ic>=0&&r[ic]!=null?String(r[ic]).trim():'';
+          detRows.push({numero:nn,descricao:descr,justificativa:(ij>=0&&r[ij]!=null)?String(r[ij]).trim():'',orcamento:ig>=0?_adNumXls(r[ig]):null,status:(ist>=0&&r[ist]!=null)?String(r[ist]).trim():''});
+        }
+      }
     }
   }catch(e){}
+  // 3) montar resultado a partir do Detalhe (todos), enriquecendo com a aba de orçamento quando existir
+  const res=[];
+  if(detRows.length){
+    const usados={};
+    detRows.forEach(d=>{
+      const o=orcByNum[d.numero];
+      if(o){usados[d.numero]=1;res.push({aba:o.aba,nome:o.nome||d.descricao||('Aditivo '+d.numero),itens:o.itens,justif:o.justif,solicitacao:d.justificativa,data:atualizacao});}
+      else if(d.descricao){res.push({aba:'INST '+d.numero,nome:d.descricao,itens:[],justif:'',solicitacao:d.justificativa,data:atualizacao,valorManual:d.orcamento});}
+    });
+    Object.keys(orcByNum).forEach(k=>{if(!usados[k]){const o=orcByNum[k];if(o.itens.length)res.push({aba:o.aba,nome:o.nome,itens:o.itens,justif:o.justif,solicitacao:'',data:atualizacao});}});
+  }else{
+    Object.keys(orcByNum).forEach(k=>{const o=orcByNum[k];if(o.itens.length)res.push({aba:o.aba,nome:o.nome,itens:o.itens,justif:o.justif,solicitacao:'',data:atualizacao});});
+    orcOrphan.forEach(o=>res.push({aba:o.aba,nome:o.nome,itens:o.itens,justif:o.justif,solicitacao:'',data:atualizacao}));
+  }
   return res;
 }
 // extrai imagens embutidas no .xlsx por aba (via ExcelJS, que mapeia imagem->planilha): {nomeAba:[{name,blob}]}
@@ -5180,15 +5203,16 @@ window._adImportFile=async(ev)=>{
     const wb=XLSX.read(buf,{type:'array'});
     const parsed=_adParseWorkbook(wb);
     _adBusyDone();
-    if(!parsed.length){toast('Nenhuma aba "Orçamento ..." com itens encontrada.','#f59e0b');return;}
+    if(!parsed.length){toast('Nenhum aditivo encontrado (abas "Orçamento ..." ou lista "Detalhe").','#f59e0b');return;}
     const tot=parsed.reduce((s,p)=>s+p.itens.length,0);
-    if(!confirm(`Importar ${parsed.length} orçamento(s) (${tot} itens) como novos aditivos em "${obra}"?`))return;
+    if(!confirm(`Importar ${parsed.length} aditivo(s) (${tot} itens detalhados) em "${obra}"?`))return;
     _adBusy('Importando '+parsed.length+' aditivo(s)…');
     const base=DB.aditivos.filter(a=>a.obra===obra).slice();
     const pairs=parsed.map(p=>{
       const meta={id:'__mk__',_meta:true,ipi:0,st:0,adm:0};
       const planilha=[meta,...p.itens.map(it=>({id:uid(),nome:it.desc,unidade:it.un||'',quantidade:it.qde==null?'':it.qde,mat_unit:it.mat==null?'':it.mat,mobra_unit:it.mob==null?'':it.mob,observacao:'',tipo:'extra'}))];
-      const valor=Math.round(adTotalFromRows(planilha)*100)/100;
+      const hasPriced=p.itens.some(it=>it.mat!=null||it.mob!=null);
+      const valor=hasPriced?Math.round(adTotalFromRows(planilha)*100)/100:(p.valorManual!=null?Math.round(p.valorManual*100)/100:null);
       const numero=nextNum(base,'AD');
       const comentarios=p.justif?[{id:uid(),autor:'import',texto:'Justificativa: '+p.justif,data:new Date().toISOString().slice(0,10)}]:[];
       const item={id:uid(),numero,nome:p.nome||p.aba,solicitacao:p.solicitacao||'Importado',data:p.data||null,valor,responsavel:'',obra,status:'Em Elaboração',proposta:'EM ANÁLISE',comentarios,arquivos:[],planilha};
