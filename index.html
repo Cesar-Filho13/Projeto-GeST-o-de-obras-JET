@@ -9569,7 +9569,7 @@ async function _fillOrcSheet(ws,a){
             if(blob){
               const b64=await new Promise((res)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result||'').split(',')[1]||'');fr.onerror=()=>res('');fr.readAsDataURL(blob);});
               let ext=String((imgs[idx].name||'').split('.').pop()||'png').toLowerCase();if(ext==='jpg'||ext==='jpeg')ext='jpeg';else if(['png','gif'].indexOf(ext)<0)ext='png';
-              if(b64){const imgId=wb.addImage({base64:b64,extension:ext});ws.addImage(imgId,{tl:{col:c1-1+0.05,row:top-1+0.1},br:{col:c2,row:bot+0.95}});}
+              if(b64){const imgId=ws.workbook.addImage({base64:b64,extension:ext});ws.addImage(imgId,{tl:{col:c1-1+0.05,row:top-1+0.1},br:{col:c2,row:bot+0.95}});}
             }
           }catch(e){}
           cap.value=imgs[idx].observacao||imgs[idx].name||('Foto '+(idx+1));
