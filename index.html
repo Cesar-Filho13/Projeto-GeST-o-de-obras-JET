@@ -9500,8 +9500,14 @@ async function _fillOrcSheet(ws,a){
         ws.getRow(capRow).height=18;
         if(imgs[idx]){
           try{
-            const resp=await fetch(imgs[idx].url);
-            if(resp&&resp.ok){const buf=await resp.arrayBuffer();let ext=String((imgs[idx].name||'').split('.').pop()||'png').toLowerCase();if(ext==='jpg')ext='jpeg';if(['png','jpeg','gif'].indexOf(ext)<0)ext='png';const imgId=wb.addImage({buffer:buf,extension:ext});ws.addImage(imgId,{tl:{col:c1-1+0.05,row:top-1+0.1},br:{col:c2,row:bot+0.95}});}
+            let blob=null;
+            if(imgs[idx].path){try{const dl=await sb.storage.from(BUCKET).download(imgs[idx].path);if(dl&&dl.data)blob=dl.data;}catch(e){}}
+            if(!blob&&imgs[idx].url){try{const resp=await fetch(imgs[idx].url);if(resp&&resp.ok)blob=await resp.blob();}catch(e){}}
+            if(blob){
+              const b64=await new Promise((res)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result||'').split(',')[1]||'');fr.onerror=()=>res('');fr.readAsDataURL(blob);});
+              let ext=String((imgs[idx].name||'').split('.').pop()||'png').toLowerCase();if(ext==='jpg'||ext==='jpeg')ext='jpeg';else if(['png','gif'].indexOf(ext)<0)ext='png';
+              if(b64){const imgId=wb.addImage({base64:b64,extension:ext});ws.addImage(imgId,{tl:{col:c1-1+0.05,row:top-1+0.1},br:{col:c2,row:bot+0.95}});}
+            }
           }catch(e){}
           cap.value=imgs[idx].observacao||imgs[idx].name||('Foto '+(idx+1));
         }
