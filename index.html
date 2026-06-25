@@ -5010,7 +5010,7 @@ ${_thCol('solicitacao','Aa','Solicitação',155)}
 ${_thCol('data','◦','Data',110)}
 ${_thCol('proposta','◉','Proposta',125)}
 ${_thCol('responsavel','○','Responsável',130)}
-<th style="width:60px;text-align:center"><div class="th-inner" style="justify-content:center"><span>↗</span></div></th>
+<th style="width:96px;text-align:center"><div class="th-inner" style="justify-content:center"><span>Ações</span></div></th>
 </tr></thead>
 <tbody>${filtered.map(a=>`<tr style="border-bottom:1px solid var(--border)">
 <td style="padding:5px 8px"><input class="ci" style="font-weight:600;color:var(--text);width:100%" value="${esc(a.nome)}" onclick="event.stopPropagation()" onblur="if(this.value.trim())updateField('aditivos','${a.id}','nome',this.value.trim())" onkeydown="if(event.key==='Enter')this.blur()"></td>
@@ -5021,7 +5021,7 @@ ${_thCol('responsavel','○','Responsável',130)}
 <td style="padding:5px 8px"><input class="ci fp-adit" data-aid="${a.id}" style="width:100%;color:var(--text3)" value="${esc(a.data||'')}" placeholder="dd/mm/aaaa" readonly onclick="event.stopPropagation()"></td>
 <td style="padding:5px 8px" onclick="event.stopPropagation()">${makeCd(PL,PS,a.proposta,`updateField('aditivos','${a.id}','proposta',VAL)`)}</td>
 <td style="padding:5px 8px"><input class="ci" style="width:100%;color:var(--text3)" value="${esc(a.responsavel||'')}" placeholder="—" onclick="event.stopPropagation()" onblur="updateField('aditivos','${a.id}','responsavel',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
-<td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="S.selectedAditivo='${a.id}';renderApp()" title="Ver detalhe completo">↗</button></td>
+<td style="padding:5px 8px;text-align:center;white-space:nowrap"><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();S.selectedAditivo='${a.id}';renderApp()" title="Ver detalhe completo">↗</button><button class="btn btn-sm btn-danger" style="margin-left:5px" onclick="event.stopPropagation();window._deleteAditivo('${a.id}')" title="Excluir aditivo (pede confirmação)">🗑</button></td>
 </tr>`).join('')}
 </tbody></table></div>
 <script>
@@ -5102,6 +5102,9 @@ window._adSetDesconto=(obra,val)=>{const n=Number(val)||0;if(n)localStorage.setI
 
 // ─── IMPORTAR ORÇAMENTOS/EXTRAS DE .XLSX ─────────────────────────────────────
 function _adNumXls(v){if(v==null||v==='')return null;const n=Number(String(v).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:null;}
+function _adBusy(msg){let el=document.getElementById('ad-busy');if(!el){el=document.createElement('div');el.id='ad-busy';el.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(8,10,18,.78);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';el.innerHTML='<div style="background:var(--surface,#13131b);border:1px solid var(--border,#2a2a3a);border-radius:14px;padding:22px 28px;display:flex;flex-direction:column;align-items:center;gap:14px;min-width:240px"><div class="ad-spin" style="width:38px;height:38px;border:4px solid rgba(96,165,250,.25);border-top-color:#60a5fa;border-radius:50%;animation:adspin .8s linear infinite"></div><div id="ad-busy-msg" style="font-size:13px;font-weight:600;color:var(--text,#e5e7eb);text-align:center"></div></div>';document.body.appendChild(el);if(!document.getElementById('ad-spin-style')){const s=document.createElement('style');s.id='ad-spin-style';s.textContent='@keyframes adspin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}}const m=document.getElementById('ad-busy-msg');if(m)m.textContent=msg||'Processando…';el.style.display='flex';}
+function _adBusyDone(){const el=document.getElementById('ad-busy');if(el)el.style.display='none';}
+function _xlsDate(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*86400000));return isNaN(d.getTime())?null:d.toISOString().slice(0,10);}const s=String(v).trim();let m;if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)))return m[0];if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)))return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);return null;}
 function _adParseWorkbook(wb){
   const res=[];
   (wb.SheetNames||[]).forEach(sh=>{
@@ -5131,6 +5134,20 @@ function _adParseWorkbook(wb){
     }
     if(itens.length)res.push({aba:sh,nome:nome,itens:itens,justif:justif.trim()});
   });
+  // aba "Detalhe": SOLICITAÇÃO (justificativa) + DATA (atualização) por Nº
+  try{
+    const detName=(wb.SheetNames||[]).find(s=>adNorm(s).startsWith('detalhe'));
+    if(detName){
+      const dr=XLSX.utils.sheet_to_json(wb.Sheets[detName],{header:1,raw:true,defval:null});
+      let atualizacao=null;
+      dr.slice(0,10).forEach(r=>{const c=(r||[]).map(x=>x==null?'':String(x).trim());const li=c.findIndex(x=>adNorm(x).indexOf('atualiza')===0);if(li>=0){const d=_xlsDate((r||[])[li+1]);if(d)atualizacao=d;}});
+      let dh=-1;for(let i=0;i<dr.length;i++){const j=adNorm((dr[i]||[]).map(x=>x==null?'':x).join(' '));if(j.indexOf('categoria')>=0&&j.indexOf('descricao')>=0){dh=i;break;}}
+      const detMap={};
+      if(dh>=0){const hd=(dr[dh]||[]).map(x=>adNorm(x));const ij=hd.findIndex(x=>x.indexOf('justificativa')>=0),ist=hd.findIndex(x=>x.indexOf('status')>=0);
+        for(let i=dh+1;i<dr.length;i++){const r=dr[i]||[];const nn=parseInt(String(r[1]==null?'':r[1]).replace(/\D/g,''),10);if(!nn)continue;detMap[nn]={just:(ij>=0&&r[ij]!=null)?String(r[ij]).trim():'',status:(ist>=0&&r[ist]!=null)?String(r[ist]).trim():''};}}
+      res.forEach(p=>{const m=String(p.aba).match(/(\d+)\s*$/);const nn=m?parseInt(m[1],10):null;const d=nn?detMap[nn]:null;p.solicitacao=(d&&d.just)||'';p.statusImp=(d&&d.status)||'';p.data=atualizacao||null;});
+    }
+  }catch(e){}
   return res;
 }
 window._adImportClick=(obra)=>{const el=document.getElementById('ad-import-file');if(el){el.dataset.obra=obra;el.click();}};
@@ -5138,27 +5155,32 @@ window._adImportFile=async(ev)=>{
   const file=ev.target.files&&ev.target.files[0];const obra=ev.target.dataset.obra||S.obra;ev.target.value='';
   if(!file)return;
   if(!window.XLSX){toast('Biblioteca XLSX não carregada.','#f59e0b');return;}
+  _adBusy('Lendo planilha…');
   try{
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const parsed=_adParseWorkbook(wb);
+    _adBusyDone();
     if(!parsed.length){toast('Nenhuma aba "Orçamento ..." com itens encontrada.','#f59e0b');return;}
     const tot=parsed.reduce((s,p)=>s+p.itens.length,0);
     if(!confirm(`Importar ${parsed.length} orçamento(s) (${tot} itens) como novos aditivos em "${obra}"?`))return;
-    let created=0;
-    for(const p of parsed){
+    _adBusy('Importando '+parsed.length+' aditivo(s)…');
+    const base=DB.aditivos.filter(a=>a.obra===obra).slice();
+    const items=parsed.map(p=>{
       const meta={id:'__mk__',_meta:true,ipi:0,st:0,adm:0};
       const planilha=[meta,...p.itens.map(it=>({id:uid(),nome:it.desc,unidade:it.un||'',quantidade:it.qde==null?'':it.qde,mat_unit:it.mat==null?'':it.mat,mobra_unit:it.mob==null?'':it.mob,observacao:'',tipo:'extra'}))];
       const valor=Math.round(adTotalFromRows(planilha)*100)/100;
-      const numero=nextNum(DB.aditivos.filter(a=>a.obra===obra),'AD');
+      const numero=nextNum(base,'AD');
       const comentarios=p.justif?[{id:uid(),autor:'import',texto:'Justificativa: '+p.justif,data:new Date().toISOString().slice(0,10)}]:[];
-      const item={id:uid(),numero,nome:p.nome||p.aba,solicitacao:'Importado',data:null,valor,responsavel:'',obra,status:'Em Elaboração',proposta:'EM ANÁLISE',comentarios,arquivos:[],planilha};
-      const{error}=await sb.from('aditivos').insert(item);
-      if(error){toast('Erro: '+error.message,'#ef4444');continue;}
-      DB.aditivos.push(item);created++;
-    }
-    toast(created+' aditivo(s) importado(s)!');renderApp();
-  }catch(e){toast('Falha ao ler arquivo: '+(e&&e.message||e),'#ef4444');}
+      const item={id:uid(),numero,nome:p.nome||p.aba,solicitacao:p.solicitacao||'Importado',data:p.data||null,valor,responsavel:'',obra,status:'Em Elaboração',proposta:'EM ANÁLISE',comentarios,arquivos:[],planilha};
+      base.push(item);return item;
+    });
+    const{error}=await sb.from('aditivos').insert(items);   // inserção em lote (sem limite de 15)
+    _adBusyDone();
+    if(error){toast('Erro ao salvar: '+error.message,'#ef4444');return;}
+    DB.aditivos.push(...items);
+    toast(items.length+' aditivo(s) importado(s)!');renderApp();
+  }catch(e){_adBusyDone();toast('Falha ao importar: '+(e&&e.message||e),'#ef4444');}
 };
 
 // ─── ADMIN: CATÁLOGO DE PREÇOS + REGRAS DE MIUDEZAS + MARKUPS POR OBRA ────────
@@ -9494,15 +9516,17 @@ async function _loadWbB64(b64){const bin=atob(b64);const bytes=new Uint8Array(bi
 window.aditivoOrcamentoXLSX=async(aid)=>{
   const a=DB.aditivos.find(x=>x.id===aid);if(!a){toast('Aditivo não encontrado.','#f59e0b');return;}
   if(!window.ExcelJS||typeof ADITIVO_TEMPLATE_B64==='undefined'){toast('Modelo do orçamento não disponível.','#f59e0b');return;}
+  _adBusy('Gerando orçamento…');
   try{const wb=await _loadWbB64(ADITIVO_TEMPLATE_B64);const ws=wb.getWorksheet('Orcamento')||wb.worksheets[0];await _fillOrcSheet(ws,a);
-    const buf=await wb.xlsx.writeBuffer();_dlXlsx(buf,`Orcamento_${String(a.numero||a.nome||'aditivo').replace(/[^\w]+/g,'_')}.xlsx`);toast('Orçamento Excel gerado!');
-  }catch(e){toast('Falha ao gerar Excel: '+(e&&e.message||e),'#ef4444');}
+    const buf=await wb.xlsx.writeBuffer();_adBusyDone();_dlXlsx(buf,`Orcamento_${String(a.numero||a.nome||'aditivo').replace(/[^\w]+/g,'_')}.xlsx`);toast('Orçamento Excel gerado!');
+  }catch(e){_adBusyDone();toast('Falha ao gerar Excel: '+(e&&e.message||e),'#ef4444');}
 };
 
 // EXPORT GERAL: workbook completo igual à planilha de aditivos (Detalhe + uma aba por aditivo)
 window.aditivosXLSX=async(obra)=>{
   if(!window.ExcelJS||typeof ADITIVO_WORKBOOK_B64==='undefined'){toast('Modelo não disponível.','#f59e0b');return;}
   const ads=sortAditivosDisplay(DB.aditivos.filter(a=>a.obra===obra));
+  _adBusy('Gerando planilha de aditivos…');
   try{
     const NS=20;const wb=await _loadWbB64(ADITIVO_WORKBOOK_B64);const det=wb.getWorksheet('Detalhe');
     const H0=ads.length?planHeader(ads[0]):{};
@@ -9524,8 +9548,8 @@ window.aditivosXLSX=async(obra)=>{
     for(let i=n;i<NS;i++){const sh=`Orçamento INST ${String(i+1).padStart(2,'0')}`;const ws=wb.getWorksheet(sh);if(ws)wb.removeWorksheet(ws.id);
       const r=10+i;['C','D','E','G','H','I'].forEach(c=>{det.getCell(c+r).value=null;});}
     if(ads.length>NS)toast(`Mostrando os primeiros ${NS} de ${ads.length} aditivos.`,'#f59e0b');
-    const buf=await wb.xlsx.writeBuffer();_dlXlsx(buf,`Aditivos_${String(obra||'obra').replace(/[^\w]+/g,'_')}.xlsx`);toast('Planilha de aditivos gerada!');
-  }catch(e){toast('Falha ao gerar Excel: '+(e&&e.message||e),'#ef4444');}
+    const buf=await wb.xlsx.writeBuffer();_adBusyDone();_dlXlsx(buf,`Aditivos_${String(obra||'obra').replace(/[^\w]+/g,'_')}.xlsx`);toast('Planilha de aditivos gerada!');
+  }catch(e){_adBusyDone();toast('Falha ao gerar Excel: '+(e&&e.message||e),'#ef4444');}
 };
 window.materiaisCSV=(obra)=>{const m=DB.materiais.filter(m=>m.obra===obra);exportCSV(m.map(x=>[x.item,x.quantidade,normalizeMaterialUnit(x.unidade||'un'),x.urgencia,x.status,x.solicitante,x.data_solicitacao,x.observacao_item||x.observacao||'']),['Item','Qtd','Unid','Urgência','Status','Solicitante','Data','Observação'],`Materiais_${obra}`);};
 window.materiaisXLSX=(obra)=>{
