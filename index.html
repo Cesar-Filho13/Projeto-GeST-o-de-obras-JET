@@ -4982,6 +4982,7 @@ function renderAditivos(ads,obra){
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${renderExportMenu('aditivos',obra,false,['xlsx','pdf'])}
     <button class="btn btn-secondary" onclick="window._adImportClick('${escJs(obra)}')" title="Importar planilha de Orçamentos/Extras (.xlsx)">📥 Importar .xlsx</button>
+    <button class="btn btn-secondary" onclick="window._adDedup('${escJs(obra)}')" title="Remover aditivos duplicados (mantém 1 de cada nome)">🧹 Limpar duplicados</button>
     <input type="file" id="ad-import-file" accept=".xlsx,.xls" style="display:none" onchange="window._adImportFile(event)">
     <button class="btn btn-secondary" onclick="window._openCatalogo()" title="Gerenciar catálogo de preços, regras de miudezas e markups">⚙ Catálogo & Regras</button>
     <button class="btn btn-primary" onclick="_openModal('new-aditivo')">+ Novo Aditivo</button>
@@ -5163,8 +5164,8 @@ function _adParseWorkbook(wb){
     const usados={};
     detRows.forEach(d=>{
       const o=orcByNum[d.numero];
-      if(o){usados[d.numero]=1;res.push({aba:o.aba,nome:o.nome||d.descricao||('Aditivo '+d.numero),itens:o.itens,justif:o.justif,solicitacao:d.justificativa,data:atualizacao});}
-      else if(d.descricao){res.push({aba:'INST '+d.numero,nome:d.descricao,itens:[],justif:'',solicitacao:d.justificativa,data:atualizacao,valorManual:d.orcamento});}
+      if(o){usados[d.numero]=1;res.push({aba:o.aba,nome:o.nome||d.descricao||('Aditivo '+d.numero),itens:o.itens,justif:o.justif,solicitacao:d.justificativa,data:atualizacao,statusImp:d.status});}
+      else if(d.descricao){res.push({aba:'INST '+d.numero,nome:d.descricao,itens:[],justif:'',solicitacao:d.justificativa,data:atualizacao,valorManual:d.orcamento,statusImp:d.status});}
     });
     Object.keys(orcByNum).forEach(k=>{if(!usados[k]){const o=orcByNum[k];if(o.itens.length)res.push({aba:o.aba,nome:o.nome,itens:o.itens,justif:o.justif,solicitacao:'',data:atualizacao});}});
   }else{
@@ -5192,6 +5193,27 @@ async function _adExtractImages(buf){
   }catch(e){}
   return out;
 }
+function _adMapStatus(s){const n=adNorm(s);if(!n)return 'Em Elaboração';
+  if(n.indexOf('cancel')>=0)return 'Cancelado';
+  if(n.indexOf('aprovad')>=0)return 'Aprovado';
+  if(n.indexOf('executando')>=0)return 'Executando';
+  if(n.indexOf('execut')>=0||n.indexOf('conclu')>=0||n.indexOf('finaliz')>=0)return 'Concluído';
+  if(n.indexOf('aguard')>=0)return 'Aguardando Aprovação';
+  return 'Em Elaboração';}
+window._adDedup=async(obra)=>{
+  const ads=DB.aditivos.filter(a=>a.obra===obra);
+  const byName={};ads.forEach(a=>{const k=adNorm(a.nome);(byName[k]=byName[k]||[]).push(a);});
+  const toDel=[];Object.values(byName).forEach(g=>{if(g.length>1){g.sort((x,y)=>planItems(y).length-planItems(x).length||String(x.created_at||x.id).localeCompare(String(y.created_at||y.id)));toDel.push(...g.slice(1));}});
+  if(!toDel.length){toast('Nenhum aditivo duplicado nesta obra.');return;}
+  if(!confirm(`Remover ${toDel.length} aditivo(s) duplicado(s) em "${obra}"? Mantém 1 de cada nome (o mais completo).`))return;
+  _adBusy('Removendo duplicados…');
+  const ids=toDel.map(a=>a.id);
+  const{error}=await sb.from('aditivos').delete().in('id',ids);
+  _adBusyDone();
+  if(error){toast('Erro: '+error.message,'#ef4444');return;}
+  DB.aditivos=DB.aditivos.filter(a=>ids.indexOf(a.id)<0);
+  toast(toDel.length+' duplicado(s) removido(s).','#f59e0b');renderApp();
+};
 window._adImportClick=(obra)=>{const el=document.getElementById('ad-import-file');if(el){el.dataset.obra=obra;el.click();}};
 window._adImportFile=async(ev)=>{
   const file=ev.target.files&&ev.target.files[0];const obra=ev.target.dataset.obra||S.obra;ev.target.value='';
@@ -5204,18 +5226,22 @@ window._adImportFile=async(ev)=>{
     const parsed=_adParseWorkbook(wb);
     _adBusyDone();
     if(!parsed.length){toast('Nenhum aditivo encontrado (abas "Orçamento ..." ou lista "Detalhe").','#f59e0b');return;}
-    const tot=parsed.reduce((s,p)=>s+p.itens.length,0);
-    if(!confirm(`Importar ${parsed.length} aditivo(s) (${tot} itens detalhados) em "${obra}"?`))return;
-    _adBusy('Importando '+parsed.length+' aditivo(s)…');
+    const existentes=new Set(DB.aditivos.filter(a=>a.obra===obra).map(a=>adNorm(a.nome)));
+    const novos=parsed.filter(p=>!existentes.has(adNorm(p.nome||p.aba)));
+    const dup=parsed.length-novos.length;
+    if(!novos.length){toast(`Todos os ${parsed.length} aditivos já existem em "${obra}".`,'#f59e0b');return;}
+    const tot=novos.reduce((s,p)=>s+p.itens.length,0);
+    if(!confirm(`Importar ${novos.length} aditivo(s) (${tot} itens)${dup?` — ${dup} já existem e serão ignorados`:''} em "${obra}"?`))return;
+    _adBusy('Importando '+novos.length+' aditivo(s)…');
     const base=DB.aditivos.filter(a=>a.obra===obra).slice();
-    const pairs=parsed.map(p=>{
+    const pairs=novos.map(p=>{
       const meta={id:'__mk__',_meta:true,ipi:0,st:0,adm:0};
       const planilha=[meta,...p.itens.map(it=>({id:uid(),nome:it.desc,unidade:it.un||'',quantidade:it.qde==null?'':it.qde,mat_unit:it.mat==null?'':it.mat,mobra_unit:it.mob==null?'':it.mob,observacao:'',tipo:'extra'}))];
       const hasPriced=p.itens.some(it=>it.mat!=null||it.mob!=null);
       const valor=hasPriced?Math.round(adTotalFromRows(planilha)*100)/100:(p.valorManual!=null?Math.round(p.valorManual*100)/100:null);
       const numero=nextNum(base,'AD');
       const comentarios=p.justif?[{id:uid(),autor:'import',texto:'Justificativa: '+p.justif,data:new Date().toISOString().slice(0,10)}]:[];
-      const item={id:uid(),numero,nome:p.nome||p.aba,solicitacao:p.solicitacao||'Importado',data:p.data||null,valor,responsavel:'',obra,status:'Em Elaboração',proposta:'EM ANÁLISE',comentarios,arquivos:[],planilha};
+      const item={id:uid(),numero,nome:p.nome||p.aba,solicitacao:p.solicitacao||'Importado',data:p.data||null,valor,responsavel:'',obra,status:_adMapStatus(p.statusImp),proposta:'EM ANÁLISE',comentarios,arquivos:[],planilha};
       base.push(item);return {p,item};
     });
     const items=pairs.map(x=>x.item);
@@ -9546,13 +9572,14 @@ async function _fillOrcSheet(ws,a){
   // As caixas existem sempre (espaço reservado); as imagens anexadas ao aditivo entram dentro.
   try{
     const isImage=(nm)=>(typeof isImg==='function'?isImg(nm):/\.(png|jpe?g|webp|gif)$/i.test(String(nm||'')));
-    const imgs=(a.arquivos||[]).filter(f=>f&&f.url&&isImage(f.name)).slice(0,6);
+    const imgs=(a.arquivos||[]).filter(f=>f&&f.url&&isImage(f.name)).slice(0,30);
     const T=16+keep+2;
     ws.getCell('A'+T).value='REGISTRO FOTOGRÁFICO';
     ws.getCell('A'+T).font={name:'Calibri',size:11,bold:true};
     const tri=[[1,3],[5,8],[10,12]], BH=16, med={style:'thin',color:{argb:'FF000000'}};
     const box=(c1,r1,c2,r2)=>{for(let c=c1;c<=c2;c++){const t=ws.getCell(r1,c);t.border={...(t.border||{}),top:med};const b=ws.getCell(r2,c);b.border={...(b.border||{}),bottom:med};}for(let r=r1;r<=r2;r++){const l=ws.getCell(r,c1);l.border={...(l.border||{}),left:med};const rr=ws.getCell(r,c2);rr.border={...(rr.border||{}),right:med};}};
-    for(let g=0;g<2;g++){
+    const rowsN=Math.max(2,Math.ceil(imgs.length/3));
+    for(let g=0;g<rowsN;g++){
       const top=T+1+g*(BH+2), bot=top+BH-1, capRow=bot+1;
       for(let ci=0;ci<3;ci++){
         const c1=tri[ci][0], c2=tri[ci][1], idx=g*3+ci;
