@@ -5055,6 +5055,27 @@ let AD_CAT_LIVE=null,AD_MIU_LIVE=null;const AD_OBRA_MK={};
 function adCatList(){return AD_CAT_LIVE||(typeof ADITIVO_CATALOGO!=='undefined'?ADITIVO_CATALOGO:[]);}
 function adMiuMap(){return AD_MIU_LIVE||(typeof MIUDEZAS_REGRAS!=='undefined'?MIUDEZAS_REGRAS:{});}
 function adCatLookup(nome){const k=adNorm(nome);return adCatList().find(c=>adNorm(c.d)===k)||null;}
+// ── casamento inteligente (fuzzy) por categoria + diâmetro + palavras ──
+const _AD_STOP=new Set(['de','da','do','para','com','e','em','a','o','os','as','tipo','din','costura','preto','sem','ou','no','na','classe','ref','etc','incluindo','completo']);
+function _adTokens(s){return adNorm(s).replace(/[^a-z0-9/."ø#²,]+/g,' ').split(/\s+/).filter(t=>t&&t.length>1&&!_AD_STOP.has(t)&&t!=='2440');}
+function _adDiam(s){const n=adNorm(s);let m=n.match(/ø\s*(\d+(?:\s*\.?\s*\d+\/\d+)?|\d+\/\d+)/)||n.match(/\b(\d+(?:\s*\.?\s*\d+\/\d+)?|\d+\/\d+)\s*"/)||n.match(/#?\s*(\d+(?:[.,]\d+)?)\s*mm/)||n.match(/\b(\d+\s*\.?\s*\d+\/\d+)\b/)||n.match(/\b(\d+\/\d+)\b/);if(!m)return null;return m[1].replace(',','.').replace(/\s+/g,'.').replace(/\.+/g,'.');}
+const _AD_CATS=[['acessorio',/^acessorio|^acessorios|^conjunto de acess/],['pintura',/pintura/],['suporte',/suporte|abracad|tirante/],['verba',/verba|miudez/],['eletroduto',/eletroduto/],['eletrocalha',/eletrocalha/],['perfilado',/perfilado/],['condulete',/condulete/],['sealtube',/sealtube/],['curva',/curva/],['conexao',/conex/],['registro',/registro/],['tomada',/tomada/],['interruptor',/interruptor/],['luminaria',/lumin|lampada|spot|arandela|pendente|lustre/],['cabo',/\bcabo\b|cabos/],['tubo',/tubulac|sprinkler|\bspk\b|tubo/],['eletro',/eletro/]];
+function _adCat(s){const n=adNorm(s);for(const[k,rx]of _AD_CATS)if(rx.test(n))return k;return null;}
+function adCatFuzzy(query){
+  const qt=new Set(_adTokens(query));if(!qt.size)return null;
+  const qcat=_adCat(query),qd=_adDiam(query);let best=null,bestScore=0;
+  adCatList().forEach(c=>{
+    if(c.m==null&&c.o==null)return;            // só itens com preço
+    let score=0;
+    if(qcat&&_adCat(c.d)===qcat)score+=1;
+    if(qd){const cd=_adDiam(c.d);if(cd&&cd===qd)score+=1.6;else if(cd&&cd!==qd)score-=1;}
+    let shared=0;_adTokens(c.d).forEach(t=>{if(qt.has(t))shared++;});score+=shared*0.5;
+    if(score>bestScore){bestScore=score;best=c;}
+  });
+  return bestScore>=1.5?best:null;
+}
+// exato primeiro; senão fuzzy
+function adCatMatch(nome){return adCatLookup(nome)||adCatFuzzy(nome);}
 function adMiudezasFor(nome){return adMiuMap()[adNorm(nome)]||null;}
 const AD_MK_DEFAULT={ipi:0,st:0,adm:45};
 // Carrega catalogo/regras/markups do Supabase se as tabelas existirem; senao usa o embed.
@@ -5497,7 +5518,7 @@ async function _plSave(aid,rows){const a=DB.aditivos.find(x=>x.id===aid);if(a)a.
 window._plAdd=async(aid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=[...(a.planilha||[]),{id:uid(),nome:'',unidade:'',quantidade:'',mat_unit:'',mobra_unit:'',observacao:'',tipo:'extra'}];await _plSave(aid,rows);renderApp();};
 window._plDel=async(aid,rid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=(a.planilha||[]).filter(r=>r.id!==rid&&r.gerado_de!==rid);await _plSave(aid,rows);renderApp();};
 window._plUp=async(aid,rid,field,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=(a.planilha||[]).map(r=>r.id===rid?{...r,[field]:val}:r);await _plSave(aid,rows);renderApp();};
-window._plPick=async(aid,rid,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const cat=adCatLookup(val);const rows=(a.planilha||[]).map(r=>{if(r.id!==rid)return r;const nr={...r,nome:val};if(cat){if(!nr.unidade)nr.unidade=cat.u||'';if((nr.mat_unit===''||nr.mat_unit==null)&&cat.m!=null)nr.mat_unit=cat.m;if((nr.mobra_unit===''||nr.mobra_unit==null)&&cat.o!=null)nr.mobra_unit=cat.o;}return nr;});await _plSave(aid,rows);renderApp();};
+window._plPick=async(aid,rid,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const exact=adCatLookup(val);const cat=exact||adCatFuzzy(val);const rows=(a.planilha||[]).map(r=>{if(r.id!==rid)return r;const nr={...r,nome:val};if(cat){if(!nr.unidade)nr.unidade=cat.u||'';if((nr.mat_unit===''||nr.mat_unit==null)&&cat.m!=null)nr.mat_unit=cat.m;if((nr.mobra_unit===''||nr.mobra_unit==null)&&cat.o!=null)nr.mobra_unit=cat.o;}return nr;});await _plSave(aid,rows);if(cat&&!exact)toast('Preço sugerido (parecido): '+String(cat.d).slice(0,45),'#60a5fa');renderApp();};
 window._plMk=async(aid,field,val)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;let rows=[...(a.planilha||[])];let m=rows.find(r=>r&&r._meta);if(!m){m={id:'__mk__',_meta:true,ipi:0,st:0,adm:45};rows=[m,...rows];}rows=rows.map(r=>r&&r._meta?{...r,[field]:Number(val)||0}:r);await _plSave(aid,rows);renderApp();};
 window._plToggleExc=async(aid,rid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const rows=(a.planilha||[]).map(r=>(r.id===rid||r.gerado_de===rid)?{...r,tipo:r.tipo==='exclusao'?'extra':'exclusao'}:r);await _plSave(aid,rows);renderApp();};
 window._plGenMiu=async(aid,rid)=>{const a=DB.aditivos.find(x=>x.id===aid);if(!a)return;const base=(a.planilha||[]).find(r=>r.id===rid);if(!base)return;const regras=adMiudezasFor(base.nome);if(!regras){toast('Sem regra de miudezas para este item.','#f59e0b');return;}const q=Number(base.quantidade)||0;if(!q){toast('Defina a quantidade do material primeiro.','#f59e0b');return;}let rows=(a.planilha||[]).filter(r=>r.gerado_de!==rid);const idx=rows.findIndex(r=>r.id===rid);const novas=regras.map(g=>({id:uid(),nome:g.n,unidade:'un',quantidade:Math.round(q*(g.c||0)*100)/100,mat_unit:g.v!=null?g.v:'',mobra_unit:'',observacao:'miudeza · '+g.t,tipo:base.tipo==='exclusao'?'exclusao':'extra',gerado_de:rid}));rows.splice(idx+1,0,...novas);await _plSave(aid,rows);renderApp();toast(novas.length+' miudezas geradas.');};
@@ -9528,8 +9549,8 @@ function _adItemRowHtml(desc='',un='',qtd='',mat='',mob=''){
     +`</div>`;
 }
 window._adItemRow=(desc,un,qtd,mat,mob)=>{const list=document.getElementById('ad-items-list');if(!list)return;list.insertAdjacentHTML('beforeend',_adItemRowHtml(desc,un,qtd,mat,mob));if(!desc){const rows=list.querySelectorAll('.ad-item-row .adi-desc');const last=rows[rows.length-1];if(last)last.focus();}};
-window._adItemPick=(inp)=>{const row=inp.closest('.ad-item-row');if(!row)return;const cat=adCatLookup(inp.value);if(!cat)return;const un=row.querySelector('.adi-un'),mat=row.querySelector('.adi-mat'),mob=row.querySelector('.adi-mob');if(un&&!un.value&&cat.u)un.value=cat.u;if(mat&&!mat.value&&cat.m!=null)mat.value=cat.m;if(mob&&!mob.value&&cat.o!=null)mob.value=cat.o;};
-window._adItemPaste=()=>{const ta=document.getElementById('m-ad-paste');if(!ta)return;const items=(typeof parseQtyItemList==='function')?parseQtyItemList(ta.value):[];if(!items.length){toast('Nenhum item reconhecido (use: qtd = descrição).','#f59e0b');return;}const list=document.getElementById('ad-items-list');const rep=document.getElementById('m-ad-paste-rep');if(rep&&rep.checked&&list)list.innerHTML='';items.forEach(it=>{const cat=adCatLookup(it.item)||{};window._adItemRow(it.item,(cat.u||it.unidade||''),(it.qtd||''),(cat.m!=null?cat.m:''),(cat.o!=null?cat.o:''));});ta.value='';toast(items.length+' item(ns) inserido(s).');};
+window._adItemPick=(inp)=>{const row=inp.closest('.ad-item-row');if(!row)return;const exact=adCatLookup(inp.value);const cat=exact||adCatFuzzy(inp.value);if(!cat)return;const un=row.querySelector('.adi-un'),mat=row.querySelector('.adi-mat'),mob=row.querySelector('.adi-mob');if(un&&!un.value&&cat.u)un.value=cat.u;if(mat&&!mat.value&&cat.m!=null)mat.value=cat.m;if(mob&&!mob.value&&cat.o!=null)mob.value=cat.o;if(!exact)toast('Preço sugerido (parecido): '+String(cat.d).slice(0,45),'#60a5fa');};
+window._adItemPaste=()=>{const ta=document.getElementById('m-ad-paste');if(!ta)return;const items=(typeof parseQtyItemList==='function')?parseQtyItemList(ta.value):[];if(!items.length){toast('Nenhum item reconhecido (use: qtd = descrição).','#f59e0b');return;}const list=document.getElementById('ad-items-list');const rep=document.getElementById('m-ad-paste-rep');if(rep&&rep.checked&&list)list.innerHTML='';let fz=0;items.forEach(it=>{const exact=adCatLookup(it.item);const cat=exact||adCatFuzzy(it.item)||{};if(cat&&!exact&&(cat.m!=null||cat.o!=null))fz++;window._adItemRow(it.item,(cat.u||it.unidade||''),(it.qtd||''),(cat.m!=null?cat.m:''),(cat.o!=null?cat.o:''));});ta.value='';toast(items.length+' item(ns) inserido(s)'+(fz?` · ${fz} com preço sugerido (parecido)`:''));};
 // Export do orçamento usando o MOLDE real (template .xlsx embutido) — fontes/cores/bordas/fórmulas idênticas
 // preenche UMA aba de orçamento no molde: cabeçalho + itens, splice das linhas não usadas, re-seta fórmulas. Retorna {geralRow,total}.
 async function _fillOrcSheet(ws,a){
@@ -9548,7 +9569,7 @@ async function _fillOrcSheet(ws,a){
   if(!(di&&df)){ws.getCell('G4').value=null;ws.getCell('H4').value=null;}
   const n=Math.min(items.length,NIT);
   for(let i=0;i<n;i++){const r=items[i],row=R0+i;const q=Number(r.quantidade)||0,mat=Number(r.mat_unit)||0,mob=Number(r.mobra_unit)||0;
-    const cm=adCatLookup(r.nome)||{};
+    const cm=adCatMatch(r.nome)||{};
     ws.getCell('A'+row).value=cm.cc||'';
     ws.getCell('B'+row).value=cm.it||'';
     ws.getCell('C'+row).value=(r.tipo==='exclusao'?'(exclusão) ':'')+(r.nome||'');
