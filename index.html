@@ -5532,13 +5532,20 @@ const FC={pdf:{bg:'#3b1515',c:'#f87171',l:'PDF'},png:{bg:'#0a2214',c:'#4ade80',l
 function fstyle(n){const e=getExt(n);return FC[e]||{bg:'#1a1a1a',c:'#777',l:e.slice(0,3).toUpperCase()||'?'};}
 
 function renderArquivos(a){
+  if(!window._adPasteWired){window._adPasteWired=true;document.addEventListener('paste',async(e)=>{try{
+    if(!S.selectedAditivo)return;
+    const its=(e.clipboardData&&e.clipboardData.items)||[];const imgs=[];
+    for(const it of its){if(it.kind==='file'&&/^image\//.test(it.type||'')){const f=it.getAsFile();if(f)imgs.push(f);}}
+    if(!imgs.length)return; e.preventDefault();
+    for(const f of imgs){const ext=((f.type.split('/')[1]||'png').replace('jpeg','jpg'));const nf=(f.name&&!/^image\.(png|jpe?g|gif)$/i.test(f.name))?f:new File([f],'colado-'+Date.now()+'.'+ext,{type:f.type||'image/png'});await _doUpload(S.selectedAditivo,nf);}
+  }catch(err){}});}
   const files=a.arquivos||[];
   const imgs=files.filter(f=>isImg(f.name));
   const docs=files.filter(f=>!isImg(f.name));
   return`<div>
 <div class="upload-zone-outer" id="uz-${a.id}" style="border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:all .15s" onclick="document.getElementById('fi-${a.id}').click()" onmouseover="if(!this.dataset.drag)this.style.borderColor='var(--blue)'" onmouseout="if(!this.dataset.drag){this.style.borderColor='var(--border2)';this.style.background='transparent'}" ondragover="event.preventDefault();this.dataset.drag='1';this.style.borderColor='var(--blue)';this.style.background='#0e1a30'" ondragleave="delete this.dataset.drag;this.style.borderColor='var(--border2)';this.style.background='transparent'" ondrop="event.preventDefault();delete this.dataset.drag;this.style.borderColor='var(--border2)';this.style.background='transparent';window._uploadDrop(event.dataTransfer.files,'${a.id}')">
 <input type="file" id="fi-${a.id}" multiple accept="${UPLOAD_ACCEPT}" style="display:none" onchange="window._upload(event,'${a.id}')">
-<div style="font-size:13px;color:var(--text3)">📎 Clique ou arraste arquivos aqui</div>
+<div style="font-size:13px;color:var(--text3)">📎 Clique, arraste ou cole (Ctrl+V) arquivos aqui</div>
 <div style="font-size:11px;color:var(--text3);margin-top:4px">PDF, DWG, DXF, imagens, planilhas e ZIP até 20 MB</div>
 </div>
 ${imgs.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">${imgs.map(f=>`<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--bg2);border:1px solid var(--border)" class="img-th">
